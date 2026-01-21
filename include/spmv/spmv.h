@@ -41,9 +41,9 @@ void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
 
 // GPU 实现
 SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, 
-                    const SpMVConfig* config);
+                    const SpMVConfig* config, int vec_size = -1);
 SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
-                    const SpMVConfig* config);
+                    const SpMVConfig* config, int vec_size = -1);
 
 // 自动选择最优 Kernel
 SpMVConfig spmv_auto_config(const CSRMatrix* A);
