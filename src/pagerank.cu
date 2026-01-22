@@ -17,6 +17,36 @@ static float compute_l2_norm(const float* a, const float* b, int n) {
     return std::sqrt(sum);
 }
 
+static std::vector<int> find_dangling_nodes(const CSRMatrix* adj_matrix) {
+    std::vector<int> dangling;
+    if (!adj_matrix || adj_matrix->num_cols <= 0 || adj_matrix->num_rows <= 0) {
+        return dangling;
+    }
+    if (!adj_matrix->values || !adj_matrix->col_indices || !adj_matrix->row_ptrs) {
+        return dangling;
+    }
+
+    int num_cols = adj_matrix->num_cols;
+    std::vector<float> col_sums(num_cols, 0.0f);
+    for (int row = 0; row < adj_matrix->num_rows; row++) {
+        int start = adj_matrix->row_ptrs[row];
+        int end = adj_matrix->row_ptrs[row + 1];
+        for (int idx = start; idx < end; idx++) {
+            int col = adj_matrix->col_indices[idx];
+            if (col >= 0 && col < num_cols) {
+                col_sums[col] += adj_matrix->values[idx];
+            }
+        }
+    }
+
+    for (int col = 0; col < num_cols; col++) {
+        if (col_sums[col] == 0.0f) {
+            dangling.push_back(col);
+        }
+    }
+    return dangling;
+}
+
 PageRankResult pagerank(
     const CSRMatrix* adj_matrix,
     const PageRankConfig* config
@@ -43,6 +73,7 @@ PageRankResult pagerank(
     
     std::vector<float> ranks_old(n);
     std::vector<float> ranks_new(n);
+    std::copy(result.ranks, result.ranks + n, ranks_old.begin());
     
     // 分配 GPU 内存
     CudaBuffer<float> d_ranks_old(n);
@@ -53,14 +84,23 @@ PageRankResult pagerank(
     // PageRank 迭代
     float damping = config->damping_factor;
     float teleport = (1.0f - damping) / n;
+    std::vector<int> dangling_nodes = find_dangling_nodes(adj_matrix);
     
     SpMVConfig spmv_config;
     spmv_config.kernel_type = SpMVConfig::VECTOR_CSR;
+    bool final_from_new = false;
     
     for (int iter = 0; iter < config->max_iterations; iter++) {
-        // r_new = d * A * r_old + (1-d) / n
+        float dangling_sum = 0.0f;
+        for (int node : dangling_nodes) {
+            if (node >= 0 && node < n) {
+                dangling_sum += ranks_old[node];
+            }
+        }
+
+        // r_new = d * (A * r_old + dangling_sum / n) + (1-d) / n
         SpMVResult spmv_result = spmv_csr(adj_matrix, d_ranks_old.get(), 
-                                          d_ranks_new.get(), &spmv_config);
+                                          d_ranks_new.get(), &spmv_config, n);
         
         if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
             break;
@@ -68,13 +108,13 @@ PageRankResult pagerank(
         
         // 添加 teleport 项
         d_ranks_new.copyToHost(ranks_new.data(), n);
+        float dangling_contrib = (n > 0) ? (damping * dangling_sum / n) : 0.0f;
         for (int i = 0; i < n; i++) {
-            ranks_new[i] = damping * ranks_new[i] + teleport;
+            ranks_new[i] = damping * ranks_new[i] + dangling_contrib + teleport;
         }
         d_ranks_new.copyFromHost(ranks_new.data(), n);
         
         // 检查收敛
-        d_ranks_old.copyToHost(ranks_old.data(), n);
         float residual = compute_l2_norm(ranks_new.data(), ranks_old.data(), n);
         
         result.iterations = iter + 1;
@@ -82,15 +122,21 @@ PageRankResult pagerank(
         
         if (residual < config->tolerance) {
             result.converged = true;
+            final_from_new = true;
             break;
         }
         
         // 交换
         std::swap(d_ranks_old, d_ranks_new);
+        std::swap(ranks_old, ranks_new);
     }
     
     // 复制最终结果
-    d_ranks_old.copyToHost(result.ranks, n);
+    if (final_from_new) {
+        d_ranks_new.copyToHost(result.ranks, n);
+    } else {
+        d_ranks_old.copyToHost(result.ranks, n);
+    }
     
     // 归一化确保和为 1
     float sum = 0.0f;

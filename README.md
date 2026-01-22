@@ -21,6 +21,7 @@
   - 带宽利用率分析
   - GFLOPS 计算
   - 完整的基准测试框架
+  - 可选纹理缓存读取输入向量
 
 - **应用示例**
   - PageRank 图算法实现
@@ -47,6 +48,16 @@ make -j
 
 ```bash
 ./spmv_tests
+```
+
+### 验证路径
+
+```bash
+# 运行属性测试与单元测试
+./spmv_tests
+
+# 运行基准测试程序
+./benchmarks_main
 ```
 
 ## 使用示例
@@ -80,7 +91,8 @@ d_x.copyFromHost(x.data(), 3);
 
 // 执行 SpMV
 SpMVConfig config = spmv_auto_config(csr);
-SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config);
+// config.use_texture = true;  // 可选：启用纹理缓存读取 x
+SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
 
 // 获取结果
 std::vector<float> y(3);

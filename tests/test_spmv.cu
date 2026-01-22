@@ -62,7 +62,7 @@ TEST_F(SpMVPropertyTest, CSRCorrectness) {
         
         SpMVConfig config;
         config.kernel_type = SpMVConfig::SCALAR_CSR;
-        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config);
+        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
         
         ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS))
             << "SpMV failed at iteration " << iter;
@@ -102,7 +102,7 @@ TEST_F(SpMVPropertyTest, ELLCorrectness) {
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
         
-        SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), nullptr);
+        SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), nullptr, cols);
         
         ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS))
             << "SpMV ELL failed at iteration " << iter;
@@ -152,7 +152,7 @@ TEST(SpMVUnitTest, EmptyMatrix) {
     CudaBuffer<float> d_x(1);
     CudaBuffer<float> d_y(1);
     
-    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, 1);
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
     
     csr_destroy(csr);
@@ -173,7 +173,7 @@ TEST(SpMVUnitTest, SingleElement) {
     CudaBuffer<float> d_y(1);
     d_x.copyFromHost(x.data(), 1);
     
-    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, static_cast<int>(x.size()));
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
     
     std::vector<float> y_gpu(1);
@@ -205,7 +205,7 @@ TEST(SpMVUnitTest, ZeroRows) {
     CudaBuffer<float> d_y(3);
     d_x.copyFromHost(x.data(), 3);
     
-    spmv_csr(csr, d_x.get(), d_y.get(), nullptr);
+    spmv_csr(csr, d_x.get(), d_y.get(), nullptr, static_cast<int>(x.size()));
     
     std::vector<float> y_gpu(3);
     d_y.copyToHost(y_gpu.data(), 3);

@@ -39,7 +39,7 @@ BenchmarkResult benchmark_csr(
     
     // 预热
     for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-        spmv_csr(A, d_x.get(), d_y.get(), config);
+        spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols);
     }
     
     // 测试运行
@@ -47,7 +47,7 @@ BenchmarkResult benchmark_csr(
     times.reserve(bench_config->num_runs);
     
     for (int i = 0; i < bench_config->num_runs; i++) {
-        SpMVResult spmv_result = spmv_csr(A, d_x.get(), d_y.get(), config);
+        SpMVResult spmv_result = spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols);
         if (spmv_result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
             times.push_back(spmv_result.elapsed_ms);
             result.gflops = spmv_result.gflops;
@@ -92,14 +92,14 @@ BenchmarkResult benchmark_ell(
     d_x.copyFromHost(x, A->num_cols);
     
     for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-        spmv_ell(A, d_x.get(), d_y.get(), nullptr);
+        spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols);
     }
     
     std::vector<float> times;
     times.reserve(bench_config->num_runs);
     
     for (int i = 0; i < bench_config->num_runs; i++) {
-        SpMVResult spmv_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr);
+        SpMVResult spmv_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols);
         if (spmv_result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
             times.push_back(spmv_result.elapsed_ms);
             result.gflops = spmv_result.gflops;

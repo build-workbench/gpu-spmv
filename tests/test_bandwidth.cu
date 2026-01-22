@@ -33,7 +33,7 @@ TEST_F(BandwidthPropertyTest, MetricsValidity) {
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
         
-        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr);
+        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, cols);
         
         ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
         
