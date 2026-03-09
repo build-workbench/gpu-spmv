@@ -224,6 +224,16 @@ std::string json = benchmark_to_json(result);
 └── .github/workflows/  # CI
 ```
 
+## 在线文档
+
+项目文档已通过 GitHub Pages 发布：
+
+> **https://\<OWNER\>.github.io/gpu-spmv/**
+
+包含：
+- [API 参考](https://OWNER.github.io/gpu-spmv/api) — 头文件接口、数据结构与函数说明
+- [性能优化](https://OWNER.github.io/gpu-spmv/performance) — Kernel 选择策略、带宽优化与基准测试
+
 ## 许可证
 
 MIT License

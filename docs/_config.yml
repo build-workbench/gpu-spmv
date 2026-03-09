@@ -1,0 +1,35 @@
+# GPU SpMV Documentation Site
+# GitHub Pages + Jekyll configuration
+
+title: GPU SpMV
+description: 基于 CUDA 的高性能稀疏矩阵向量乘法库
+remote_theme: pages-themes/cayman@v0.2.0
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+# Navigation
+nav:
+  - title: 首页
+    url: /
+  - title: API 参考
+    url: /api
+  - title: 性能优化
+    url: /performance
+
+# SEO
+url: ""
+baseurl: "/gpu-spmv"
+lang: zh-CN
+
+# Exclude non-doc files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
