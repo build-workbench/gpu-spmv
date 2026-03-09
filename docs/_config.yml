@@ -1,35 +1,39 @@
-# GPU SpMV Documentation Site
-# GitHub Pages + Jekyll configuration
-
 title: GPU SpMV
-description: 基于 CUDA 的高性能稀疏矩阵向量乘法库
+description: >-
+  基于 CUDA 的高性能稀疏矩阵向量乘法库 — CSR/ELL 格式、Merge Path 负载均衡、自动 Kernel 选择
 remote_theme: pages-themes/cayman@v0.2.0
-
-# Build settings
-markdown: kramdown
-highlighter: rouge
-
-# Plugins
 plugins:
   - jekyll-remote-theme
   - jekyll-seo-tag
+repository: LessUp/gpu-spmv
+show_downloads: false
 
-# Navigation
-nav:
-  - title: 首页
-    url: /
-  - title: API 参考
-    url: /api
-  - title: 性能优化
-    url: /performance
-
-# SEO
-url: ""
-baseurl: "/gpu-spmv"
+# SEO & metadata
+url: https://lessup.github.io
+baseurl: /gpu-spmv
 lang: zh-CN
+author: LessUp
+
+# Markdown rendering
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+
+# Default layout for all pages
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
 
 # Exclude non-doc files
 exclude:
   - Gemfile
   - Gemfile.lock
   - vendor
+  - "*.cu"
+  - "*.cuh"
+  - "*.cpp"
+  - "*.h"
