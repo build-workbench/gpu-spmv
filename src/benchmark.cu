@@ -2,6 +2,7 @@
 #include "spmv/cuda_buffer.h"
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 #include <sstream>
 #include <iomanip>
 
@@ -149,21 +150,12 @@ ComparisonResult compare_gpu_cpu_csr(
     times.reserve(bench_config->num_runs);
     
     for (int i = 0; i < bench_config->num_runs; i++) {
-        cudaEvent_t start, stop;
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
-        
-        cudaEventRecord(start);
+        auto t0 = std::chrono::high_resolution_clock::now();
         spmv_cpu_csr(A, x, y.data());
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
+        auto t1 = std::chrono::high_resolution_clock::now();
         
-        float elapsed_ms;
-        cudaEventElapsedTime(&elapsed_ms, start, stop);
+        float elapsed_ms = std::chrono::duration<float, std::milli>(t1 - t0).count();
         times.push_back(elapsed_ms);
-        
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
     }
     
     comp.cpu_result.num_runs = times.size();

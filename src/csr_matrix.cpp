@@ -145,19 +145,19 @@ int csr_to_gpu(CSRMatrix* mat) {
     
     // 分配 GPU 内存
     if (mat->nnz > 0) {
-        CUDA_CHECK(cudaMalloc(&mat->d_values, mat->nnz * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&mat->d_col_indices, mat->nnz * sizeof(int)));
+        CUDA_CHECK_MALLOC(cudaMalloc(&mat->d_values, mat->nnz * sizeof(float)));
+        CUDA_CHECK_MALLOC(cudaMalloc(&mat->d_col_indices, mat->nnz * sizeof(int)));
     }
-    CUDA_CHECK(cudaMalloc(&mat->d_row_ptrs, (mat->num_rows + 1) * sizeof(int)));
+    CUDA_CHECK_MALLOC(cudaMalloc(&mat->d_row_ptrs, (mat->num_rows + 1) * sizeof(int)));
     
     // 复制数据到 GPU
     if (mat->nnz > 0) {
-        CUDA_CHECK(cudaMemcpy(mat->d_values, mat->values, 
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->d_values, mat->values, 
                               mat->nnz * sizeof(float), cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(mat->d_col_indices, mat->col_indices,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->d_col_indices, mat->col_indices,
                               mat->nnz * sizeof(int), cudaMemcpyHostToDevice));
     }
-    CUDA_CHECK(cudaMemcpy(mat->d_row_ptrs, mat->row_ptrs,
+    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->d_row_ptrs, mat->row_ptrs,
                           (mat->num_rows + 1) * sizeof(int), cudaMemcpyHostToDevice));
     
     mat->owns_device_memory = true;
@@ -170,12 +170,12 @@ int csr_from_gpu(CSRMatrix* mat) {
     }
     
     if (mat->nnz > 0 && mat->d_values && mat->d_col_indices) {
-        CUDA_CHECK(cudaMemcpy(mat->values, mat->d_values,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values,
                               mat->nnz * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(mat->col_indices, mat->d_col_indices,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices,
                               mat->nnz * sizeof(int), cudaMemcpyDeviceToHost));
     }
-    CUDA_CHECK(cudaMemcpy(mat->row_ptrs, mat->d_row_ptrs,
+    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->row_ptrs, mat->d_row_ptrs,
                           (mat->num_rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
     
     return static_cast<int>(SpMVError::SUCCESS);

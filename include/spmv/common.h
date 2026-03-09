@@ -49,15 +49,27 @@ private:
     cudaError_t error_;
 };
 
-// CUDA 错误检查宏
-#define CUDA_CHECK(call) do { \
+// CUDA 错误检查宏 —— 按实际操作类型返回对应的错误码
+#define CUDA_CHECK_MALLOC(call) do { \
     cudaError_t err = call; \
     if (err != cudaSuccess) { \
-        fprintf(stderr, "CUDA error at %s:%d: %s\n", \
+        fprintf(stderr, "CUDA malloc error at %s:%d: %s\n", \
                 __FILE__, __LINE__, cudaGetErrorString(err)); \
         return static_cast<int>(spmv::SpMVError::CUDA_MALLOC); \
     } \
 } while(0)
+
+#define CUDA_CHECK_MEMCPY(call) do { \
+    cudaError_t err = call; \
+    if (err != cudaSuccess) { \
+        fprintf(stderr, "CUDA memcpy error at %s:%d: %s\n", \
+                __FILE__, __LINE__, cudaGetErrorString(err)); \
+        return static_cast<int>(spmv::SpMVError::CUDA_MEMCPY); \
+    } \
+} while(0)
+
+// 向后兼容：CUDA_CHECK 映射到 CUDA_MALLOC（用于分配场景）
+#define CUDA_CHECK(call) CUDA_CHECK_MALLOC(call)
 
 #define CUDA_CHECK_THROW(call) do { \
     cudaError_t err = call; \

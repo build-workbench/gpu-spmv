@@ -208,12 +208,12 @@ int ell_to_gpu(ELLMatrix* mat) {
     
     size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
     if (size > 0) {
-        CUDA_CHECK(cudaMalloc(&mat->d_values, size * sizeof(float)));
-        CUDA_CHECK(cudaMalloc(&mat->d_col_indices, size * sizeof(int)));
+        CUDA_CHECK_MALLOC(cudaMalloc(&mat->d_values, size * sizeof(float)));
+        CUDA_CHECK_MALLOC(cudaMalloc(&mat->d_col_indices, size * sizeof(int)));
         
-        CUDA_CHECK(cudaMemcpy(mat->d_values, mat->values,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->d_values, mat->values,
                               size * sizeof(float), cudaMemcpyHostToDevice));
-        CUDA_CHECK(cudaMemcpy(mat->d_col_indices, mat->col_indices,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->d_col_indices, mat->col_indices,
                               size * sizeof(int), cudaMemcpyHostToDevice));
     }
     
@@ -228,9 +228,9 @@ int ell_from_gpu(ELLMatrix* mat) {
     
     size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
     if (size > 0 && mat->d_values && mat->d_col_indices) {
-        CUDA_CHECK(cudaMemcpy(mat->values, mat->d_values,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values,
                               size * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK(cudaMemcpy(mat->col_indices, mat->d_col_indices,
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices,
                               size * sizeof(int), cudaMemcpyDeviceToHost));
     }
     
