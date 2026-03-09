@@ -14,7 +14,6 @@ endif()
 
 # ---------- 主库 ----------
 set(SPMV_SOURCES
-    src/common.cpp
     src/csr_matrix.cpp
     src/ell_matrix.cpp
     src/spmv_cpu.cpp

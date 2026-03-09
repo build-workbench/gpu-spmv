@@ -5,6 +5,7 @@
 #include <cuda_runtime.h>
 #include <cstddef>
 #include <utility>
+#include <vector>
 
 namespace spmv {
 
@@ -55,7 +56,22 @@ public:
     T* get() { return ptr_; }
     const T* get() const { return ptr_; }
     size_t size() const { return size_; }
+    size_t bytes() const { return size_ * sizeof(T); }
     bool empty() const { return ptr_ == nullptr || size_ == 0; }
+    
+    // 将设备内存按字节置零（或指定字节值）
+    void memset(int value = 0) {
+        if (ptr_ && size_ > 0) {
+            CUDA_CHECK_THROW(cudaMemset(ptr_, value, size_ * sizeof(T)));
+        }
+    }
+    
+    // 用主机端的值填充整个缓冲区
+    void fill(const T& value) {
+        if (!ptr_ || size_ == 0) return;
+        std::vector<T> host_data(size_, value);
+        CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data.data(), size_ * sizeof(T), cudaMemcpyHostToDevice));
+    }
     
     // 从主机复制数据到设备
     void copyFromHost(const T* host_data, size_t count) {

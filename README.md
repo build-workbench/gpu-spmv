@@ -1,5 +1,7 @@
 # GPU SpMV (稀疏矩阵向量乘法)
 
+[![CI](https://github.com/<OWNER>/gpu-spmv/actions/workflows/ci.yml/badge.svg)](https://github.com/<OWNER>/gpu-spmv/actions/workflows/ci.yml)
+
 基于 CUDA 的高性能稀疏矩阵向量乘法库，支持 CSR 和 ELL 格式，包含多种负载均衡优化策略。
 
 ## 特性
@@ -18,10 +20,18 @@
   - 基于矩阵特征自动选择最优 Kernel
 
 - **性能度量**
-  - 带宽利用率分析
+  - 带宽利用率分析（峰值带宽缓存，避免重复查询）
   - GFLOPS 计算
-  - 完整的基准测试框架
+  - 完整的基准测试框架（CPU 计时使用 `std::chrono`）
   - 可选纹理缓存读取输入向量
+
+- **工程质量**
+  - RAII 资源管理（`CudaBuffer`、`CudaTimer`、`ScopedTexture`）
+  - 语义化错误码（`CUDA_CHECK_MALLOC` / `CUDA_CHECK_MEMCPY`）
+  - 跨平台测试路径（Windows / Linux）
+  - CMake Presets 支持
+  - `.clang-format` + `.editorconfig` 代码风格
+  - GitHub Actions CI
 
 - **应用示例**
   - PageRank 图算法实现
@@ -35,29 +45,42 @@
 - C++17 编译器
 - NVIDIA GPU (Compute Capability 7.0+)
 
-### 编译
+### 使用 CMake Presets（推荐）
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make -j
+# Debug 构建
+cmake --preset default
+cmake --build --preset default
+
+# Release 构建
+cmake --preset release
+cmake --build --preset release
+
+# 最小构建（仅 sm_80）
+cmake --preset minimal
+cmake --build --preset minimal
+```
+
+### 手动构建
+
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -j
 ```
 
 ### 运行测试
 
 ```bash
-./spmv_tests
+ctest --preset default
+# 或直接运行
+./build/spmv_tests
 ```
 
-### 验证路径
+### 运行基准测试
 
 ```bash
-# 运行属性测试与单元测试
-./spmv_tests
-
-# 运行基准测试程序
-./benchmarks_main
+./build/spmv_benchmark
 ```
 
 ## 使用示例
@@ -176,24 +199,29 @@ std::string json = benchmark_to_json(result);
 ```
 .
 ├── include/spmv/       # 头文件
-│   ├── common.h
-│   ├── cuda_buffer.h
-│   ├── csr_matrix.h
-│   ├── ell_matrix.h
-│   ├── spmv.h
-│   ├── bandwidth.h
-│   ├── benchmark.h
-│   └── pagerank.h
+│   ├── common.h        # 错误码、CUDA_CHECK_* 宏
+│   ├── cuda_buffer.h   # RAII GPU 内存 (memset/fill/bytes)
+│   ├── csr_matrix.h    # CSR 稀疏矩阵
+│   ├── ell_matrix.h    # ELL 稀疏矩阵 (含 nnz 字段)
+│   ├── spmv.h          # SpMV 接口与自动 Kernel 选择
+│   ├── bandwidth.h     # 带宽度量
+│   ├── benchmark.h     # 基准测试框架
+│   ├── pagerank.h      # PageRank 算法
+│   └── test_utils.h    # 测试工具 (跨平台路径等)
 ├── src/                # 源文件
 │   ├── csr_matrix.cpp
 │   ├── ell_matrix.cpp
 │   ├── spmv_cpu.cpp
-│   ├── spmv_kernels.cu
-│   ├── bandwidth.cpp
-│   ├── benchmark.cu
+│   ├── spmv_kernels.cu  # RAII helpers: CudaTimer, ScopedTexture
+│   ├── bandwidth.cpp    # 峰值带宽缓存 (std::call_once)
+│   ├── benchmark.cu     # CPU 计时使用 std::chrono
 │   └── pagerank.cu
-├── tests/              # 测试文件
-└── benchmarks/         # 基准测试程序
+├── tests/              # 属性测试 + 单元测试
+├── benchmarks/         # 基准测试程序
+├── .clang-format       # 代码风格
+├── .editorconfig       # 编辑器配置
+├── CMakePresets.json   # 构建预设
+└── .github/workflows/  # CI
 ```
 
 ## 许可证

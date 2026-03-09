@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:12.2.0-devel-ubuntu22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y cmake g++ git
+
+      - name: Configure (Release)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      # 注意：测试需要 GPU，在无 GPU 的 CI 环境中跳过运行
+      # 如需 GPU CI，请使用自托管 runner 并取消下面的注释
+      # - name: Run tests
+      #   run: ctest --test-dir build --output-on-failure
