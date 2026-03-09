@@ -1,6 +1,9 @@
 # GPU SpMV (稀疏矩阵向量乘法)
 
-[![CI](https://github.com/<OWNER>/gpu-spmv/actions/workflows/ci.yml/badge.svg)](https://github.com/<OWNER>/gpu-spmv/actions/workflows/ci.yml)
+[![CI](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml/badge.svg)](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-blue?logo=github)](https://lessup.github.io/gpu-spmv/)
+
+简体中文 | [English](README.en.md)
 
 基于 CUDA 的高性能稀疏矩阵向量乘法库，支持 CSR 和 ELL 格式，包含多种负载均衡优化策略。
 
@@ -228,11 +231,11 @@ std::string json = benchmark_to_json(result);
 
 项目文档已通过 GitHub Pages 发布：
 
-> **https://\<OWNER\>.github.io/gpu-spmv/**
+> **https://lessup.github.io/gpu-spmv/**
 
 包含：
-- [API 参考](https://OWNER.github.io/gpu-spmv/api) — 头文件接口、数据结构与函数说明
-- [性能优化](https://OWNER.github.io/gpu-spmv/performance) — Kernel 选择策略、带宽优化与基准测试
+- [API 参考](https://lessup.github.io/gpu-spmv/api) — 头文件接口、数据结构与函数说明
+- [性能优化](https://lessup.github.io/gpu-spmv/performance) — Kernel 选择策略、带宽优化与基准测试
 
 ## 许可证
 

@@ -90,4 +90,4 @@ csr_destroy(csr);
 
 ## 许可证
 
-[MIT License](https://github.com/OWNER/gpu-spmv/blob/main/LICENSE)
+[MIT License](https://github.com/LessUp/gpu-spmv/blob/main/LICENSE)
