@@ -4,38 +4,69 @@
 
 namespace spmv {
 
+// ---------- RAII helpers ----------
+
+// RAII wrapper for CUDA events (timing)
+struct CudaTimer {
+    cudaEvent_t start, stop;
+    CudaTimer() {
+        cudaEventCreate(&start);
+        cudaEventCreate(&stop);
+    }
+    ~CudaTimer() {
+        cudaEventDestroy(start);
+        cudaEventDestroy(stop);
+    }
+    CudaTimer(const CudaTimer&) = delete;
+    CudaTimer& operator=(const CudaTimer&) = delete;
+
+    void record_start() { cudaEventRecord(start); }
+    void record_stop()  { cudaEventRecord(stop); cudaEventSynchronize(stop); }
+    float elapsed_ms() const {
+        float ms = 0.0f;
+        cudaEventElapsedTime(&ms, start, stop);
+        return ms;
+    }
+};
+
+// RAII wrapper for a CUDA texture object
+struct ScopedTexture {
+    cudaTextureObject_t tex = 0;
+    bool valid = false;
+
+    ScopedTexture() = default;
+    ~ScopedTexture() { if (valid) cudaDestroyTextureObject(tex); }
+    ScopedTexture(const ScopedTexture&) = delete;
+    ScopedTexture& operator=(const ScopedTexture&) = delete;
+
+    // Returns SpMVError code
+    int create(const float* d_x, size_t count) {
+        if (!d_x || count == 0) return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+
+        cudaResourceDesc res_desc{};
+        res_desc.resType = cudaResourceTypeLinear;
+        res_desc.res.linear.devPtr = const_cast<float*>(d_x);
+        res_desc.res.linear.desc = cudaCreateChannelDesc<float>();
+        res_desc.res.linear.sizeInBytes = count * sizeof(float);
+
+        cudaTextureDesc tex_desc{};
+        tex_desc.addressMode[0] = cudaAddressModeClamp;
+        tex_desc.filterMode = cudaFilterModePoint;
+        tex_desc.readMode = cudaReadModeElementType;
+        tex_desc.normalizedCoords = 0;
+
+        cudaError_t err = cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr);
+        if (err != cudaSuccess) return static_cast<int>(SpMVError::CUDA_MALLOC);
+        valid = true;
+        return static_cast<int>(SpMVError::SUCCESS);
+    }
+};
+
 __device__ __forceinline__ float fetch_x(const float* x,
                                          cudaTextureObject_t tex_x,
                                          bool use_texture,
                                          int idx) {
     return use_texture ? tex1Dfetch<float>(tex_x, idx) : x[idx];
-}
-
-static int create_texture_object(const float* d_x,
-                                 size_t count,
-                                 cudaTextureObject_t* tex_x) {
-    if (!d_x || !tex_x || count == 0) {
-        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-    }
-
-    cudaResourceDesc res_desc{};
-    res_desc.resType = cudaResourceTypeLinear;
-    res_desc.res.linear.devPtr = const_cast<float*>(d_x);
-    res_desc.res.linear.desc = cudaCreateChannelDesc<float>();
-    res_desc.res.linear.sizeInBytes = count * sizeof(float);
-
-    cudaTextureDesc tex_desc{};
-    tex_desc.addressMode[0] = cudaAddressModeClamp;
-    tex_desc.filterMode = cudaFilterModePoint;
-    tex_desc.readMode = cudaReadModeElementType;
-    tex_desc.normalizedCoords = 0;
-
-    cudaError_t err = cudaCreateTextureObject(tex_x, &res_desc, &tex_desc, nullptr);
-    if (err != cudaSuccess) {
-        return static_cast<int>(SpMVError::CUDA_MALLOC);
-    }
-
-    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 // Merge Path 辅助结构
@@ -232,22 +263,19 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
     }
     
     SpMVConfig default_config;
-    if (!config) {
-        config = &default_config;
-    }
+    if (!config) config = &default_config;
 
+    // 纹理对象 (RAII)
+    ScopedTexture stex;
     bool use_texture = config->use_texture;
-    cudaTextureObject_t tex_x = 0;
-    bool texture_created = false;
     size_t x_length = vec_size >= 0 ? static_cast<size_t>(vec_size)
                                     : static_cast<size_t>(A->num_cols);
     if (use_texture && x_length > 0) {
-        int tex_status = create_texture_object(d_x, x_length, &tex_x);
+        int tex_status = stex.create(d_x, x_length);
         if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
             result.error_code = tex_status;
             return result;
         }
-        texture_created = true;
     } else {
         use_texture = false;
     }
@@ -255,32 +283,24 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
     int block_size = config->block_size;
     int num_blocks = (A->num_rows + block_size - 1) / block_size;
     
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    
-    cudaEventRecord(start);
+    CudaTimer timer;
+    timer.record_start();
     
     switch (config->kernel_type) {
         case SpMVConfig::MERGE_PATH: {
-            // 初始化输出为零
-            cudaMemset(d_y, 0, A->num_rows * sizeof(float));
-            
-            int total_work = A->num_rows + A->nnz;
-            int num_threads = block_size * num_blocks;
+            cudaMemsetAsync(d_y, 0, A->num_rows * sizeof(float));
             spmv_csr_merge_path_kernel<<<num_blocks, block_size>>>(
                 A->num_rows, A->nnz, A->d_row_ptrs, A->d_col_indices, 
-                A->d_values, d_x, tex_x, use_texture, d_y
+                A->d_values, d_x, stex.tex, use_texture, d_y
             );
             break;
         }
         case SpMVConfig::VECTOR_CSR: {
-            // Vector CSR: 一个 Warp 处理一行
             int warps_per_block = block_size / 32;
             int num_warps = (A->num_rows + warps_per_block - 1) / warps_per_block;
             spmv_csr_vector_kernel<<<num_warps, block_size>>>(
                 A->num_rows, A->d_row_ptrs, A->d_col_indices, 
-                A->d_values, d_x, tex_x, use_texture, d_y
+                A->d_values, d_x, stex.tex, use_texture, d_y
             );
             break;
         }
@@ -288,39 +308,24 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
         default:
             spmv_csr_scalar_kernel<<<num_blocks, block_size>>>(
                 A->num_rows, A->d_row_ptrs, A->d_col_indices, 
-                A->d_values, d_x, tex_x, use_texture, d_y
+                A->d_values, d_x, stex.tex, use_texture, d_y
             );
             break;
     }
     
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
+    timer.record_stop();
     
     cudaError_t err = cudaGetLastError();
-    if (texture_created) {
-        cudaDestroyTextureObject(tex_x);
-    }
     if (err != cudaSuccess) {
         result.error_code = static_cast<int>(SpMVError::KERNEL_LAUNCH);
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
         return result;
     }
     
-    cudaEventElapsedTime(&result.elapsed_ms, start, stop);
-    
-    // 计算 GFLOPS: 2 * nnz operations (multiply + add)
+    result.elapsed_ms = timer.elapsed_ms();
     result.gflops = (2.0f * A->nnz) / (result.elapsed_ms * 1e6f);
-    
-    // 计算带宽度量
-    BandwidthMetrics bw = compute_bandwidth_csr(A, result.elapsed_ms);
-    result.bandwidth_gb_s = bw.achieved_bandwidth_gb_s;
-    
+    result.bandwidth_gb_s = compute_bandwidth_csr(A, result.elapsed_ms).achieved_bandwidth_gb_s;
     result.y = d_y;
     result.error_code = static_cast<int>(SpMVError::SUCCESS);
-    
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
     
     return result;
 }
@@ -345,22 +350,19 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
     }
     
     SpMVConfig default_config;
-    if (!config) {
-        config = &default_config;
-    }
+    if (!config) config = &default_config;
 
+    // 纹理对象 (RAII)
+    ScopedTexture stex;
     bool use_texture = config->use_texture;
-    cudaTextureObject_t tex_x = 0;
-    bool texture_created = false;
     size_t x_length = vec_size >= 0 ? static_cast<size_t>(vec_size)
                                     : static_cast<size_t>(A->num_cols);
     if (use_texture && x_length > 0) {
-        int tex_status = create_texture_object(d_x, x_length, &tex_x);
+        int tex_status = stex.create(d_x, x_length);
         if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
             result.error_code = tex_status;
             return result;
         }
-        texture_created = true;
     } else {
         use_texture = false;
     }
@@ -368,53 +370,27 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
     int block_size = config->block_size;
     int num_blocks = (A->num_rows + block_size - 1) / block_size;
     
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    
-    cudaEventRecord(start);
+    CudaTimer timer;
+    timer.record_start();
     
     spmv_ell_kernel<<<num_blocks, block_size>>>(
         A->num_rows, A->max_nnz_per_row,
-        A->d_col_indices, A->d_values, d_x, tex_x, use_texture, d_y
+        A->d_col_indices, A->d_values, d_x, stex.tex, use_texture, d_y
     );
     
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
+    timer.record_stop();
     
     cudaError_t err = cudaGetLastError();
-    if (texture_created) {
-        cudaDestroyTextureObject(tex_x);
-    }
     if (err != cudaSuccess) {
         result.error_code = static_cast<int>(SpMVError::KERNEL_LAUNCH);
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
         return result;
     }
     
-    cudaEventElapsedTime(&result.elapsed_ms, start, stop);
-    
-    // 计算实际非零元素数
-    int actual_nnz = 0;
-    for (int i = 0; i < A->num_rows; i++) {
-        for (int k = 0; k < A->max_nnz_per_row; k++) {
-            int idx = k * A->num_rows + i;
-            if (A->col_indices[idx] >= 0) actual_nnz++;
-        }
-    }
-    
-    result.gflops = (2.0f * actual_nnz) / (result.elapsed_ms * 1e6f);
-    
-    // 计算带宽度量
-    BandwidthMetrics bw = compute_bandwidth_ell(A, result.elapsed_ms);
-    result.bandwidth_gb_s = bw.achieved_bandwidth_gb_s;
-    
+    result.elapsed_ms = timer.elapsed_ms();
+    result.gflops = (2.0f * A->nnz) / (result.elapsed_ms * 1e6f);
+    result.bandwidth_gb_s = compute_bandwidth_ell(A, result.elapsed_ms).achieved_bandwidth_gb_s;
     result.y = d_y;
     result.error_code = static_cast<int>(SpMVError::SUCCESS);
-    
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
     
     return result;
 }

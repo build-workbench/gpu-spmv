@@ -4,6 +4,8 @@
 #include <random>
 #include <vector>
 #include <cmath>
+#include <string>
+#include <cstdlib>
 
 namespace spmv {
 namespace test {
@@ -76,6 +78,18 @@ inline bool intArraysEqual(const int* a, const int* b, int size) {
         if (a[i] != b[i]) return false;
     }
     return true;
+}
+
+// 跨平台临时文件路径
+inline std::string getTempFilePath(const char* filename) {
+#ifdef _WIN32
+    const char* tmp = std::getenv("TEMP");
+    if (!tmp) tmp = std::getenv("TMP");
+    if (!tmp) tmp = ".";
+    return std::string(tmp) + "\\" + filename;
+#else
+    return std::string("/tmp/") + filename;
+#endif
 }
 
 } // namespace test

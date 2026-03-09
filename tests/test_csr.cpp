@@ -78,7 +78,8 @@ TEST_F(CSRPropertyTest, ElementLookupCorrectness) {
 // **Feature: spmv-gpu, Property 3: CSR Serialization Round Trip**
 // **Validates: Requirements 1.5**
 TEST_F(CSRPropertyTest, SerializationRoundTrip) {
-    const char* test_file = "/tmp/csr_test.bin";
+    std::string test_file_path = getTempFilePath("csr_test.bin");
+    const char* test_file = test_file_path.c_str();
     
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         int rows = rng.randInt(1, 100);

@@ -118,7 +118,7 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
         return 0.0f;
     }
     
-    // 在该行中二分查找列索引
+    // 在该行中线性扫描列索引（列索引有序，可提前终止）
     int start = mat->row_ptrs[row];
     int end = mat->row_ptrs[row + 1];
     

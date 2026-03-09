@@ -14,6 +14,7 @@ ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
     mat->num_rows = rows;
     mat->num_cols = cols;
     mat->max_nnz_per_row = max_nnz_per_row;
+    mat->nnz = 0;
     
     size_t size = static_cast<size_t>(rows) * max_nnz_per_row;
     mat->values = (size > 0) ? new float[size]() : nullptr;
@@ -92,6 +93,7 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
     }
     
     // 填充 ELL 数据 (Column-major)
+    int total_nnz = 0;
     for (int i = 0; i < rows; i++) {
         int k = 0;
         for (int j = 0; j < cols; j++) {
@@ -101,9 +103,11 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
                 ell->values[idx] = val;
                 ell->col_indices[idx] = j;
                 k++;
+                total_nnz++;
             }
         }
     }
+    ell->nnz = total_nnz;
     
     return static_cast<int>(SpMVError::SUCCESS);
 }
@@ -154,6 +158,7 @@ int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr) {
             k++;
         }
     }
+    ell->nnz = csr->nnz;
     
     return static_cast<int>(SpMVError::SUCCESS);
 }
@@ -319,6 +324,13 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     if (!file) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
+    
+    // 统计实际非零元素数
+    int total_nnz = 0;
+    for (size_t i = 0; i < size; i++) {
+        if (mat->col_indices[i] >= 0) total_nnz++;
+    }
+    mat->nnz = total_nnz;
     
     return static_cast<int>(SpMVError::SUCCESS);
 }

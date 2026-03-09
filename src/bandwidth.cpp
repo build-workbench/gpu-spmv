@@ -1,22 +1,31 @@
 #include "spmv/bandwidth.h"
 #include <cuda_runtime.h>
 #include <algorithm>
+#include <mutex>
 
 namespace spmv {
 
 float get_gpu_peak_bandwidth() {
-    cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, 0);
+    // 缓存峰值带宽，只查询一次 cudaGetDeviceProperties
+    static float cached_bandwidth = -1.0f;
+    static std::once_flag flag;
     
-    // 理论峰值带宽 = 内存时钟频率 * 内存总线宽度 * 2 (DDR)
-    // 单位: GB/s
-    float memory_clock_khz = prop.memoryClockRate;  // kHz
-    float memory_bus_width = prop.memoryBusWidth;   // bits
+    std::call_once(flag, []() {
+        cudaDeviceProp prop;
+        if (cudaGetDeviceProperties(&prop, 0) != cudaSuccess) {
+            cached_bandwidth = 0.0f;
+            return;
+        }
+        
+        // 理论峰值带宽 = 内存时钟频率 * 内存总线宽度 * 2 (DDR)
+        // 单位: GB/s
+        float memory_clock_khz = static_cast<float>(prop.memoryClockRate);  // kHz
+        float memory_bus_width = static_cast<float>(prop.memoryBusWidth);   // bits
+        
+        cached_bandwidth = (memory_clock_khz * 1000.0f) * (memory_bus_width / 8.0f) * 2.0f / 1e9f;
+    });
     
-    // 转换为 GB/s
-    float bandwidth_gb_s = (memory_clock_khz * 1000.0f) * (memory_bus_width / 8.0f) * 2.0f / 1e9f;
-    
-    return bandwidth_gb_s;
+    return cached_bandwidth;
 }
 
 BandwidthMetrics compute_bandwidth_csr(const CSRMatrix* A, float elapsed_ms) {

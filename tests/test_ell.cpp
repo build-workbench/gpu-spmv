@@ -110,7 +110,8 @@ TEST_F(ELLPropertyTest, ColumnMajorLayout) {
 // **Feature: spmv-gpu, Property 7: ELL Serialization Round Trip**
 // **Validates: Requirements 2.5**
 TEST_F(ELLPropertyTest, SerializationRoundTrip) {
-    const char* test_file = "/tmp/ell_test.bin";
+    std::string test_file_path = getTempFilePath("ell_test.bin");
+    const char* test_file = test_file_path.c_str();
     
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         int rows = rng.randInt(1, 100);

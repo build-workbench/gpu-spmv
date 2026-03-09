@@ -13,6 +13,7 @@ struct ELLMatrix {
     int num_rows;           // 矩阵行数
     int num_cols;           // 矩阵列数
     int max_nnz_per_row;    // 每行最大非零元素数
+    int nnz;                // 实际非零元素总数
     
     // Column-major 存储: values[k * num_rows + row]
     float* values;          // 值数组 [num_rows * max_nnz_per_row]
