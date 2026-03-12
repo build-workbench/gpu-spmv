@@ -1,10 +1,9 @@
 name: CI
 
+# CI disabled: CUDA build requires GPU runners not available on GitHub-hosted runners.
+# To run manually: gh workflow run ci.yml --repo LessUp/gpu-spmv
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
