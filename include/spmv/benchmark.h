@@ -15,19 +15,21 @@ struct BenchmarkResult {
     float execution_time_ms;    // 执行时间 (ms)
     float gflops;               // 计算吞吐量
     float bandwidth_gb_s;       // 带宽利用率
-    
+
     // 统计信息 (多次运行)
     float avg_time_ms;
     float min_time_ms;
     float max_time_ms;
     float stddev_time_ms;
-    
-    int num_runs;               // 运行次数
-    
-    BenchmarkResult() : execution_time_ms(0.0f), gflops(0.0f), 
+
+    int num_runs;               // 成功采样次数
+    int error_code;             // 0 = 成功，负数见 SpMVError
+
+    BenchmarkResult() : execution_time_ms(0.0f), gflops(0.0f),
                        bandwidth_gb_s(0.0f), avg_time_ms(0.0f),
                        min_time_ms(0.0f), max_time_ms(0.0f),
-                       stddev_time_ms(0.0f), num_runs(0) {}
+                       stddev_time_ms(0.0f), num_runs(0),
+                       error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
 // 基准测试配置
@@ -35,7 +37,7 @@ struct BenchmarkConfig {
     int num_warmup_runs;    // 预热运行次数
     int num_runs;           // 测试运行次数
     bool compare_cpu;       // 是否与 CPU 对比
-    
+
     BenchmarkConfig() : num_warmup_runs(5), num_runs(20), compare_cpu(true) {}
 };
 
@@ -58,9 +60,11 @@ BenchmarkResult benchmark_ell(
 struct ComparisonResult {
     BenchmarkResult gpu_result;
     BenchmarkResult cpu_result;
-    float speedup;  // GPU speedup over CPU
-    
-    ComparisonResult() : speedup(0.0f) {}
+    float speedup;   // GPU speedup over CPU
+    int error_code;  // 0 = 成功，负数见 SpMVError
+
+    ComparisonResult()
+        : speedup(0.0f), error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
 ComparisonResult compare_gpu_cpu_csr(

@@ -10,7 +10,7 @@ struct PageRankConfig {
     float damping_factor;    // 阻尼系数，通常 0.85
     float tolerance;         // 收敛阈值，默认 1e-6
     int max_iterations;      // 最大迭代次数
-    
+
     PageRankConfig() : damping_factor(0.85f), tolerance(1e-6f), max_iterations(100) {}
 };
 
@@ -20,8 +20,11 @@ struct PageRankResult {
     int iterations;          // 实际迭代次数
     float final_residual;    // 最终残差
     bool converged;          // 是否收敛
-    
-    PageRankResult() : ranks(nullptr), iterations(0), final_residual(0.0f), converged(false) {}
+    int error_code;          // 0 = 成功，负数见 SpMVError
+
+    PageRankResult()
+        : ranks(nullptr), iterations(0), final_residual(0.0f),
+          converged(false), error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
 // PageRank 算法

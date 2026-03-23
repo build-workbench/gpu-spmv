@@ -14,13 +14,13 @@ class SpMVPropertyTest : public ::testing::Test {
 protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
-    
-    bool compareResults(const float* cpu_result, const float* gpu_result, 
+
+    bool compareResults(const float* cpu_result, const float* gpu_result,
                        int size, float rel_tol = 1e-6f) {
         for (int i = 0; i < size; i++) {
             float diff = std::abs(cpu_result[i] - gpu_result[i]);
             float max_val = std::max(std::abs(cpu_result[i]), std::abs(gpu_result[i]));
-            
+
             if (max_val < 1e-10f) {
                 // 两个值都接近零
                 if (diff > 1e-6f) return false;
@@ -42,37 +42,42 @@ TEST_F(SpMVPropertyTest, CSRCorrectness) {
         int rows = rng.randInt(1, 200);
         int cols = rng.randInt(1, 200);
         float density = rng.randFloat(0.01f, 0.3f);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, density, rng);
         auto x = generateRandomVector(cols, rng);
-        
+
         // 创建 CSR 矩阵
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, dense.data(), rows, cols);
         csr_to_gpu(csr);
-        
+
         // CPU 参考结果
         std::vector<float> y_cpu(rows);
         spmv_cpu_csr(csr, x.data(), y_cpu.data());
-        
+
         // GPU 计算
         CudaBuffer<float> d_x(cols);
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
-        
-        SpMVConfig config;
-        config.kernel_type = SpMVConfig::SCALAR_CSR;
-        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
-        
-        ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS))
-            << "SpMV failed at iteration " << iter;
-        
-        std::vector<float> y_gpu(rows);
-        d_y.copyToHost(y_gpu.data(), rows);
-        
-        EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows))
-            << "Results mismatch at iteration " << iter;
-        
+
+        std::vector<SpMVConfig> configs = {
+            SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
+            SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
+            SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)
+        };
+
+        for (const auto& config : configs) {
+            SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
+            ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS))
+                << "SpMV failed at iteration " << iter << " kernel " << config.kernel_type;
+
+            std::vector<float> y_gpu(rows);
+            d_y.copyToHost(y_gpu.data(), rows);
+
+            EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows))
+                << "Results mismatch at iteration " << iter << " kernel " << config.kernel_type;
+        }
+
         csr_destroy(csr);
     }
 }
@@ -84,35 +89,35 @@ TEST_F(SpMVPropertyTest, ELLCorrectness) {
         int rows = rng.randInt(1, 200);
         int cols = rng.randInt(1, 200);
         float density = rng.randFloat(0.01f, 0.3f);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, density, rng);
         auto x = generateRandomVector(cols, rng);
-        
+
         // 创建 ELL 矩阵
         ELLMatrix* ell = ell_create(0, 0, 0);
         ell_from_dense(ell, dense.data(), rows, cols);
         ell_to_gpu(ell);
-        
+
         // CPU 参考结果
         std::vector<float> y_cpu(rows);
         spmv_cpu_ell(ell, x.data(), y_cpu.data());
-        
+
         // GPU 计算
         CudaBuffer<float> d_x(cols);
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
-        
+
         SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), nullptr, cols);
-        
+
         ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS))
             << "SpMV ELL failed at iteration " << iter;
-        
+
         std::vector<float> y_gpu(rows);
         d_y.copyToHost(y_gpu.data(), rows);
-        
+
         EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows))
             << "ELL results mismatch at iteration " << iter;
-        
+
         ell_destroy(ell);
     }
 }
@@ -124,22 +129,22 @@ TEST_F(SpMVPropertyTest, DimensionValidation) {
         int rows = rng.randInt(5, 50);
         int cols = rng.randInt(5, 50);
         int wrong_cols = cols + rng.randInt(1, 10);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, 0.2f, rng);
         auto x_wrong = generateRandomVector(wrong_cols, rng);
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, dense.data(), rows, cols);
         csr_to_gpu(csr);
-        
+
         CudaBuffer<float> d_x(wrong_cols);
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x_wrong.data(), wrong_cols);
-        
+
         // 验证维度不匹配
         EXPECT_FALSE(spmv_validate_dimensions(csr->num_cols, wrong_cols))
             << "Dimension validation should fail";
-        
+
         csr_destroy(csr);
     }
 }
@@ -147,41 +152,42 @@ TEST_F(SpMVPropertyTest, DimensionValidation) {
 // 单元测试
 TEST(SpMVUnitTest, EmptyMatrix) {
     CSRMatrix* csr = csr_create(0, 0, 0);
-    csr_to_gpu(csr);
-    
-    CudaBuffer<float> d_x(1);
-    CudaBuffer<float> d_y(1);
-    
-    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, 1);
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(0);
+    CudaBuffer<float> d_y(0);
+
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, 0);
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
-    
+    EXPECT_EQ(result.y, d_y.get());
+
     csr_destroy(csr);
 }
 
 TEST(SpMVUnitTest, SingleElement) {
     std::vector<float> dense = {5.0f};
     std::vector<float> x = {2.0f};
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 1, 1);
     csr_to_gpu(csr);
-    
+
     std::vector<float> y_cpu(1);
     spmv_cpu_csr(csr, x.data(), y_cpu.data());
-    
+
     CudaBuffer<float> d_x(1);
     CudaBuffer<float> d_y(1);
     d_x.copyFromHost(x.data(), 1);
-    
+
     SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, static_cast<int>(x.size()));
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
-    
+
     std::vector<float> y_gpu(1);
     d_y.copyToHost(y_gpu.data(), 1);
-    
+
     EXPECT_FLOAT_EQ(y_cpu[0], y_gpu[0]);
     EXPECT_FLOAT_EQ(y_gpu[0], 10.0f);
-    
+
     csr_destroy(csr);
 }
 
@@ -193,27 +199,27 @@ TEST(SpMVUnitTest, ZeroRows) {
         3, 0, 4
     };
     std::vector<float> x = {1, 1, 1};
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 3, 3);
     csr_to_gpu(csr);
-    
+
     std::vector<float> y_cpu(3);
     spmv_cpu_csr(csr, x.data(), y_cpu.data());
-    
+
     CudaBuffer<float> d_x(3);
     CudaBuffer<float> d_y(3);
     d_x.copyFromHost(x.data(), 3);
-    
+
     spmv_csr(csr, d_x.get(), d_y.get(), nullptr, static_cast<int>(x.size()));
-    
+
     std::vector<float> y_gpu(3);
     d_y.copyToHost(y_gpu.data(), 3);
-    
+
     EXPECT_FLOAT_EQ(y_gpu[0], 3.0f);
     EXPECT_FLOAT_EQ(y_gpu[1], 0.0f);  // 全零行
     EXPECT_FLOAT_EQ(y_gpu[2], 7.0f);
-    
+
     csr_destroy(csr);
 }
 
@@ -270,4 +276,42 @@ TEST(SpMVUnitTest, ExecutionContextReusesTexture) {
     }
 
     csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, InvalidBlockSizeRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), 3);
+
+    SpMVConfig config(SpMVConfig::VECTOR_CSR, 48, false);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, InvalidELLKernelRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), 3);
+
+    SpMVConfig config(SpMVConfig::VECTOR_CSR, 256, false);
+    SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), &config, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    ell_destroy(ell);
 }

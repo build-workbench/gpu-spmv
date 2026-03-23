@@ -19,10 +19,10 @@ TEST_F(PageRankPropertyTest, ScoreInvariants) {
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         int n = rng.randInt(5, 50);
         float density = rng.randFloat(0.1f, 0.5f);
-        
+
         // 生成随机邻接矩阵
         auto adj = generateRandomDenseMatrix(n, n, density, rng, 0.0f, 1.0f);
-        
+
         // 列归一化
         for (int j = 0; j < n; j++) {
             float col_sum = 0.0f;
@@ -35,25 +35,27 @@ TEST_F(PageRankPropertyTest, ScoreInvariants) {
                 }
             }
         }
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, adj.data(), n, n);
         csr_to_gpu(csr);
-        
+
         PageRankConfig config;
         config.max_iterations = 50;
         config.tolerance = 1e-5f;
-        
+
         PageRankResult result = pagerank(csr, &config);
-        
+        ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+        ASSERT_NE(result.ranks, nullptr);
+
         // 验证不变量
         // 1. 所有分数非负
         for (int i = 0; i < n; i++) {
             EXPECT_GE(result.ranks[i], 0.0f)
-                << "Rank should be non-negative at node " << i 
+                << "Rank should be non-negative at node " << i
                 << " iteration " << iter;
         }
-        
+
         // 2. 分数和为 1
         float sum = 0.0f;
         for (int i = 0; i < n; i++) {
@@ -61,16 +63,16 @@ TEST_F(PageRankPropertyTest, ScoreInvariants) {
         }
         EXPECT_NEAR(sum, 1.0f, 1e-4f)
             << "Ranks should sum to 1.0 at iteration " << iter;
-        
+
         // 3. 收敛或达到最大迭代次数
         EXPECT_TRUE(result.converged || result.iterations == config.max_iterations)
             << "Should converge or reach max iterations at iteration " << iter;
-        
+
         if (result.converged) {
             EXPECT_LT(result.final_residual, config.tolerance)
                 << "Converged residual should be below tolerance at iteration " << iter;
         }
-        
+
         pagerank_free(&result);
         csr_destroy(csr);
     }
@@ -82,9 +84,9 @@ TEST_F(PageRankPropertyTest, TopKOrdering) {
     for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
         int n = rng.randInt(10, 50);
         int k = rng.randInt(3, std::min(10, n));
-        
+
         auto adj = generateRandomDenseMatrix(n, n, 0.2f, rng, 0.0f, 1.0f);
-        
+
         // 列归一化
         for (int j = 0; j < n; j++) {
             float col_sum = 0.0f;
@@ -97,23 +99,25 @@ TEST_F(PageRankPropertyTest, TopKOrdering) {
                 }
             }
         }
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, adj.data(), n, n);
         csr_to_gpu(csr);
-        
+
         PageRankResult result = pagerank(csr, nullptr);
-        
+        ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+        ASSERT_NE(result.ranks, nullptr);
+
         std::vector<TopKNode> top_k(k);
         pagerank_top_k(&result, n, k, top_k.data());
-        
+
         // 验证 Top-K 降序排列
         for (int i = 0; i < k - 1; i++) {
             EXPECT_GE(top_k[i].rank, top_k[i + 1].rank)
                 << "Top-K should be in descending order at position " << i
                 << " iteration " << iter;
         }
-        
+
         // 验证 Top-K 中的节点排名高于其他节点
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < n; j++) {
@@ -130,7 +134,7 @@ TEST_F(PageRankPropertyTest, TopKOrdering) {
                 }
             }
         }
-        
+
         pagerank_free(&result);
         csr_destroy(csr);
     }
@@ -145,20 +149,22 @@ TEST(PageRankUnitTest, SimpleGraph) {
         1, 0, 0,
         0, 1, 0
     };
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 3, 3);
     csr_to_gpu(csr);
-    
+
     PageRankResult result = pagerank(csr, nullptr);
-    
+
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_NE(result.ranks, nullptr);
     EXPECT_TRUE(result.converged);
     EXPECT_GT(result.iterations, 0);
-    
+
     // 对称图应该有相等的排名
     EXPECT_NEAR(result.ranks[0], result.ranks[1], 1e-4f);
     EXPECT_NEAR(result.ranks[1], result.ranks[2], 1e-4f);
-    
+
     pagerank_free(&result);
     csr_destroy(csr);
 }
@@ -176,6 +182,8 @@ TEST(PageRankUnitTest, TopKExtraction) {
     csr_to_gpu(csr);
 
     PageRankResult result = pagerank(csr, nullptr);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_NE(result.ranks, nullptr);
 
     std::vector<TopKNode> top_2(2);
     pagerank_top_k(&result, 4, 2, top_2.data());
@@ -204,6 +212,8 @@ TEST(PageRankUnitTest, DanglingNodesRemainNormalized) {
     config.tolerance = 1e-6f;
 
     PageRankResult result = pagerank(csr, &config);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_NE(result.ranks, nullptr);
     ASSERT_GT(result.iterations, 0);
 
     float sum = result.ranks[0] + result.ranks[1] + result.ranks[2];
@@ -211,6 +221,82 @@ TEST(PageRankUnitTest, DanglingNodesRemainNormalized) {
     EXPECT_GE(result.ranks[0], 0.0f);
     EXPECT_GE(result.ranks[1], 0.0f);
     EXPECT_GE(result.ranks[2], 0.0f);
+
+    pagerank_free(&result);
+    csr_destroy(csr);
+}
+
+TEST(PageRankUnitTest, EmptyGraphReturnsSuccess) {
+    CSRMatrix* csr = csr_create(0, 0, 0);
+
+    PageRankResult result = pagerank(csr, nullptr);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    EXPECT_TRUE(result.converged);
+    EXPECT_EQ(result.ranks, nullptr);
+    EXPECT_EQ(result.iterations, 0);
+    EXPECT_FLOAT_EQ(result.final_residual, 0.0f);
+
+    pagerank_free(&result);
+    csr_destroy(csr);
+}
+
+TEST(PageRankUnitTest, NonSquareMatrixRejected) {
+    std::vector<float> adj = {
+        1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f
+    };
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, adj.data(), 2, 3);
+
+    PageRankResult result = pagerank(csr, nullptr);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_DIMENSION));
+    EXPECT_EQ(result.ranks, nullptr);
+    EXPECT_FALSE(result.converged);
+
+    pagerank_free(&result);
+    csr_destroy(csr);
+}
+
+TEST(PageRankUnitTest, MissingGpuUploadRejected) {
+    std::vector<float> adj = {
+        0.0f, 1.0f,
+        1.0f, 0.0f
+    };
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, adj.data(), 2, 2);
+
+    PageRankResult result = pagerank(csr, nullptr);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_EQ(result.ranks, nullptr);
+    EXPECT_FALSE(result.converged);
+
+    pagerank_free(&result);
+    csr_destroy(csr);
+}
+
+TEST(PageRankUnitTest, InvalidConfigRejected) {
+    std::vector<float> adj = {
+        0.0f, 1.0f,
+        1.0f, 0.0f
+    };
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, adj.data(), 2, 2);
+    csr_to_gpu(csr);
+
+    PageRankConfig config;
+    config.damping_factor = 1.5f;
+
+    PageRankResult result = pagerank(csr, &config);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+    EXPECT_EQ(result.ranks, nullptr);
+    EXPECT_FALSE(result.converged);
 
     pagerank_free(&result);
     csr_destroy(csr);

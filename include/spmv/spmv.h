@@ -21,8 +21,8 @@ struct SpMVConfig {
     bool use_texture;       // 是否使用纹理缓存
 
     SpMVConfig() : kernel_type(SCALAR_CSR), block_size(256), use_texture(false) {}
-    SpMVConfig(KernelType kernel, int block, bool texture)
-        : kernel_type(kernel), block_size(block), use_texture(texture) {}
+    SpMVConfig(KernelType kernel_type_, int block_size_, bool use_texture_)
+        : kernel_type(kernel_type_), block_size(block_size_), use_texture(use_texture_) {}
 };
 
 // 可复用的 SpMV 执行上下文

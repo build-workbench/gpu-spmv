@@ -19,43 +19,44 @@ TEST_F(BenchmarkPropertyTest, MetricsCompleteness) {
         int rows = rng.randInt(10, 100);
         int cols = rng.randInt(10, 100);
         float density = rng.randFloat(0.05f, 0.3f);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, density, rng);
         auto x = generateRandomVector(cols, rng);
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, dense.data(), rows, cols);
         csr_to_gpu(csr);
-        
+
         BenchmarkConfig bench_config;
         bench_config.num_warmup_runs = 2;
         bench_config.num_runs = 5;
-        
+
         BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &bench_config);
-        
+        ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
         // 验证所有度量都有效
         EXPECT_GT(result.execution_time_ms, 0.0f)
             << "Execution time should be positive at iteration " << iter;
-        
+
         EXPECT_GE(result.gflops, 0.0f)
             << "GFLOPS should be non-negative at iteration " << iter;
-        
+
         EXPECT_GE(result.bandwidth_gb_s, 0.0f)
             << "Bandwidth should be non-negative at iteration " << iter;
-        
+
         // 验证统计度量
         EXPECT_LE(result.min_time_ms, result.avg_time_ms)
             << "Min should be <= avg at iteration " << iter;
-        
+
         EXPECT_LE(result.avg_time_ms, result.max_time_ms)
             << "Avg should be <= max at iteration " << iter;
-        
+
         EXPECT_GE(result.stddev_time_ms, 0.0f)
             << "Stddev should be non-negative at iteration " << iter;
-        
+
         EXPECT_EQ(result.num_runs, bench_config.num_runs)
             << "Num runs mismatch at iteration " << iter;
-        
+
         csr_destroy(csr);
     }
 }
@@ -67,27 +68,28 @@ TEST_F(BenchmarkPropertyTest, JSONRoundTrip) {
         int rows = rng.randInt(10, 100);
         int cols = rng.randInt(10, 100);
         float density = rng.randFloat(0.05f, 0.3f);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, density, rng);
         auto x = generateRandomVector(cols, rng);
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, dense.data(), rows, cols);
         csr_to_gpu(csr);
-        
+
         BenchmarkConfig bench_config;
         bench_config.num_warmup_runs = 2;
         bench_config.num_runs = 5;
-        
+
         BenchmarkResult original = benchmark_csr(csr, x.data(), nullptr, &bench_config);
-        
+        ASSERT_EQ(original.error_code, static_cast<int>(SpMVError::SUCCESS));
+
         // 序列化到 JSON
         std::string json = benchmark_to_json(original);
         EXPECT_FALSE(json.empty()) << "JSON should not be empty";
-        
+
         // 反序列化
         BenchmarkResult loaded = benchmark_from_json(json);
-        
+
         // 验证数据一致性
         EXPECT_FLOAT_EQ(original.execution_time_ms, loaded.execution_time_ms);
         EXPECT_FLOAT_EQ(original.gflops, loaded.gflops);
@@ -97,7 +99,8 @@ TEST_F(BenchmarkPropertyTest, JSONRoundTrip) {
         EXPECT_FLOAT_EQ(original.max_time_ms, loaded.max_time_ms);
         EXPECT_FLOAT_EQ(original.stddev_time_ms, loaded.stddev_time_ms);
         EXPECT_EQ(original.num_runs, loaded.num_runs);
-        
+        EXPECT_EQ(original.error_code, loaded.error_code);
+
         csr_destroy(csr);
     }
 }
@@ -106,21 +109,22 @@ TEST_F(BenchmarkPropertyTest, JSONRoundTrip) {
 TEST(BenchmarkUnitTest, BasicBenchmark) {
     std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
     std::vector<float> x = {1, 1, 1};
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 3, 3);
     csr_to_gpu(csr);
-    
+
     BenchmarkConfig config;
     config.num_warmup_runs = 1;
     config.num_runs = 3;
-    
+
     BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &config);
-    
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
     EXPECT_GT(result.execution_time_ms, 0.0f);
     EXPECT_EQ(result.num_runs, 3);
     EXPECT_LE(result.min_time_ms, result.max_time_ms);
-    
+
     csr_destroy(csr);
 }
 
@@ -130,22 +134,109 @@ TEST(BenchmarkUnitTest, GPUvsCPUComparison) {
         dense[i] = 1.0f;
     }
     std::vector<float> x(10, 1.0f);
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 10, 10);
     csr_to_gpu(csr);
-    
+
     BenchmarkConfig config;
     config.num_warmup_runs = 1;
     config.num_runs = 3;
-    
+
     ComparisonResult comp = compare_gpu_cpu_csr(csr, x.data(), nullptr, &config);
-    
+
+    EXPECT_EQ(comp.error_code, static_cast<int>(SpMVError::SUCCESS));
+    EXPECT_EQ(comp.gpu_result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    EXPECT_EQ(comp.cpu_result.error_code, static_cast<int>(SpMVError::SUCCESS));
     EXPECT_GT(comp.gpu_result.execution_time_ms, 0.0f);
     EXPECT_GT(comp.cpu_result.execution_time_ms, 0.0f);
     EXPECT_GE(comp.speedup, 0.0f);
-    
+
     csr_destroy(csr);
+}
+
+TEST(BenchmarkUnitTest, InvalidBenchmarkConfigRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, dense.data(), 3, 3);
+    csr_to_gpu(csr);
+
+    BenchmarkConfig config;
+    config.num_warmup_runs = -1;
+    config.num_runs = 0;
+
+    BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &config);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+    EXPECT_EQ(result.num_runs, 0);
+    EXPECT_FLOAT_EQ(result.execution_time_ms, 0.0f);
+
+    csr_destroy(csr);
+}
+
+TEST(BenchmarkUnitTest, MissingGpuUploadRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, dense.data(), 3, 3);
+
+    BenchmarkConfig config;
+    config.num_warmup_runs = 1;
+    config.num_runs = 3;
+
+    BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &config);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_EQ(result.num_runs, 0);
+
+    csr_destroy(csr);
+}
+
+TEST(BenchmarkUnitTest, ComparePropagatesGpuFailure) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, dense.data(), 3, 3);
+
+    BenchmarkConfig config;
+    config.num_warmup_runs = 1;
+    config.num_runs = 3;
+
+    ComparisonResult comp = compare_gpu_cpu_csr(csr, x.data(), nullptr, &config);
+
+    EXPECT_EQ(comp.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_EQ(comp.gpu_result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_EQ(comp.cpu_result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_FLOAT_EQ(comp.speedup, 0.0f);
+
+    csr_destroy(csr);
+}
+
+TEST(BenchmarkUnitTest, EllMissingGpuUploadRejected) {
+    std::vector<float> dense = {
+        1, 0, 2,
+        0, 3, 4,
+        0, 0, 5
+    };
+    std::vector<float> x = {1, 1, 1};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ell_from_dense(ell, dense.data(), 3, 3);
+
+    BenchmarkConfig config;
+    config.num_warmup_runs = 1;
+    config.num_runs = 3;
+
+    BenchmarkResult result = benchmark_ell(ell, x.data(), &config);
+
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+    EXPECT_EQ(result.num_runs, 0);
+
+    ell_destroy(ell);
 }
 
 TEST(BenchmarkUnitTest, JSONFormat) {
@@ -159,12 +250,14 @@ TEST(BenchmarkUnitTest, JSONFormat) {
     result.max_time_ms = 2.0f;
     result.stddev_time_ms = 0.3f;
     result.num_runs = 10;
-    
+    result.error_code = static_cast<int>(SpMVError::INVALID_FORMAT);
+
     std::string json = benchmark_to_json(result);
-    
+
     EXPECT_NE(json.find("\"name\""), std::string::npos);
     EXPECT_NE(json.find("\"execution_time_ms\""), std::string::npos);
     EXPECT_NE(json.find("\"gflops\""), std::string::npos);
     EXPECT_NE(json.find("\"bandwidth_gb_s\""), std::string::npos);
     EXPECT_NE(json.find("\"num_runs\""), std::string::npos);
+    EXPECT_NE(json.find("\"error_code\""), std::string::npos);
 }
