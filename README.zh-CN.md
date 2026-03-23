@@ -155,19 +155,25 @@ csr_destroy(adj);
 
 ```cpp
 #include "spmv/benchmark.h"
+#include "spmv/common.h"
 
 BenchmarkConfig bench_config;
 bench_config.num_warmup_runs = 5;
 bench_config.num_runs = 20;
 
 BenchmarkResult result = benchmark_csr(csr, x.data(), &spmv_config, &bench_config);
+if (result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
+    std::cout << "Avg time: " << result.avg_time_ms << " ms\n";
+    std::cout << "GFLOPS: " << result.gflops << "\n";
+    std::cout << "Bandwidth: " << result.bandwidth_gb_s << " GB/s\n";
 
-std::cout << "Avg time: " << result.avg_time_ms << " ms\n";
-std::cout << "GFLOPS: " << result.gflops << "\n";
-std::cout << "Bandwidth: " << result.bandwidth_gb_s << " GB/s\n";
-
-// 导出 JSON
-std::string json = benchmark_to_json(result);
+    // 导出 JSON
+    std::string json = benchmark_to_json(result);
+} else {
+    std::cout << "Benchmark failed: "
+              << spmv_error_string(static_cast<SpMVError>(result.error_code))
+              << "\n";
+}
 ```
 
 ## 性能优化
