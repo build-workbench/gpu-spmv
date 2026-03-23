@@ -27,28 +27,29 @@ BenchmarkResult benchmark_csr(
 ) {
     BenchmarkResult result;
     result.name = "CSR SpMV";
-    
+
     BenchmarkConfig default_config;
     if (!bench_config) {
         bench_config = &default_config;
     }
-    
+
     // 分配 GPU 内存
     CudaBuffer<float> d_x(A->num_cols);
     CudaBuffer<float> d_y(A->num_rows);
     d_x.copyFromHost(x, A->num_cols);
-    
+    SpMVExecutionContext context;
+
     // 预热
     for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-        spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols);
+        spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
     }
-    
+
     // 测试运行
     std::vector<float> times;
     times.reserve(bench_config->num_runs);
-    
+
     for (int i = 0; i < bench_config->num_runs; i++) {
-        SpMVResult spmv_result = spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols);
+        SpMVResult spmv_result = spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
         if (spmv_result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
             times.push_back(spmv_result.elapsed_ms);
             result.gflops = spmv_result.gflops;
@@ -82,25 +83,26 @@ BenchmarkResult benchmark_ell(
 ) {
     BenchmarkResult result;
     result.name = "ELL SpMV";
-    
+
     BenchmarkConfig default_config;
     if (!bench_config) {
         bench_config = &default_config;
     }
-    
+
     CudaBuffer<float> d_x(A->num_cols);
     CudaBuffer<float> d_y(A->num_rows);
     d_x.copyFromHost(x, A->num_cols);
-    
+    SpMVExecutionContext context;
+
     for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-        spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols);
+        spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
     }
-    
+
     std::vector<float> times;
     times.reserve(bench_config->num_runs);
-    
+
     for (int i = 0; i < bench_config->num_runs; i++) {
-        SpMVResult spmv_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols);
+        SpMVResult spmv_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
         if (spmv_result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
             times.push_back(spmv_result.elapsed_ms);
             result.gflops = spmv_result.gflops;

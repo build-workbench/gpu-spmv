@@ -170,20 +170,48 @@ TEST(PageRankUnitTest, TopKExtraction) {
         0.5f, 0, 0, 0.5f,
         0, 0.5f, 0.5f, 0
     };
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 4, 4);
     csr_to_gpu(csr);
-    
+
     PageRankResult result = pagerank(csr, nullptr);
-    
+
     std::vector<TopKNode> top_2(2);
     pagerank_top_k(&result, 4, 2, top_2.data());
-    
+
     EXPECT_GE(top_2[0].rank, top_2[1].rank);
     EXPECT_GE(top_2[0].node_id, 0);
     EXPECT_LT(top_2[0].node_id, 4);
-    
+
+    pagerank_free(&result);
+    csr_destroy(csr);
+}
+
+TEST(PageRankUnitTest, DanglingNodesRemainNormalized) {
+    std::vector<float> adj = {
+        0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f
+    };
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, adj.data(), 3, 3);
+    csr_to_gpu(csr);
+
+    PageRankConfig config;
+    config.max_iterations = 100;
+    config.tolerance = 1e-6f;
+
+    PageRankResult result = pagerank(csr, &config);
+    ASSERT_GT(result.iterations, 0);
+
+    float sum = result.ranks[0] + result.ranks[1] + result.ranks[2];
+    EXPECT_NEAR(sum, 1.0f, 1e-4f);
+    EXPECT_GE(result.ranks[0], 0.0f);
+    EXPECT_GE(result.ranks[1], 0.0f);
+    EXPECT_GE(result.ranks[2], 0.0f);
+
     pagerank_free(&result);
     csr_destroy(csr);
 }

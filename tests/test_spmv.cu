@@ -223,15 +223,51 @@ TEST(SpMVUnitTest, KernelSelector) {
     for (int i = 0; i < 100; i += 10) {
         dense[i] = 1.0f;
     }
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 10, 10);
-    
+
     SpMVConfig config = spmv_auto_config(csr);
-    
+
     EXPECT_GE(config.block_size, 32);
     EXPECT_LE(config.block_size, 1024);
     EXPECT_EQ(config.block_size % 32, 0);  // 应该是 32 的倍数
-    
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, ExecutionContextReusesTexture) {
+    std::vector<float> dense(100, 0.0f);
+    for (int i = 0; i < 10; ++i) {
+        dense[i * 10 + i] = 1.0f;
+    }
+    std::vector<float> x(10, 2.0f);
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, dense.data(), 10, 10);
+    csr_to_gpu(csr);
+
+    CudaBuffer<float> d_x(10);
+    CudaBuffer<float> d_y(10);
+    d_x.copyFromHost(x.data(), 10);
+
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, true);
+    SpMVExecutionContext context;
+
+    SpMVResult first = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
+    ASSERT_EQ(first.error_code, static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_NE(context.tex_x, 0u);
+
+    cudaTextureObject_t cached_tex = context.tex_x;
+    SpMVResult second = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
+    ASSERT_EQ(second.error_code, static_cast<int>(SpMVError::SUCCESS));
+    EXPECT_EQ(context.tex_x, cached_tex);
+
+    std::vector<float> y_gpu(10);
+    d_y.copyToHost(y_gpu.data(), 10);
+    for (float value : y_gpu) {
+        EXPECT_FLOAT_EQ(value, 2.0f);
+    }
+
     csr_destroy(csr);
 }

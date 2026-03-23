@@ -15,12 +15,66 @@ struct SpMVConfig {
         MERGE_PATH,     // 工作量均匀分配
         ELL_KERNEL      // ELL 格式专用
     };
-    
+
     KernelType kernel_type;
     int block_size;         // CUDA block 大小
     bool use_texture;       // 是否使用纹理缓存
-    
+
     SpMVConfig() : kernel_type(SCALAR_CSR), block_size(256), use_texture(false) {}
+    SpMVConfig(KernelType kernel, int block, bool texture)
+        : kernel_type(kernel), block_size(block), use_texture(texture) {}
+};
+
+// 可复用的 SpMV 执行上下文
+struct SpMVExecutionContext {
+    cudaTextureObject_t tex_x;
+    const float* cached_x;
+    size_t cached_x_length;
+    bool texture_enabled;
+
+    SpMVExecutionContext()
+        : tex_x(0), cached_x(nullptr), cached_x_length(0), texture_enabled(false) {}
+
+    ~SpMVExecutionContext() { reset(); }
+
+    SpMVExecutionContext(const SpMVExecutionContext&) = delete;
+    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
+
+    SpMVExecutionContext(SpMVExecutionContext&& other) noexcept
+        : tex_x(other.tex_x),
+          cached_x(other.cached_x),
+          cached_x_length(other.cached_x_length),
+          texture_enabled(other.texture_enabled) {
+        other.tex_x = 0;
+        other.cached_x = nullptr;
+        other.cached_x_length = 0;
+        other.texture_enabled = false;
+    }
+
+    SpMVExecutionContext& operator=(SpMVExecutionContext&& other) noexcept {
+        if (this != &other) {
+            reset();
+            tex_x = other.tex_x;
+            cached_x = other.cached_x;
+            cached_x_length = other.cached_x_length;
+            texture_enabled = other.texture_enabled;
+            other.tex_x = 0;
+            other.cached_x = nullptr;
+            other.cached_x_length = 0;
+            other.texture_enabled = false;
+        }
+        return *this;
+    }
+
+    void reset() {
+        if (tex_x != 0) {
+            cudaDestroyTextureObject(tex_x);
+            tex_x = 0;
+        }
+        cached_x = nullptr;
+        cached_x_length = 0;
+        texture_enabled = false;
+    }
 };
 
 // SpMV 结果
@@ -30,8 +84,8 @@ struct SpMVResult {
     float gflops;           // 计算吞吐量
     float bandwidth_gb_s;   // 带宽利用率
     int error_code;         // 0 = 成功
-    
-    SpMVResult() : y(nullptr), elapsed_ms(0.0f), gflops(0.0f), 
+
+    SpMVResult() : y(nullptr), elapsed_ms(0.0f), gflops(0.0f),
                    bandwidth_gb_s(0.0f), error_code(0) {}
 };
 
@@ -40,10 +94,12 @@ void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
 void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
 
 // GPU 实现
-SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, 
-                    const SpMVConfig* config, int vec_size = -1);
+SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
+                    const SpMVConfig* config, int vec_size = -1,
+                    SpMVExecutionContext* context = nullptr);
 SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
-                    const SpMVConfig* config, int vec_size = -1);
+                    const SpMVConfig* config, int vec_size = -1,
+                    SpMVExecutionContext* context = nullptr);
 
 // 自动选择最优 Kernel
 SpMVConfig spmv_auto_config(const CSRMatrix* A);

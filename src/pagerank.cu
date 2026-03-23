@@ -7,14 +7,36 @@
 
 namespace spmv {
 
-// 计算 L2 范数
-static float compute_l2_norm(const float* a, const float* b, int n) {
-    float sum = 0.0f;
-    for (int i = 0; i < n; i++) {
-        float diff = a[i] - b[i];
-        sum += diff * diff;
+__global__ void apply_pagerank_update_kernel(float* ranks,
+                                             int n,
+                                             float damping,
+                                             float dangling_contrib,
+                                             float teleport) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        ranks[idx] = damping * ranks[idx] + dangling_contrib + teleport;
     }
-    return std::sqrt(sum);
+}
+
+__global__ void accumulate_dangling_sum_kernel(const int* dangling_nodes,
+                                               int num_dangling,
+                                               const float* ranks,
+                                               float* dangling_sum) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < num_dangling) {
+        atomicAdd(dangling_sum, ranks[dangling_nodes[idx]]);
+    }
+}
+
+__global__ void compute_l2_diff_kernel(const float* a,
+                                       const float* b,
+                                       float* partial_sums,
+                                       int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        float diff = a[idx] - b[idx];
+        atomicAdd(partial_sums, diff * diff);
+    }
 }
 
 static std::vector<int> find_dangling_nodes(const CSRMatrix* adj_matrix) {
@@ -52,93 +74,110 @@ PageRankResult pagerank(
     const PageRankConfig* config
 ) {
     PageRankResult result;
-    
+
     if (!adj_matrix) {
         return result;
     }
-    
+
     PageRankConfig default_config;
     if (!config) {
         config = &default_config;
     }
-    
+
     int n = adj_matrix->num_rows;
-    
-    // 初始化排名分数
+    if (n <= 0) {
+        return result;
+    }
+
     result.ranks = new float[n];
     float init_rank = 1.0f / n;
     for (int i = 0; i < n; i++) {
         result.ranks[i] = init_rank;
     }
-    
-    std::vector<float> ranks_old(n);
-    std::vector<float> ranks_new(n);
-    std::copy(result.ranks, result.ranks + n, ranks_old.begin());
-    
-    // 分配 GPU 内存
+
     CudaBuffer<float> d_ranks_old(n);
     CudaBuffer<float> d_ranks_new(n);
-    
+    CudaBuffer<float> d_scalar(1);
+
     d_ranks_old.copyFromHost(result.ranks, n);
-    
-    // PageRank 迭代
+
+    std::vector<int> dangling_nodes = find_dangling_nodes(adj_matrix);
+    CudaBuffer<int> d_dangling_nodes(dangling_nodes.size());
+    if (!dangling_nodes.empty()) {
+        d_dangling_nodes.copyFromHost(dangling_nodes.data(), dangling_nodes.size());
+    }
+
     float damping = config->damping_factor;
     float teleport = (1.0f - damping) / n;
-    std::vector<int> dangling_nodes = find_dangling_nodes(adj_matrix);
-    
+
     SpMVConfig spmv_config;
     spmv_config.kernel_type = SpMVConfig::VECTOR_CSR;
+    SpMVExecutionContext context;
+
+    const int block_size = 256;
+    const int num_blocks = (n + block_size - 1) / block_size;
+    const int dangling_blocks = dangling_nodes.empty() ? 0
+        : static_cast<int>((dangling_nodes.size() + block_size - 1) / block_size);
+
     bool final_from_new = false;
-    
+
     for (int iter = 0; iter < config->max_iterations; iter++) {
-        float dangling_sum = 0.0f;
-        for (int node : dangling_nodes) {
-            if (node >= 0 && node < n) {
-                dangling_sum += ranks_old[node];
+        d_scalar.memset();
+        if (!dangling_nodes.empty()) {
+            accumulate_dangling_sum_kernel<<<dangling_blocks, block_size>>>(
+                d_dangling_nodes.get(), static_cast<int>(dangling_nodes.size()),
+                d_ranks_old.get(), d_scalar.get());
+            if (cudaGetLastError() != cudaSuccess) {
+                break;
             }
         }
 
-        // r_new = d * (A * r_old + dangling_sum / n) + (1-d) / n
-        SpMVResult spmv_result = spmv_csr(adj_matrix, d_ranks_old.get(), 
-                                          d_ranks_new.get(), &spmv_config, n);
-        
+        float dangling_sum = 0.0f;
+        d_scalar.copyToHost(&dangling_sum, 1);
+
+        SpMVResult spmv_result = spmv_csr(adj_matrix, d_ranks_old.get(),
+                                          d_ranks_new.get(), &spmv_config, n, &context);
+
         if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
             break;
         }
-        
-        // 添加 teleport 项
-        d_ranks_new.copyToHost(ranks_new.data(), n);
-        float dangling_contrib = (n > 0) ? (damping * dangling_sum / n) : 0.0f;
-        for (int i = 0; i < n; i++) {
-            ranks_new[i] = damping * ranks_new[i] + dangling_contrib + teleport;
+
+        float dangling_contrib = damping * dangling_sum / n;
+        apply_pagerank_update_kernel<<<num_blocks, block_size>>>(
+            d_ranks_new.get(), n, damping, dangling_contrib, teleport);
+        if (cudaGetLastError() != cudaSuccess) {
+            break;
         }
-        d_ranks_new.copyFromHost(ranks_new.data(), n);
-        
-        // 检查收敛
-        float residual = compute_l2_norm(ranks_new.data(), ranks_old.data(), n);
-        
+
+        d_scalar.memset();
+        compute_l2_diff_kernel<<<num_blocks, block_size>>>(
+            d_ranks_new.get(), d_ranks_old.get(), d_scalar.get(), n);
+        if (cudaGetLastError() != cudaSuccess) {
+            break;
+        }
+
+        float residual_sq = 0.0f;
+        d_scalar.copyToHost(&residual_sq, 1);
+        float residual = std::sqrt(residual_sq);
+
         result.iterations = iter + 1;
         result.final_residual = residual;
-        
+
         if (residual < config->tolerance) {
             result.converged = true;
             final_from_new = true;
             break;
         }
-        
-        // 交换
+
         std::swap(d_ranks_old, d_ranks_new);
-        std::swap(ranks_old, ranks_new);
     }
-    
-    // 复制最终结果
+
     if (final_from_new) {
         d_ranks_new.copyToHost(result.ranks, n);
     } else {
         d_ranks_old.copyToHost(result.ranks, n);
     }
-    
-    // 归一化确保和为 1
+
     float sum = 0.0f;
     for (int i = 0; i < n; i++) {
         sum += result.ranks[i];
@@ -148,7 +187,7 @@ PageRankResult pagerank(
             result.ranks[i] /= sum;
         }
     }
-    
+
     return result;
 }
 
@@ -163,22 +202,19 @@ void pagerank_top_k(const PageRankResult* result, int num_nodes, int k, TopKNode
     if (!result || !result->ranks || !top_k || k <= 0) {
         return;
     }
-    
-    // 创建节点-排名对
+
     std::vector<TopKNode> nodes(num_nodes);
     for (int i = 0; i < num_nodes; i++) {
         nodes[i].node_id = i;
         nodes[i].rank = result->ranks[i];
     }
-    
-    // 部分排序获取 Top-K
+
     int actual_k = std::min(k, num_nodes);
     std::partial_sort(nodes.begin(), nodes.begin() + actual_k, nodes.end(),
                      [](const TopKNode& a, const TopKNode& b) {
-                         return a.rank > b.rank;  // 降序
+                         return a.rank > b.rank;
                      });
-    
-    // 复制结果
+
     for (int i = 0; i < actual_k; i++) {
         top_k[i] = nodes[i];
     }
