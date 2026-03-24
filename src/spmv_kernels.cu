@@ -1,6 +1,7 @@
 #include "spmv/spmv.h"
 #include "spmv/bandwidth.h"
 #include <cuda_runtime.h>
+#include <chrono>
 
 namespace spmv {
 
@@ -8,26 +9,75 @@ namespace spmv {
 
 // RAII wrapper for CUDA events (timing)
 struct CudaTimer {
-    cudaEvent_t start, stop;
+    cudaEvent_t start = nullptr;
+    cudaEvent_t stop = nullptr;
+    cudaError_t status = cudaSuccess;
+
     CudaTimer() {
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
+        status = cudaEventCreate(&start);
+        if (status != cudaSuccess) {
+            start = nullptr;
+            return;
+        }
+
+        status = cudaEventCreate(&stop);
+        if (status != cudaSuccess) {
+            cudaEventDestroy(start);
+            start = nullptr;
+            stop = nullptr;
+        }
     }
+
     ~CudaTimer() {
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
+        if (start) {
+            cudaEventDestroy(start);
+        }
+        if (stop) {
+            cudaEventDestroy(stop);
+        }
     }
+
     CudaTimer(const CudaTimer&) = delete;
     CudaTimer& operator=(const CudaTimer&) = delete;
 
-    void record_start() { cudaEventRecord(start); }
-    void record_stop()  { cudaEventRecord(stop); cudaEventSynchronize(stop); }
-    float elapsed_ms() const {
-        float ms = 0.0f;
-        cudaEventElapsedTime(&ms, start, stop);
-        return ms;
+    cudaError_t init_status() const { return status; }
+
+    cudaError_t record_start() {
+        return (status == cudaSuccess) ? cudaEventRecord(start) : status;
+    }
+
+    cudaError_t record_stop() {
+        if (status != cudaSuccess) {
+            return status;
+        }
+
+        cudaError_t err = cudaEventRecord(stop);
+        if (err != cudaSuccess) {
+            return err;
+        }
+        return cudaEventSynchronize(stop);
+    }
+
+    cudaError_t elapsed_ms(float* ms) const {
+        if (!ms) {
+            return cudaErrorInvalidValue;
+        }
+        if (status != cudaSuccess) {
+            return status;
+        }
+        return cudaEventElapsedTime(ms, start, stop);
     }
 };
+
+static int map_cuda_error(cudaError_t err, SpMVError fallback) {
+    if (err == cudaSuccess) {
+        return static_cast<int>(SpMVError::SUCCESS);
+    }
+    if (err == cudaErrorMemoryAllocation) {
+        return static_cast<int>(SpMVError::CUDA_MALLOC);
+    }
+    return static_cast<int>(fallback);
+}
 
 // RAII wrapper for a CUDA texture object
 struct ScopedTexture {
@@ -408,12 +458,25 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
     int block_size = config->block_size;
     int num_blocks = (A->num_rows + block_size - 1) / block_size;
 
+    auto host_start = std::chrono::steady_clock::now();
     CudaTimer timer;
-    timer.record_start();
+    bool use_cuda_timer = timer.init_status() == cudaSuccess;
 
+    if (use_cuda_timer) {
+        cudaError_t err = timer.record_start();
+        if (err != cudaSuccess) {
+            use_cuda_timer = false;
+        }
+    }
+
+    cudaError_t err = cudaSuccess;
     switch (config->kernel_type) {
         case SpMVConfig::MERGE_PATH: {
-            cudaMemsetAsync(d_y, 0, A->num_rows * sizeof(float));
+            err = cudaMemsetAsync(d_y, 0, A->num_rows * sizeof(float));
+            if (err != cudaSuccess) {
+                result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
+                return result;
+            }
             spmv_csr_merge_path_kernel<<<num_blocks, block_size>>>(
                 A->num_rows, A->nnz, A->d_row_ptrs, A->d_col_indices,
                 A->d_values, d_x, tex_x, use_texture, d_y
@@ -440,15 +503,32 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
             return result;
     }
 
-    timer.record_stop();
-
-    cudaError_t err = cudaGetLastError();
+    err = cudaGetLastError();
     if (err != cudaSuccess) {
         result.error_code = static_cast<int>(SpMVError::KERNEL_LAUNCH);
         return result;
     }
 
-    result.elapsed_ms = timer.elapsed_ms();
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        result.error_code = map_cuda_error(err, SpMVError::KERNEL_LAUNCH);
+        return result;
+    }
+
+    float elapsed_ms = std::chrono::duration<float, std::milli>(
+        std::chrono::steady_clock::now() - host_start).count();
+    if (use_cuda_timer) {
+        err = timer.record_stop();
+        if (err == cudaSuccess) {
+            float timer_elapsed_ms = 0.0f;
+            err = timer.elapsed_ms(&timer_elapsed_ms);
+            if (err == cudaSuccess) {
+                elapsed_ms = timer_elapsed_ms;
+            }
+        }
+    }
+
+    result.elapsed_ms = elapsed_ms;
     result.gflops = (2.0f * A->nnz) / (result.elapsed_ms * 1e6f);
     result.bandwidth_gb_s = compute_bandwidth_csr(A, result.elapsed_ms).achieved_bandwidth_gb_s;
     result.error_code = static_cast<int>(SpMVError::SUCCESS);
@@ -543,23 +623,48 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
     int block_size = config->block_size;
     int num_blocks = (A->num_rows + block_size - 1) / block_size;
 
+    auto host_start = std::chrono::steady_clock::now();
     CudaTimer timer;
-    timer.record_start();
+    bool use_cuda_timer = timer.init_status() == cudaSuccess;
+    if (use_cuda_timer) {
+        cudaError_t timer_err = timer.record_start();
+        if (timer_err != cudaSuccess) {
+            use_cuda_timer = false;
+        }
+    }
 
+    cudaError_t err = cudaSuccess;
     spmv_ell_kernel<<<num_blocks, block_size>>>(
         A->num_rows, A->max_nnz_per_row,
         A->d_col_indices, A->d_values, d_x, tex_x, use_texture, d_y
     );
 
-    timer.record_stop();
-
-    cudaError_t err = cudaGetLastError();
+    err = cudaGetLastError();
     if (err != cudaSuccess) {
         result.error_code = static_cast<int>(SpMVError::KERNEL_LAUNCH);
         return result;
     }
 
-    result.elapsed_ms = timer.elapsed_ms();
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        result.error_code = map_cuda_error(err, SpMVError::KERNEL_LAUNCH);
+        return result;
+    }
+
+    float elapsed_ms = std::chrono::duration<float, std::milli>(
+        std::chrono::steady_clock::now() - host_start).count();
+    if (use_cuda_timer) {
+        err = timer.record_stop();
+        if (err == cudaSuccess) {
+            float timer_elapsed_ms = 0.0f;
+            err = timer.elapsed_ms(&timer_elapsed_ms);
+            if (err == cudaSuccess) {
+                elapsed_ms = timer_elapsed_ms;
+            }
+        }
+    }
+
+    result.elapsed_ms = elapsed_ms;
     result.gflops = (2.0f * A->nnz) / (result.elapsed_ms * 1e6f);
     result.bandwidth_gb_s = compute_bandwidth_ell(A, result.elapsed_ms).achieved_bandwidth_gb_s;
     result.error_code = static_cast<int>(SpMVError::SUCCESS);

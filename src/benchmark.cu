@@ -5,6 +5,7 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 #include <new>
 
 namespace spmv {
@@ -279,6 +280,12 @@ ComparisonResult compare_gpu_cpu_csr(
 
             float elapsed_ms = std::chrono::duration<float, std::milli>(t1 - t0).count();
             times.push_back(elapsed_ms);
+        }
+
+        for (float& t : times) {
+            if (t <= 0.0f) {
+                t = std::numeric_limits<float>::epsilon();
+            }
         }
 
         comp.cpu_result.num_runs = static_cast<int>(times.size());

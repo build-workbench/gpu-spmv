@@ -6,33 +6,33 @@
 #include "spmv/test_utils.h"
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 using namespace spmv;
 using namespace spmv::test;
+
+static bool compareResults(const float* cpu_result, const float* gpu_result,
+                           int size, float rel_tol = 1e-6f) {
+    for (int i = 0; i < size; i++) {
+        float diff = std::abs(cpu_result[i] - gpu_result[i]);
+        float max_val = std::max(std::abs(cpu_result[i]), std::abs(gpu_result[i]));
+
+        if (max_val < 1e-10f) {
+            if (diff > 1e-6f) return false;
+        } else {
+            float rel_error = diff / max_val;
+            if (rel_error > rel_tol) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 class SpMVPropertyTest : public ::testing::Test {
 protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
-
-    bool compareResults(const float* cpu_result, const float* gpu_result,
-                       int size, float rel_tol = 1e-6f) {
-        for (int i = 0; i < size; i++) {
-            float diff = std::abs(cpu_result[i] - gpu_result[i]);
-            float max_val = std::max(std::abs(cpu_result[i]), std::abs(gpu_result[i]));
-
-            if (max_val < 1e-10f) {
-                // 两个值都接近零
-                if (diff > 1e-6f) return false;
-            } else {
-                float rel_error = diff / max_val;
-                if (rel_error > rel_tol) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 };
 
 // **Feature: spmv-gpu, Property 8: SpMV CSR Correctness**
@@ -315,3 +315,339 @@ TEST(SpMVUnitTest, InvalidELLKernelRejected) {
 
     ell_destroy(ell);
 }
+
+TEST(SpMVUnitTest, ZeroNnzMatricesProduceZeroOutputForAllCSRKernels) {
+    CSRMatrix* csr = csr_create(4, 4, 0);
+    ASSERT_NE(csr, nullptr);
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> x = {1.0f, -2.0f, 3.0f, 4.0f};
+    CudaBuffer<float> d_x(4);
+    CudaBuffer<float> d_y(4);
+    d_x.copyFromHost(x.data(), x.size());
+
+    std::vector<SpMVConfig> configs = {
+        SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
+        SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
+        SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)
+    };
+
+    for (const auto& config : configs) {
+        ASSERT_EQ(cudaMemset(d_y.get(), 0x7f, 4 * sizeof(float)), cudaSuccess);
+        SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 4);
+        ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+        std::vector<float> y_gpu(4, 1.0f);
+        d_y.copyToHost(y_gpu.data(), y_gpu.size());
+        for (float value : y_gpu) {
+            EXPECT_FLOAT_EQ(value, 0.0f);
+        }
+    }
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MergePathHandlesHighlySkewedRows) {
+    const int rows = 8;
+    const int cols = 16;
+    std::vector<float> dense(rows * cols, 0.0f);
+
+    for (int j = 0; j < cols; ++j) {
+        dense[j] = static_cast<float>(j + 1);
+    }
+    dense[1 * cols + 0] = 2.0f;
+    dense[3 * cols + 3] = -1.5f;
+    dense[5 * cols + 5] = 4.0f;
+    dense[7 * cols + 2] = 0.5f;
+
+    std::vector<float> x(cols);
+    for (int i = 0; i < cols; ++i) {
+        x[i] = static_cast<float>((i % 5) - 2);
+    }
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), rows, cols), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_cpu(rows, 0.0f);
+    spmv_cpu_csr(csr, x.data(), y_cpu.data());
+
+    CudaBuffer<float> d_x(cols);
+    CudaBuffer<float> d_y(rows);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, false);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_gpu(rows, 0.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MergePathHandlesInterleavedEmptyRows) {
+    const int rows = 6;
+    const int cols = 6;
+    std::vector<float> dense = {
+        1, 0, 0, 0, 0, 2,
+        0, 0, 0, 0, 0, 0,
+        0, 3, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        4, 0, 5, 0, 0, 0,
+        0, 0, 0, 6, 0, 0
+    };
+    std::vector<float> x = {1, 2, 3, 4, 5, 6};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), rows, cols), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_cpu(rows, 0.0f);
+    spmv_cpu_csr(csr, x.data(), y_cpu.data());
+
+    CudaBuffer<float> d_x(cols);
+    CudaBuffer<float> d_y(rows);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, false);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_gpu(rows, 0.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MissingInputVectorRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_y(3);
+    SpMVResult result = spmv_csr(csr, nullptr, d_y.get(), nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MissingOutputVectorRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_csr(csr, d_x.get(), nullptr, nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, ZeroLengthVectorProducesZeroOutput) {
+    CSRMatrix* csr = csr_create(3, 0, 0);
+    ASSERT_NE(csr, nullptr);
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_y(3);
+    ASSERT_EQ(cudaMemset(d_y.get(), 0x55, 3 * sizeof(float)), cudaSuccess);
+
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, false);
+    SpMVResult result = spmv_csr(csr, nullptr, d_y.get(), &config, 0);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_gpu(3, 1.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    for (float value : y_gpu) {
+        EXPECT_FLOAT_EQ(value, 0.0f);
+    }
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, AutoConfigHandlesNullInput) {
+    SpMVConfig config = spmv_auto_config(nullptr);
+
+    EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(config.block_size, 256);
+    EXPECT_FALSE(config.use_texture);
+}
+
+TEST(SpMVUnitTest, BenchmarkAutoConfigReturnsSafeDefaultForDegenerateMatrix) {
+    CSRMatrix* csr = csr_create(2, 2, 0);
+    ASSERT_NE(csr, nullptr);
+
+    SpMVConfig config = spmv_auto_config(csr);
+
+    EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(config.block_size, 256);
+    EXPECT_FALSE(config.use_texture);
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, InvalidVectorDimensionRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(4);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, 4);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_DIMENSION));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MissingELLInputVectorRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_y(3);
+    SpMVResult result = spmv_ell(ell, nullptr, d_y.get(), nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, MissingELLOutputVectorRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_ell(ell, d_x.get(), nullptr, nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
+
+    ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, ZeroLengthVectorProducesZeroOutputForELL) {
+    ELLMatrix* ell = ell_create(3, 0, 0);
+    ASSERT_NE(ell, nullptr);
+    ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_y(3);
+    ASSERT_EQ(cudaMemset(d_y.get(), 0x55, 3 * sizeof(float)), cudaSuccess);
+
+    SpMVResult result = spmv_ell(ell, nullptr, d_y.get(), nullptr, 0);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_gpu(3, 1.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    for (float value : y_gpu) {
+        EXPECT_FLOAT_EQ(value, 0.0f);
+    }
+
+    ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, InvalidELLVectorDimensionRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1, 1};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(4);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), nullptr, 4);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_DIMENSION));
+
+    ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, MissingUploadedCSRRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, MissingUploadedELLRejected) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 1, 1};
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(3);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), nullptr, 3);
+    EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
+
+    ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, MergePathTexturePathMatchesCpuReference) {
+    const int rows = 5;
+    const int cols = 11001;
+    std::vector<float> dense(rows * cols, 0.0f);
+    for (int j = 0; j < cols; ++j) {
+        dense[j] = 1.0f;
+    }
+    dense[1 * cols + 1] = 2.0f;
+    dense[3 * cols + 10999] = -3.0f;
+
+    std::vector<float> x(cols, 1.0f);
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), rows, cols), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_cpu(rows, 0.0f);
+    spmv_cpu_csr(csr, x.data(), y_cpu.data());
+
+    CudaBuffer<float> d_x(cols);
+    CudaBuffer<float> d_y(rows);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, true);
+    SpMVExecutionContext context;
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols, &context);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_gpu(rows, 0.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows));
+
+    csr_destroy(csr);
+}
+

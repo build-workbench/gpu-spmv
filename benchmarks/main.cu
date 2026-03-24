@@ -2,7 +2,9 @@
 #include "spmv/ell_matrix.h"
 #include "spmv/spmv.h"
 #include "spmv/benchmark.h"
+#include "spmv/bandwidth.h"
 #include "spmv/pagerank.h"
+#include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
 #include <random>
@@ -168,9 +170,31 @@ int main() {
     std::cout << "\nGPU SpMV Benchmark Suite\n";
     print_separator();
 
-    // 打印 GPU 信息
+    int device_count = 0;
+    cudaError_t err = cudaGetDeviceCount(&device_count);
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA runtime unavailable: " << cudaGetErrorString(err) << "\n";
+        return 1;
+    }
+
+    if (device_count <= 0) {
+        std::cerr << "No CUDA-capable GPU detected. Benchmarks require a usable CUDA device.\n";
+        return 1;
+    }
+
+    err = cudaSetDevice(0);
+    if (err != cudaSuccess) {
+        std::cerr << "Failed to select CUDA device 0: " << cudaGetErrorString(err) << "\n";
+        return 1;
+    }
+
     cudaDeviceProp prop;
-    cudaGetDeviceProperties(&prop, 0);
+    err = cudaGetDeviceProperties(&prop, 0);
+    if (err != cudaSuccess) {
+        std::cerr << "Failed to query CUDA device 0: " << cudaGetErrorString(err) << "\n";
+        return 1;
+    }
+
     std::cout << "GPU: " << prop.name << "\n";
     std::cout << "Compute Capability: " << prop.major << "." << prop.minor << "\n";
     std::cout << "Memory: " << prop.totalGlobalMem / (1024 * 1024) << " MB\n";

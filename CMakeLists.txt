@@ -2,17 +2,26 @@ cmake_minimum_required(VERSION 3.18)
 project(gpu_spmv LANGUAGES CXX)
 
 include(CheckLanguage)
-check_language(CUDA)
-if(NOT CMAKE_CUDA_COMPILER)
-    message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH.")
-endif()
-enable_language(CUDA)
+option(SPMV_REQUIRE_CUDA "Fail configuration when CUDA is unavailable" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT SPMV_REQUIRE_CUDA)
+    message(STATUS "SPMV_REQUIRE_CUDA=OFF; configuring in no-CUDA mode. No build targets will be generated.")
+    enable_testing()
+    return()
+endif()
+
+check_language(CUDA)
+if(NOT CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH, or configure with -DSPMV_REQUIRE_CUDA=OFF for a configure-only fallback.")
+endif()
+
+enable_language(CUDA)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # CUDA 架构设置
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)

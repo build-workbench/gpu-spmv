@@ -29,3 +29,38 @@ jobs:
           check-path: '.'
           exclude-regex: '(^|/)(build|third_party|external|vendor|\.git)(/|$)'
           fallback-style: 'LLVM'
+
+  configure-no-cuda:
+    name: Configure Without CUDA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure fallback mode
+        run: cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+
+      - name: Ensure configure completed
+        run: test -f build-no-cuda/CMakeCache.txt
+
+      - name: Confirm no CUDA targets exist
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import sys
+
+          output = subprocess.check_output(
+              ["cmake", "--build", "build-no-cuda", "--target", "help"],
+              text=True,
+          )
+          print(output)
+          forbidden = ("spmv", "spmv_tests", "spmv_benchmark")
+          if any(target in output for target in forbidden):
+              sys.exit("Unexpected CUDA build target found in no-CUDA mode")
+          PY
+
+      - name: Confirm no build artifacts exist
+        run: test ! -e build-no-cuda/spmv_benchmark && test ! -e build-no-cuda/spmv_tests && test ! -e build-no-cuda/libspmv.a
+
+      - name: Show fallback cache setting
+        run: cmake -LA -N build-no-cuda | grep SPMV_REQUIRE_CUDA

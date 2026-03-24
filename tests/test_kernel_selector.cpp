@@ -119,19 +119,71 @@ TEST(KernelSelectorUnitTest, SkewedRowsSelectMergePath) {
 
 TEST(KernelSelectorUnitTest, LargeVectorUsesTexture) {
     // 大向量应该使用纹理缓存
-    std::vector<float> dense(100000, 0.0f);
-    for (int i = 0; i < 100000; i += 100) {
+    std::vector<float> dense(110000, 0.0f);
+    for (int i = 0; i < 110000; i += 110) {
         dense[i] = 1.0f;
     }
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
-    csr_from_dense(csr, dense.data(), 100, 1000);
-    
+    csr_from_dense(csr, dense.data(), 10, 11000);
+
     SpMVConfig config = spmv_auto_config(csr);
-    
-    if (csr->num_cols > 10000) {
-        EXPECT_TRUE(config.use_texture);
-    }
-    
+
+    EXPECT_GT(csr->num_cols, 10000);
+    EXPECT_TRUE(config.use_texture);
+
     csr_destroy(csr);
+}
+
+TEST(KernelSelectorUnitTest, NullMatrixFallsBackToSafeDefault) {
+    SpMVConfig config = spmv_auto_config(nullptr);
+
+    EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(config.block_size, 256);
+    EXPECT_FALSE(config.use_texture);
+}
+
+TEST(KernelSelectorUnitTest, DegenerateMatrixFallsBackToSafeDefault) {
+    CSRMatrix* csr = csr_create(3, 4, 0);
+    ASSERT_NE(csr, nullptr);
+
+    SpMVConfig config = spmv_auto_config(csr);
+
+    EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(config.block_size, 256);
+    EXPECT_FALSE(config.use_texture);
+
+    csr_destroy(csr);
+}
+
+TEST(KernelSelectorUnitTest, TextureThresholdBoundaryIsDeterministic) {
+    CSRMatrix* below = csr_create(4, 10000, 0);
+    CSRMatrix* above = csr_create(4, 10001, 0);
+    ASSERT_NE(below, nullptr);
+    ASSERT_NE(above, nullptr);
+
+    SpMVConfig below_config = spmv_auto_config(below);
+    SpMVConfig above_config = spmv_auto_config(above);
+
+    EXPECT_FALSE(below_config.use_texture);
+    EXPECT_FALSE(above_config.use_texture);
+    EXPECT_EQ(below_config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(above_config.kernel_type, SpMVConfig::SCALAR_CSR);
+
+    csr_destroy(below);
+    csr_destroy(above);
+}
+
+TEST(KernelSelectorUnitTest, InvalidMatrixMetadataFallsBackToSafeDefault) {
+    CSRMatrix invalid{};
+    invalid.num_rows = -1;
+    invalid.num_cols = 32;
+    invalid.nnz = 4;
+    invalid.row_ptrs = nullptr;
+
+    SpMVConfig config = spmv_auto_config(&invalid);
+
+    EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
+    EXPECT_EQ(config.block_size, 256);
+    EXPECT_FALSE(config.use_texture);
 }

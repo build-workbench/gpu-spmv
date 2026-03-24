@@ -18,15 +18,32 @@ High-performance CUDA sparse matrix-vector multiplication library supporting CSR
 
 ```bash
 # Using CMake Presets
+cmake --preset default
+cmake --build --preset default
+
+# Run tests from the default preset build tree
+ctest --preset default
+
+# Or build release artifacts
 cmake --preset release
 cmake --build --preset release
 
-# Run tests
-ctest --preset default
-
-# Run benchmarks
+# Run benchmarks (requires a CUDA-capable GPU)
 ./build/spmv_benchmark
+# release preset output:
+./build-release/spmv_benchmark
 ```
+
+If you only want CMake configuration to succeed without generating CUDA build targets, use:
+
+```bash
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+```
+
+That mode is configure-only and does not produce `spmv`, `spmv_tests`, or `spmv_benchmark`.
+
+> `spmv_benchmark` now exits early with a clear error when no usable CUDA device is available.
+
 
 ## Requirements
 
