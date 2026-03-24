@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
-project(gpu_spmv LANGUAGES CXX CUDA)
+project(gpu_spmv LANGUAGES CXX)
+
+include(CheckLanguage)
+check_language(CUDA)
+if(NOT CMAKE_CUDA_COMPILER)
+    message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH.")
+endif()
+enable_language(CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
