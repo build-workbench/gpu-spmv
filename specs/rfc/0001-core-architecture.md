@@ -1,26 +1,27 @@
-# 设计文档：GPU SpMV (稀疏矩阵向量乘法)
+# RFC 0001: Core Architecture - GPU SpMV (Sparse Matrix-Vector Multiplication)
 
-> **版本**: v1.0.0
-> **状态**: ✅ 已实现
-> **最后更新**: 2025-04-16
-
----
-
-## 概述
-
-本文档描述基于 CUDA 的稀疏矩阵向量乘法 (SpMV) 实现。系统采用分层架构，包含存储层（CSR/ELL 格式）、计算层（多种优化 Kernel）、和应用层（PageRank 算法）。
-
-### 设计目标
-
-| 目标 | 描述 | 验证方式 |
-|------|------|----------|
-| **正确性** | SpMV 结果与 CPU 参考实现一致 | 属性测试 |
-| **性能** | 最大化 GPU 带宽利用率 | 基准测试 |
-| **可扩展性** | 支持大规模稀疏矩阵 | 大矩阵测试 |
+> **Version**: v1.0.0
+> **Status**: IMPLEMENTED
+> **Last Updated**: 2025-04-16
+> **Authors**: GPU SpMV Team
 
 ---
 
-## 系统架构
+## Abstract
+
+This document describes the CUDA-based Sparse Matrix-Vector Multiplication (SpMV) implementation. The system adopts a layered architecture comprising a storage layer (CSR/ELL formats), a compute layer (multiple optimized kernels), and an application layer (PageRank algorithm).
+
+### Design Goals
+
+| Goal | Description | Validation Method |
+|------|-------------|-------------------|
+| **Correctness** | SpMV results match the CPU reference implementation | Property-based testing |
+| **Performance** | Maximize GPU bandwidth utilization | Benchmarking |
+| **Scalability** | Support for large-scale sparse matrices | Large matrix testing |
+
+---
+
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -71,107 +72,107 @@
 
 ---
 
-## 组件与接口
+## Components and Interfaces
 
-### 1. 稀疏矩阵存储格式
+### 1. Sparse Matrix Storage Formats
 
-#### CSR (Compressed Sparse Row) 格式
+#### CSR (Compressed Sparse Row) Format
 
 ```cpp
 struct CSRMatrix {
-    int num_rows;           // 矩阵行数
-    int num_cols;           // 矩阵列数
-    int nnz;                // 非零元素总数
-    
-    float* values;          // 非零元素值数组 [nnz]
-    int* col_indices;       // 列索引数组 [nnz]
-    int* row_ptrs;          // 行指针数组 [num_rows + 1]
-    
-    // GPU 端指针
+    int num_rows;           // Number of rows in the matrix
+    int num_cols;           // Number of columns in the matrix
+    int nnz;                // Total number of non-zero elements
+
+    float* values;          // Non-zero element values array [nnz]
+    int* col_indices;       // Column indices array [nnz]
+    int* row_ptrs;          // Row pointers array [num_rows + 1]
+
+    // Device-side (GPU) pointers
     float* d_values;
     int* d_col_indices;
     int* d_row_ptrs;
-    
+
     bool owns_host_memory;
     bool owns_device_memory;
 };
 ```
 
-**内存布局示例**:
+**Memory Layout Example**:
 ```
-稀疏矩阵:               CSR 存储:
-| 1 0 2 0 |            values:      [1, 2, 3, 4, 5]
-| 0 3 4 0 |     =>     col_indices: [0, 2, 1, 2, 3]
-| 0 0 0 5 |            row_ptrs:    [0, 2, 4, 5]
-                       (第 0 行: 索引 0-1, 共 2 个元素)
-                       (第 1 行: 索引 2-3, 共 2 个元素)
-                       (第 2 行: 索引 4,   共 1 个元素)
+Sparse Matrix:              CSR Storage:
+| 1 0 2 0 |                 values:      [1, 2, 3, 4, 5]
+| 0 3 4 0 |      =>         col_indices: [0, 2, 1, 2, 3]
+| 0 0 0 5 |                 row_ptrs:    [0, 2, 4, 5]
+                            (Row 0: indices 0-1, 2 elements)
+                            (Row 1: indices 2-3, 2 elements)
+                            (Row 2: index 4,    1 element)
 ```
 
-#### ELL (ELLPACK) 格式
+#### ELL (ELLPACK) Format
 
 ```cpp
 struct ELLMatrix {
-    int num_rows;           // 矩阵行数
-    int num_cols;           // 矩阵列数
-    int max_nnz_per_row;    // 每行最大非零元素数
-    int nnz;                // 实际非零元素总数
-    
-    // Column-major 存储以实现合并访问
-    float* values;          // 值数组 [num_rows * max_nnz_per_row]
-    int* col_indices;       // 列索引 [-1 表示填充]
-    
-    float* d_values;        // GPU 端指针
+    int num_rows;           // Number of rows in the matrix
+    int num_cols;           // Number of columns in the matrix
+    int max_nnz_per_row;    // Maximum non-zero elements per row
+    int nnz;                // Actual total number of non-zero elements
+
+    // Column-major storage for coalesced access
+    float* values;          // Values array [num_rows * max_nnz_per_row]
+    int* col_indices;       // Column indices [-1 indicates padding]
+
+    float* d_values;        // Device-side (GPU) pointers
     int* d_col_indices;
-    
+
     bool owns_host_memory;
     bool owns_device_memory;
 };
 ```
 
-**Column-Major 存储说明**:
+**Column-Major Storage Explanation**:
 ```
-稀疏矩阵 (max_nnz_per_row = 2):
-| 1 0 2 |     行 0: [1, 2] 列 [0, 2]
-| 3 4 0 | =>  行 1: [3, 4] 列 [0, 1]
-| 5 0 0 |     行 2: [5, -] 列 [0, -]
+Sparse Matrix (max_nnz_per_row = 2):
+| 1 0 2 |     Row 0: [1, 2] columns [0, 2]
+| 3 4 0 | =>  Row 1: [3, 4] columns [0, 1]
+| 5 0 0 |     Row 2: [5, -] columns [0, -]
 
-Column-major 存储:
-values:     [1, 3, 5, 2, 4, 0]     // 按列存储
-col_indices: [0, 0, 0, 2, 1, -1]   // -1 表示填充
+Column-major storage:
+values:     [1, 3, 5, 2, 4, 0]     // Stored by column
+col_indices: [0, 0, 0, 2, 1, -1]   // -1 indicates padding
 
-GPU 访问: 线程 i 访问 values[k*num_rows + i]，连续地址！
+GPU access: Thread i accesses values[k*num_rows + i], contiguous addresses!
 ```
 
 ---
 
-### 2. SpMV Kernel 接口
+### 2. SpMV Kernel Interfaces
 
 ```cpp
-// 统一的 SpMV 配置
+// Unified SpMV configuration
 struct SpMVConfig {
     enum KernelType {
-        SCALAR_CSR,     // 一个线程处理一行
-        VECTOR_CSR,     // 一个 Warp 处理一行
-        MERGE_PATH,     // 工作量均匀分配
-        ELL_KERNEL      // ELL 格式专用
+        SCALAR_CSR,     // One thread processes one row
+        VECTOR_CSR,     // One warp processes one row
+        MERGE_PATH,     // Evenly distributed workload
+        ELL_KERNEL      // ELL format dedicated kernel
     };
-    
+
     KernelType kernel_type;
-    int block_size;         // CUDA block 大小
-    bool use_texture;       // 是否使用纹理缓存
+    int block_size;         // CUDA block size
+    bool use_texture;       // Whether to use texture cache
 };
 
-// 计算结果
+// Computation result
 struct SpMVResult {
-    float* y;               // 输出向量 (GPU)
-    float elapsed_ms;       // 执行时间
-    float gflops;           // 计算吞吐量
-    float bandwidth_gb_s;   // 带宽利用率
-    int error_code;         // 0 = 成功
+    float* y;               // Output vector (GPU)
+    float elapsed_ms;       // Execution time
+    float gflops;           // Computation throughput
+    float bandwidth_gb_s;   // Bandwidth utilization
+    int error_code;         // 0 = success
 };
 
-// 核心 SpMV 函数
+// Core SpMV function
 SpMVResult spmv_csr(
     const CSRMatrix* A,
     const float* d_x,
@@ -190,23 +191,23 @@ SpMVResult spmv_ell(
     SpMVExecutionContext* context = nullptr
 );
 
-// 自动选择最优 Kernel
+// Automatically select the optimal kernel
 SpMVConfig spmv_auto_config(const CSRMatrix* A);
 ```
 
 ---
 
-### 3. CUDA Kernel 设计
+### 3. CUDA Kernel Design
 
 #### 3.1 Scalar CSR Kernel
 
-**策略**: 一个线程处理一行
+**Strategy**: One thread processes one row
 
-**适用场景**: `avg_nnz_per_row < 4`（极稀疏矩阵）
+**Applicable Scenario**: `avg_nnz_per_row < 4` (extremely sparse matrices)
 
-**优势**: 实现简单，无同步开销
+**Advantages**: Simple implementation, no synchronization overhead
 
-**劣势**: 长行导致 Warp 空闲
+**Disadvantages**: Long rows cause warp idle time
 
 ```cpp
 __global__ void spmv_csr_scalar(
@@ -230,13 +231,13 @@ __global__ void spmv_csr_scalar(
 
 #### 3.2 Vector CSR Kernel
 
-**策略**: 一个 Warp (32线程) 协作处理一行
+**Strategy**: One warp (32 threads) collaboratively processes one row
 
-**适用场景**: `skewness < 10`（行长度均匀分布）
+**Applicable Scenario**: `skewness < 10` (uniform row length distribution)
 
-**优势**: Warp 归约高效，合并访问良好
+**Advantages**: Efficient warp-level reduction, good coalesced access
 
-**劣势**: 长行仍有瓶颈
+**Disadvantages**: Long rows still create bottlenecks
 
 ```cpp
 __global__ void spmv_csr_vector(
@@ -249,21 +250,21 @@ __global__ void spmv_csr_vector(
 ) {
     int warp_id = (blockIdx.x * blockDim.x + threadIdx.x) / 32;
     int lane_id = threadIdx.x % 32;
-    
+
     if (warp_id < num_rows) {
         float sum = 0.0f;
-        
-        // Warp 内线程协作处理一行
-        for (int j = row_ptrs[warp_id] + lane_id; 
+
+        // Threads within a warp collaborate to process one row
+        for (int j = row_ptrs[warp_id] + lane_id;
              j < row_ptrs[warp_id + 1]; j += 32) {
             sum += values[j] * x[col_indices[j]];
         }
-        
-        // Warp 级归约 (使用 shuffle 指令)
+
+        // Warp-level reduction (using shuffle instructions)
         for (int offset = 16; offset > 0; offset /= 2) {
             sum += __shfl_down_sync(0xffffffff, sum, offset);
         }
-        
+
         if (lane_id == 0) y[warp_id] = sum;
     }
 }
@@ -271,18 +272,18 @@ __global__ void spmv_csr_vector(
 
 #### 3.3 Merge Path Kernel
 
-**策略**: 将行指针和非零元序列视为两条有序路径，通过二分搜索找到均匀分割点
+**Strategy**: Treats the row pointer and non-zero element sequences as two ordered paths, finding uniform split points via binary search
 
-**适用场景**: `skewness >= 10`（高度不均匀分布）
+**Applicable Scenario**: `skewness >= 10` (highly non-uniform distribution)
 
-**优势**: 完美负载均衡
+**Advantages**: Perfect load balancing
 
-**劣势**: 实现复杂
+**Disadvantages**: Complex implementation
 
 ```cpp
 struct MergeCoordinate {
-    int row;    // 当前行
-    int nz;     // 当前非零元素位置
+    int row;    // Current row
+    int nz;     // Current non-zero element position
 };
 
 __device__ MergeCoordinate merge_path_search(
@@ -293,46 +294,46 @@ __device__ MergeCoordinate merge_path_search(
 ) {
     int x_min = max(diagonal - nnz, 0);
     int x_max = min(diagonal, num_rows);
-    
+
     while (x_min < x_max) {
         int x_mid = (x_min + x_max) / 2;
         int y_mid = diagonal - x_mid;
-        
+
         if (row_ptrs[x_mid] <= y_mid) {
             x_min = x_mid + 1;
         } else {
             x_max = x_mid;
         }
     }
-    
+
     return {x_min, diagonal - x_min};
 }
 ```
 
-**Merge Path 可视化**:
+**Merge Path Visualization**:
 ```
-行指针序列:   [0, 2, 5, 7, 10]    (4 行，共 10 个非零元)
-非零元序列:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+Row pointer sequence:   [0, 2, 5, 7, 10]    (4 rows, 10 non-zero elements total)
+Non-zero element seq:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-Merge Path 视角:
+Merge Path perspective:
          row:  0   1   2   3   4
               [0]─[2]─[5]─[7]─[10]
                │╲  │╲  │╲  │╲
               [0][1][2][3][4][5][6][7][8][9]  (nz)
                0   1   2   3   4   5   6   7   8   9
 
-均匀划分: 对角线切割，每个线程处理相同数量的工作
+Uniform partitioning: Diagonal cuts, each thread handles an equal amount of work
 ```
 
 #### 3.4 ELL Kernel
 
-**策略**: Column-major 存储，天然合并访问
+**Strategy**: Column-major storage, naturally coalesced access
 
-**适用场景**: 行长度接近 `max_nnz_per_row`
+**Applicable Scenario**: Row lengths close to `max_nnz_per_row`
 
-**优势**: 访存完全合并，无条件分支
+**Advantages**: Fully coalesced memory access, no conditional branching
 
-**劣势**: 内存浪费（填充）
+**Disadvantages**: Memory waste due to padding
 
 ```cpp
 __global__ void spmv_ell(
@@ -347,9 +348,9 @@ __global__ void spmv_ell(
     if (row < num_rows) {
         float sum = 0.0f;
         for (int k = 0; k < max_nnz_per_row; k++) {
-            int idx = k * num_rows + row;  // Column-major 索引
+            int idx = k * num_rows + row;  // Column-major index
             int col = col_indices[idx];
-            if (col >= 0) {  // -1 表示填充
+            if (col >= 0) {  // -1 indicates padding
                 sum += values[idx] * x[col];
             }
         }
@@ -360,10 +361,10 @@ __global__ void spmv_ell(
 
 ---
 
-### 4. Kernel 选择策略
+### 4. Kernel Selection Strategy
 
 ```
-                    矩阵特征分析
+                    Matrix Feature Analysis
                          │
                          ▼
          ┌───────────────────────────────┐
@@ -391,11 +392,11 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
     SpMVConfig config;
     config.block_size = DEFAULT_BLOCK_SIZE;  // 256
     config.use_texture = (A->num_cols > TEXTURE_CACHE_THRESHOLD_COLS);
-    
-    // 计算行长度统计
+
+    // Compute row length statistics
     CSRStats stats = csr_compute_stats(A);
-    
-    // 选择策略
+
+    // Selection strategy
     if (stats.avg_nnz_per_row < 4) {
         config.kernel_type = SpMVConfig::SCALAR_CSR;
     } else if (stats.skewness < 10) {
@@ -403,83 +404,83 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
     } else {
         config.kernel_type = SpMVConfig::MERGE_PATH;
     }
-    
+
     return config;
 }
 ```
 
 ---
 
-### 5. 带宽优化
+### 5. Bandwidth Optimization
 
-#### 5.1 Column-Major 存储 (ELL 格式)
+#### 5.1 Column-Major Storage (ELL Format)
 
 ```
-Row-major 访问模式 (差):
-线程:   T0      T1      T2
-        ↓       ↓       ↓
-地址: [row0,k0][row1,k0][row2,k0]  ← 不连续！
-       [base+0] [base+max_nnz] [base+2*max_nnz]
+Row-major access pattern (poor):
+Thread:   T0      T1      T2
+          ↓       ↓       ↓
+Address: [row0,k0][row1,k0][row2,k0]  ← Discontiguous!
+        [base+0] [base+max_nnz] [base+2*max_nnz]
 
-Column-major 访问模式 (好):
-线程:   T0      T1      T2
-        ↓       ↓       ↓
-地址: [row0,k0][row1,k0][row2,k0]  ← 连续！
-       [base+0] [base+1]   [base+2]
+Column-major access pattern (good):
+Thread:   T0      T1      T2
+          ↓       ↓       ↓
+Address: [row0,k0][row1,k0][row2,k0]  ← Contiguous!
+        [base+0] [base+1]   [base+2]
 ```
 
-#### 5.2 纹理缓存
+#### 5.2 Texture Cache
 
 ```cpp
-// 使用 SpMVExecutionContext 复用纹理对象
+// Use SpMVExecutionContext to reuse texture objects
 SpMVExecutionContext context;
 SpMVConfig config;
 config.use_texture = true;
 
 for (int i = 0; i < iterations; i++) {
-    // 纹理对象只在第一次调用时创建
+    // Texture object is only created on the first call
     SpMVResult result = spmv_csr(csr, d_x, d_y, &config, cols, &context);
 }
-// context 析构时自动销毁纹理对象
+// Texture object is automatically destroyed when context is destructed
 ```
 
-#### 5.3 Warp 级归约
+#### 5.3 Warp-Level Reduction
 
 ```cpp
-// 传统 Shared Memory 归约 (有 bank conflict 风险)
+// Traditional Shared Memory reduction (risk of bank conflicts)
 __shared__ float sdata[32];
 sdata[lane_id] = sum;
 for (int offset = 16; offset > 0; offset /= 2) {
-    sdata[lane_id] += sdata[lane_id + offset];  // 可能冲突
+    sdata[lane_id] += sdata[lane_id + offset];  // Possible conflicts
 }
 
-// Shuffle 归约 (无 bank conflict)
+// Shuffle reduction (no bank conflicts)
 for (int offset = 16; offset > 0; offset /= 2) {
-    sum += __shfl_down_sync(0xffffffff, sum, offset);  // 完全并行
+    sum += __shfl_down_sync(0xffffffff, sum, offset);  // Fully parallel
 }
 ```
 
 ---
 
-### 6. PageRank 算法
+### 6. PageRank Algorithm
 
 ```cpp
 struct PageRankConfig {
-    float damping_factor = 0.85f;   // 阻尼系数
-    float tolerance = 1e-6f;        // 收敛阈值
-    int max_iterations = 100;       // 最大迭代次数
+    float damping_factor = 0.85f;   // Damping factor
+    float tolerance = 1e-6f;        // Convergence threshold
+    int max_iterations = 100;       // Maximum number of iterations
 };
 
 struct PageRankResult {
-    float* ranks;           // 排名分数数组 [num_nodes]
-    int iterations;         // 实际迭代次数
-    float final_residual;   // 最终残差
-    bool converged;         // 是否收敛
-    int error_code;         // 错误码
+    float* ranks;           // Ranking scores array [num_nodes]
+    int iterations;         // Actual number of iterations
+    float final_residual;   // Final residual
+    bool converged;         // Whether convergence was achieved
+    int error_code;         // Error code
 };
 
-// PageRank 迭代: r_{k+1} = d * A * r_k + (1-d) / n
-// 其中 A 是列归一化的邻接矩阵
+// PageRank iteration: r_{k+1} = d * A * r_k + (1-d) / n
+// where A is the column-normalized adjacency matrix
 PageRankResult pagerank(
     const CSRMatrix* adj_matrix,
     const PageRankConfig* config
@@ -488,27 +489,27 @@ PageRankResult pagerank(
 
 ---
 
-### 7. 错误处理
+### 7. Error Handling
 
-#### 错误码定义
+#### Error Code Definitions
 
 ```cpp
 enum class SpMVError {
     SUCCESS = 0,
-    INVALID_DIMENSION = -1,   // 矩阵或向量维度不匹配
-    CUDA_MALLOC = -2,         // GPU 内存分配失败
-    CUDA_MEMCPY = -3,         // GPU 内存拷贝失败
-    KERNEL_LAUNCH = -4,       // CUDA Kernel 启动/执行失败
-    INVALID_FORMAT = -5,      // 稀疏矩阵格式非法
-    FILE_IO = -6,             // 文件读写失败
-    OUT_OF_MEMORY = -7,       // 主机/设备内存不足
-    INVALID_ARGUMENT = -8     // 参数非法
+    INVALID_DIMENSION = -1,   // Matrix or vector dimension mismatch
+    CUDA_MALLOC = -2,         // GPU memory allocation failure
+    CUDA_MEMCPY = -3,         // GPU memory copy failure
+    KERNEL_LAUNCH = -4,       // CUDA kernel launch/execution failure
+    INVALID_FORMAT = -5,      // Invalid sparse matrix format
+    FILE_IO = -6,             // File read/write failure
+    OUT_OF_MEMORY = -7,       // Host/device memory exhaustion
+    INVALID_ARGUMENT = -8     // Invalid argument
 };
 
 const char* spmv_error_string(SpMVError err);
 ```
 
-#### CUDA 检查宏
+#### CUDA Check Macros
 
 ```cpp
 #define CUDA_CHECK_MALLOC(call) do { \
@@ -526,7 +527,7 @@ const char* spmv_error_string(SpMVError err);
 } while(0)
 ```
 
-#### RAII 资源管理
+#### RAII Resource Management
 
 ```cpp
 template<typename T>
@@ -534,23 +535,23 @@ class CudaBuffer {
 public:
     explicit CudaBuffer(size_t count);
     ~CudaBuffer();
-    
-    // 禁止拷贝
+
+    // Copy disabled
     CudaBuffer(const CudaBuffer&) = delete;
     CudaBuffer& operator=(const CudaBuffer&) = delete;
-    
-    // 允许移动
+
+    // Move allowed
     CudaBuffer(CudaBuffer&& other) noexcept;
-    
+
     T* get();
     const T* get() const;
     size_t size() const;
-    
+
     void copyFromHost(const T* host_ptr, size_t count);
     void copyToHost(T* host_ptr, size_t count);
     void memset(int value);
     void fill(const T& value);
-    
+
 private:
     T* ptr_ = nullptr;
     size_t size_ = 0;
@@ -559,12 +560,12 @@ private:
 
 ---
 
-## 正确性属性
+## Correctness Properties
 
-### 属性测试列表
+### Property Test List
 
-| ID | 属性名称 | 验证需求 |
-|----|----------|----------|
+| ID | Property Name | Validation Requirements |
+|----|---------------|-------------------------|
 | P1 | CSR Dense-to-Sparse Round Trip | 1.2 |
 | P2 | CSR Element Lookup Correctness | 1.3 |
 | P3 | CSR Serialization Round Trip | 1.5 |
@@ -582,7 +583,7 @@ private:
 | P15 | PageRank Score Invariants | 7.1, 7.2 |
 | P16 | PageRank Top-K Ordering | 7.5 |
 
-### 属性测试模板
+### Property Test Template
 
 ```cpp
 // **Property 8: SpMV CSR Correctness**
@@ -591,14 +592,14 @@ TEST(SpMVPropertyTest, CSRCorrectnessProperty) {
     for (int iter = 0; iter < 100; iter++) {
         auto matrix = generator.generate();
         auto x = generate_random_vector(matrix->num_cols);
-        
-        // GPU 计算
+
+        // GPU computation
         SpMVResult gpu_result = spmv_csr(matrix, d_x, d_y, &config);
-        
-        // CPU 参考
+
+        // CPU reference
         spmv_cpu_csr(matrix, x.data(), y_cpu.data());
-        
-        // 验证相对误差
+
+        // Verify relative error
         for (int i = 0; i < matrix->num_rows; i++) {
             if (y_cpu[i] != 0) {
                 EXPECT_LT(abs(y_gpu[i] - y_cpu[i]) / abs(y_cpu[i]), 1e-6);
@@ -610,40 +611,40 @@ TEST(SpMVPropertyTest, CSRCorrectnessProperty) {
 
 ---
 
-## 测试策略
+## Testing Strategy
 
-### 测试类型
+### Test Types
 
-| 类型 | 框架 | 目的 |
-|------|------|------|
-| 单元测试 | Google Test | 测试特定示例和边界情况 |
-| 属性测试 | Google Test + 随机生成 | 验证通用属性 |
-| 性能测试 | CUDA Events | 测量执行时间和带宽 |
+| Type | Framework | Purpose |
+|------|-----------|---------|
+| Unit Testing | Google Test | Test specific examples and edge cases |
+| Property-based Testing | Google Test + Random Generation | Validate general properties |
+| Performance Testing | CUDA Events | Measure execution time and bandwidth |
 
-### 测试矩阵生成器
+### Test Matrix Generator
 
 ```cpp
 struct SparseMatrixGenerator {
     int min_rows = 1, max_rows = 1000;
     int min_cols = 1, max_cols = 1000;
     float min_density = 0.001, max_density = 0.3;
-    
+
     enum RowDistribution {
-        UNIFORM,        // 每行非零元素数量相近
-        POWER_LAW,      // 幂律分布 (模拟真实图)
-        EXTREME_SKEW    // 极端不均匀
+        UNIFORM,        // Similar number of non-zero elements per row
+        POWER_LAW,      // Power law distribution (simulates real graphs)
+        EXTREME_SKEW    // Extremely non-uniform
     };
-    
+
     CSRMatrix* generate(RowDistribution dist = UNIFORM);
 };
 ```
 
-### 边界情况处理
+### Edge Case Handling
 
-| 情况 | 处理方式 |
+| Case | Handling |
 |------|----------|
-| 空矩阵 (0 行或 0 列) | 返回空结果向量 |
-| 全零行 | SpMV 正常处理，结果为 0 |
-| 单元素矩阵 | 正常处理 |
-| 极大矩阵 (超出 GPU 内存) | 返回 OUT_OF_MEMORY 错误 |
-| NaN/Inf 输入值 | 传播到输出 (IEEE 754 语义) |
+| Empty matrix (0 rows or 0 columns) | Return empty result vector |
+| All-zero row | SpMV processes normally, result is 0 |
+| Single element matrix | Normal processing |
+| Extremely large matrix (exceeds GPU memory) | Return OUT_OF_MEMORY error |
+| NaN/Inf input values | Propagated to output (IEEE 754 semantics) |
