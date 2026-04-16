@@ -1,13 +1,14 @@
-#include <gtest/gtest.h>
-#include "spmv/spmv.h"
 #include "spmv/csr_matrix.h"
+#include "spmv/spmv.h"
 #include "spmv/test_utils.h"
+
+#include <gtest/gtest.h>
 
 using namespace spmv;
 using namespace spmv::test;
 
 class KernelSelectorPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
 };
@@ -19,32 +20,29 @@ TEST_F(KernelSelectorPropertyTest, SelectorValidity) {
         int rows = rng.randInt(1, 500);
         int cols = rng.randInt(1, 500);
         float density = rng.randFloat(0.001f, 0.5f);
-        
+
         auto dense = generateRandomDenseMatrix(rows, cols, density, rng);
-        
+
         CSRMatrix* csr = csr_create(0, 0, 0);
         csr_from_dense(csr, dense.data(), rows, cols);
-        
+
         SpMVConfig config = spmv_auto_config(csr);
-        
+
         // 验证 block_size 在合理范围内
-        EXPECT_GE(config.block_size, 32) 
-            << "Block size too small at iteration " << iter;
-        EXPECT_LE(config.block_size, 1024) 
-            << "Block size too large at iteration " << iter;
-        
+        EXPECT_GE(config.block_size, 32) << "Block size too small at iteration " << iter;
+        EXPECT_LE(config.block_size, 1024) << "Block size too large at iteration " << iter;
+
         // 验证 block_size 是 32 的倍数 (warp size)
-        EXPECT_EQ(config.block_size % 32, 0) 
+        EXPECT_EQ(config.block_size % 32, 0)
             << "Block size not multiple of 32 at iteration " << iter;
-        
+
         // 验证 kernel_type 是有效值
-        EXPECT_TRUE(
-            config.kernel_type == SpMVConfig::SCALAR_CSR ||
-            config.kernel_type == SpMVConfig::VECTOR_CSR ||
-            config.kernel_type == SpMVConfig::MERGE_PATH ||
-            config.kernel_type == SpMVConfig::ELL_KERNEL
-        ) << "Invalid kernel type at iteration " << iter;
-        
+        EXPECT_TRUE(config.kernel_type == SpMVConfig::SCALAR_CSR ||
+                    config.kernel_type == SpMVConfig::VECTOR_CSR ||
+                    config.kernel_type == SpMVConfig::MERGE_PATH ||
+                    config.kernel_type == SpMVConfig::ELL_KERNEL)
+            << "Invalid kernel type at iteration " << iter;
+
         csr_destroy(csr);
     }
 }
@@ -56,17 +54,17 @@ TEST(KernelSelectorUnitTest, ShortRowsSelectScalar) {
     for (int i = 0; i < 100; i += 10) {
         dense[i] = 1.0f;  // 每行只有 1 个非零元素
     }
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 10, 10);
-    
+
     SpMVConfig config = spmv_auto_config(csr);
-    
+
     CSRStats stats = csr_compute_stats(csr);
     if (stats.avg_nnz_per_row < 4.0f) {
         EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
     }
-    
+
     csr_destroy(csr);
 }
 
@@ -78,17 +76,17 @@ TEST(KernelSelectorUnitTest, UniformRowsSelectVector) {
             dense[i * 10 + j] = 1.0f;  // 每行 5 个非零元素
         }
     }
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 10, 10);
-    
+
     SpMVConfig config = spmv_auto_config(csr);
-    
+
     CSRStats stats = csr_compute_stats(csr);
     if (stats.avg_nnz_per_row >= 4.0f && stats.skewness < 10.0f) {
         EXPECT_EQ(config.kernel_type, SpMVConfig::VECTOR_CSR);
     }
-    
+
     csr_destroy(csr);
 }
 
@@ -103,17 +101,17 @@ TEST(KernelSelectorUnitTest, SkewedRowsSelectMergePath) {
     for (int i = 1; i < 10; i++) {
         dense[i * 10] = 1.0f;
     }
-    
+
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 10, 10);
-    
+
     SpMVConfig config = spmv_auto_config(csr);
-    
+
     CSRStats stats = csr_compute_stats(csr);
     if (stats.skewness >= 10.0f) {
         EXPECT_EQ(config.kernel_type, SpMVConfig::MERGE_PATH);
     }
-    
+
     csr_destroy(csr);
 }
 

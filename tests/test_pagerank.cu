@@ -1,14 +1,15 @@
-#include <gtest/gtest.h>
-#include "spmv/pagerank.h"
 #include "spmv/csr_matrix.h"
+#include "spmv/pagerank.h"
 #include "spmv/test_utils.h"
+
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace spmv;
 using namespace spmv::test;
 
 class PageRankPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 50;
 };
@@ -52,8 +53,7 @@ TEST_F(PageRankPropertyTest, ScoreInvariants) {
         // 1. 所有分数非负
         for (int i = 0; i < n; i++) {
             EXPECT_GE(result.ranks[i], 0.0f)
-                << "Rank should be non-negative at node " << i
-                << " iteration " << iter;
+                << "Rank should be non-negative at node " << i << " iteration " << iter;
         }
 
         // 2. 分数和为 1
@@ -61,8 +61,7 @@ TEST_F(PageRankPropertyTest, ScoreInvariants) {
         for (int i = 0; i < n; i++) {
             sum += result.ranks[i];
         }
-        EXPECT_NEAR(sum, 1.0f, 1e-4f)
-            << "Ranks should sum to 1.0 at iteration " << iter;
+        EXPECT_NEAR(sum, 1.0f, 1e-4f) << "Ranks should sum to 1.0 at iteration " << iter;
 
         // 3. 收敛或达到最大迭代次数
         EXPECT_TRUE(result.converged || result.iterations == config.max_iterations)
@@ -114,8 +113,7 @@ TEST_F(PageRankPropertyTest, TopKOrdering) {
         // 验证 Top-K 降序排列
         for (int i = 0; i < k - 1; i++) {
             EXPECT_GE(top_k[i].rank, top_k[i + 1].rank)
-                << "Top-K should be in descending order at position " << i
-                << " iteration " << iter;
+                << "Top-K should be in descending order at position " << i << " iteration " << iter;
         }
 
         // 验证 Top-K 中的节点排名高于其他节点
@@ -144,11 +142,7 @@ TEST_F(PageRankPropertyTest, TopKOrdering) {
 TEST(PageRankUnitTest, SimpleGraph) {
     // 简单的 3 节点图
     // 0 -> 1, 1 -> 2, 2 -> 0
-    std::vector<float> adj = {
-        0, 0, 1,
-        1, 0, 0,
-        0, 1, 0
-    };
+    std::vector<float> adj = {0, 0, 1, 1, 0, 0, 0, 1, 0};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 3, 3);
@@ -170,12 +164,8 @@ TEST(PageRankUnitTest, SimpleGraph) {
 }
 
 TEST(PageRankUnitTest, TopKExtraction) {
-    std::vector<float> adj = {
-        0, 0.5f, 0.5f, 0,
-        0.5f, 0, 0, 0.5f,
-        0.5f, 0, 0, 0.5f,
-        0, 0.5f, 0.5f, 0
-    };
+    std::vector<float> adj = {0,    0.5f, 0.5f, 0,    0.5f, 0,    0,    0.5f,
+                              0.5f, 0,    0,    0.5f, 0,    0.5f, 0.5f, 0};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 4, 4);
@@ -197,11 +187,7 @@ TEST(PageRankUnitTest, TopKExtraction) {
 }
 
 TEST(PageRankUnitTest, DanglingNodesRemainNormalized) {
-    std::vector<float> adj = {
-        0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f
-    };
+    std::vector<float> adj = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 3, 3);
@@ -242,10 +228,7 @@ TEST(PageRankUnitTest, EmptyGraphReturnsSuccess) {
 }
 
 TEST(PageRankUnitTest, NonSquareMatrixRejected) {
-    std::vector<float> adj = {
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f
-    };
+    std::vector<float> adj = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 2, 3);
@@ -261,10 +244,7 @@ TEST(PageRankUnitTest, NonSquareMatrixRejected) {
 }
 
 TEST(PageRankUnitTest, MissingGpuUploadRejected) {
-    std::vector<float> adj = {
-        0.0f, 1.0f,
-        1.0f, 0.0f
-    };
+    std::vector<float> adj = {0.0f, 1.0f, 1.0f, 0.0f};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 2, 2);
@@ -280,10 +260,7 @@ TEST(PageRankUnitTest, MissingGpuUploadRejected) {
 }
 
 TEST(PageRankUnitTest, InvalidConfigRejected) {
-    std::vector<float> adj = {
-        0.0f, 1.0f,
-        1.0f, 0.0f
-    };
+    std::vector<float> adj = {0.0f, 1.0f, 1.0f, 0.0f};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, adj.data(), 2, 2);

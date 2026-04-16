@@ -1,28 +1,29 @@
 #ifndef SPMV_ELL_MATRIX_H
 #define SPMV_ELL_MATRIX_H
 
+#include <cstddef>
+
 #include "common.h"
 #include "csr_matrix.h"
-#include <cstddef>
 
 namespace spmv {
 
 // ELL (ELLPACK) 格式稀疏矩阵
 // Column-major 存储以实现 GPU 合并访问
 struct ELLMatrix {
-    int num_rows;           // 矩阵行数
-    int num_cols;           // 矩阵列数
-    int max_nnz_per_row;    // 每行最大非零元素数
-    int nnz;                // 实际非零元素总数
-    
+    int num_rows;         // 矩阵行数
+    int num_cols;         // 矩阵列数
+    int max_nnz_per_row;  // 每行最大非零元素数
+    int nnz;              // 实际非零元素总数
+
     // Column-major 存储: values[k * num_rows + row]
-    float* values;          // 值数组 [num_rows * max_nnz_per_row]
-    int* col_indices;       // 列索引 [num_rows * max_nnz_per_row], -1 表示填充
-    
+    float* values;     // 值数组 [num_rows * max_nnz_per_row]
+    int* col_indices;  // 列索引 [num_rows * max_nnz_per_row], -1 表示填充
+
     // GPU 端指针
     float* d_values;
     int* d_col_indices;
-    
+
     // 标记是否拥有内存
     bool owns_host_memory;
     bool owns_device_memory;
@@ -66,6 +67,6 @@ inline int ell_index(int row, int k, int num_rows) {
     return k * num_rows + row;
 }
 
-} // namespace spmv
+}  // namespace spmv
 
-#endif // SPMV_ELL_MATRIX_H
+#endif  // SPMV_ELL_MATRIX_H

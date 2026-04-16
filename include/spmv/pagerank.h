@@ -7,32 +7,32 @@ namespace spmv {
 
 // PageRank 配置
 struct PageRankConfig {
-    float damping_factor;    // 阻尼系数，通常 0.85
-    float tolerance;         // 收敛阈值，默认 1e-6
-    int max_iterations;      // 最大迭代次数
+    float damping_factor;  // 阻尼系数，通常 0.85
+    float tolerance;       // 收敛阈值，默认 1e-6
+    int max_iterations;    // 最大迭代次数
 
     PageRankConfig() : damping_factor(0.85f), tolerance(1e-6f), max_iterations(100) {}
 };
 
 // PageRank 结果
 struct PageRankResult {
-    float* ranks;            // 排名分数 [num_nodes]
-    int iterations;          // 实际迭代次数
-    float final_residual;    // 最终残差
-    bool converged;          // 是否收敛
-    int error_code;          // 0 = 成功，负数见 SpMVError
+    float* ranks;          // 排名分数 [num_nodes]
+    int iterations;        // 实际迭代次数
+    float final_residual;  // 最终残差
+    bool converged;        // 是否收敛
+    int error_code;        // 0 = 成功，负数见 SpMVError
 
     PageRankResult()
-        : ranks(nullptr), iterations(0), final_residual(0.0f),
-          converged(false), error_code(static_cast<int>(SpMVError::SUCCESS)) {}
+        : ranks(nullptr),
+          iterations(0),
+          final_residual(0.0f),
+          converged(false),
+          error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
 // PageRank 算法
 // adj_matrix: 列归一化的邻接矩阵 (CSR 格式)
-PageRankResult pagerank(
-    const CSRMatrix* adj_matrix,
-    const PageRankConfig* config = nullptr
-);
+PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* config = nullptr);
 
 // 释放 PageRank 结果
 void pagerank_free(PageRankResult* result);
@@ -45,6 +45,6 @@ struct TopKNode {
 
 void pagerank_top_k(const PageRankResult* result, int num_nodes, int k, TopKNode* top_k);
 
-} // namespace spmv
+}  // namespace spmv
 
-#endif // SPMV_PAGERANK_H
+#endif  // SPMV_PAGERANK_H

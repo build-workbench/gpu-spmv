@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(gpu_spmv LANGUAGES CXX)
+project(gpu_spmv VERSION 1.0.0 LANGUAGES CXX)
 
 include(CheckLanguage)
 option(SPMV_REQUIRE_CUDA "Fail configuration when CUDA is unavailable" ON)
@@ -89,4 +89,17 @@ target_link_libraries(spmv_benchmark PRIVATE spmv)
 set_target_properties(spmv_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_compile_options(spmv_benchmark PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+)
+
+# ---------- Installation ----------
+include(GNUInstallDirs)
+
+install(TARGETS spmv
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/spmv
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h"
 )

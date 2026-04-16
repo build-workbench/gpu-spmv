@@ -1,13 +1,14 @@
-#include <gtest/gtest.h>
 #include "spmv/benchmark.h"
 #include "spmv/csr_matrix.h"
 #include "spmv/test_utils.h"
+
+#include <gtest/gtest.h>
 
 using namespace spmv;
 using namespace spmv::test;
 
 class BenchmarkPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 50;  // 减少迭代次数以加快测试
 };
@@ -38,8 +39,7 @@ TEST_F(BenchmarkPropertyTest, MetricsCompleteness) {
         EXPECT_GT(result.execution_time_ms, 0.0f)
             << "Execution time should be positive at iteration " << iter;
 
-        EXPECT_GE(result.gflops, 0.0f)
-            << "GFLOPS should be non-negative at iteration " << iter;
+        EXPECT_GE(result.gflops, 0.0f) << "GFLOPS should be non-negative at iteration " << iter;
 
         EXPECT_GE(result.bandwidth_gb_s, 0.0f)
             << "Bandwidth should be non-negative at iteration " << iter;
@@ -217,11 +217,7 @@ TEST(BenchmarkUnitTest, ComparePropagatesGpuFailure) {
 }
 
 TEST(BenchmarkUnitTest, EllMissingGpuUploadRejected) {
-    std::vector<float> dense = {
-        1, 0, 2,
-        0, 3, 4,
-        0, 0, 5
-    };
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
     std::vector<float> x = {1, 1, 1};
 
     ELLMatrix* ell = ell_create(0, 0, 0);

@@ -1,17 +1,19 @@
 #include "spmv/benchmark.h"
 #include "spmv/cuda_buffer.h"
-#include <cmath>
+
 #include <algorithm>
 #include <chrono>
-#include <sstream>
+#include <cmath>
 #include <iomanip>
 #include <limits>
 #include <new>
+#include <sstream>
 
 namespace spmv {
 
 static float compute_stddev(const std::vector<float>& values, float mean) {
-    if (values.size() <= 1) return 0.0f;
+    if (values.size() <= 1)
+        return 0.0f;
 
     float sum_sq_diff = 0.0f;
     for (float v : values) {
@@ -22,9 +24,8 @@ static float compute_stddev(const std::vector<float>& values, float mean) {
 }
 
 static int map_cuda_exception_to_spmv_error(const CudaException& e) {
-    return (e.error() == cudaErrorMemoryAllocation)
-        ? static_cast<int>(SpMVError::CUDA_MALLOC)
-        : static_cast<int>(SpMVError::CUDA_MEMCPY);
+    return (e.error() == cudaErrorMemoryAllocation) ? static_cast<int>(SpMVError::CUDA_MALLOC)
+                                                    : static_cast<int>(SpMVError::CUDA_MEMCPY);
 }
 
 static int validate_benchmark_config(const BenchmarkConfig* bench_config) {
@@ -57,7 +58,8 @@ static int validate_ell_device_benchmark_input(const ELLMatrix* A, const float* 
     if (A->num_cols > 0 && !x) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-    size_t storage_size = static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
+    size_t storage_size =
+        static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
     if (storage_size > 0 && (!A->d_values || !A->d_col_indices)) {
         return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
@@ -77,12 +79,8 @@ static int validate_csr_host_benchmark_input(const CSRMatrix* A, const float* x)
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-BenchmarkResult benchmark_csr(
-    const CSRMatrix* A,
-    const float* x,
-    const SpMVConfig* config,
-    const BenchmarkConfig* bench_config
-) {
+BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
+                              const BenchmarkConfig* bench_config) {
     BenchmarkResult result;
     result.name = "CSR SpMV";
 
@@ -110,7 +108,8 @@ BenchmarkResult benchmark_csr(
 
         SpMVExecutionContext context;
         for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-            SpMVResult warmup_result = spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
+            SpMVResult warmup_result =
+                spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
             if (warmup_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = warmup_result.error_code;
                 return result;
@@ -121,7 +120,8 @@ BenchmarkResult benchmark_csr(
         times.reserve(bench_config->num_runs);
 
         for (int i = 0; i < bench_config->num_runs; i++) {
-            SpMVResult spmv_result = spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
+            SpMVResult spmv_result =
+                spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
             if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.num_runs = static_cast<int>(times.size());
                 result.error_code = spmv_result.error_code;
@@ -138,7 +138,8 @@ BenchmarkResult benchmark_csr(
         result.max_time_ms = *std::max_element(times.begin(), times.end());
 
         float sum = 0.0f;
-        for (float t : times) sum += t;
+        for (float t : times)
+            sum += t;
         result.avg_time_ms = sum / times.size();
         result.execution_time_ms = result.avg_time_ms;
         result.stddev_time_ms = compute_stddev(times, result.avg_time_ms);
@@ -154,11 +155,8 @@ BenchmarkResult benchmark_csr(
     }
 }
 
-BenchmarkResult benchmark_ell(
-    const ELLMatrix* A,
-    const float* x,
-    const BenchmarkConfig* bench_config
-) {
+BenchmarkResult benchmark_ell(const ELLMatrix* A, const float* x,
+                              const BenchmarkConfig* bench_config) {
     BenchmarkResult result;
     result.name = "ELL SpMV";
 
@@ -186,7 +184,8 @@ BenchmarkResult benchmark_ell(
 
         SpMVExecutionContext context;
         for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-            SpMVResult warmup_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
+            SpMVResult warmup_result =
+                spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
             if (warmup_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = warmup_result.error_code;
                 return result;
@@ -197,7 +196,8 @@ BenchmarkResult benchmark_ell(
         times.reserve(bench_config->num_runs);
 
         for (int i = 0; i < bench_config->num_runs; i++) {
-            SpMVResult spmv_result = spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
+            SpMVResult spmv_result =
+                spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
             if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.num_runs = static_cast<int>(times.size());
                 result.error_code = spmv_result.error_code;
@@ -214,7 +214,8 @@ BenchmarkResult benchmark_ell(
         result.max_time_ms = *std::max_element(times.begin(), times.end());
 
         float sum = 0.0f;
-        for (float t : times) sum += t;
+        for (float t : times)
+            sum += t;
         result.avg_time_ms = sum / times.size();
         result.execution_time_ms = result.avg_time_ms;
         result.stddev_time_ms = compute_stddev(times, result.avg_time_ms);
@@ -230,12 +231,8 @@ BenchmarkResult benchmark_ell(
     }
 }
 
-ComparisonResult compare_gpu_cpu_csr(
-    const CSRMatrix* A,
-    const float* x,
-    const SpMVConfig* config,
-    const BenchmarkConfig* bench_config
-) {
+ComparisonResult compare_gpu_cpu_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
+                                     const BenchmarkConfig* bench_config) {
     ComparisonResult comp;
 
     BenchmarkConfig default_config;
@@ -293,7 +290,8 @@ ComparisonResult compare_gpu_cpu_csr(
         comp.cpu_result.max_time_ms = *std::max_element(times.begin(), times.end());
 
         float sum = 0.0f;
-        for (float t : times) sum += t;
+        for (float t : times)
+            sum += t;
         comp.cpu_result.avg_time_ms = sum / times.size();
         comp.cpu_result.execution_time_ms = comp.cpu_result.avg_time_ms;
         comp.cpu_result.stddev_time_ms = compute_stddev(times, comp.cpu_result.avg_time_ms);
@@ -348,7 +346,8 @@ BenchmarkResult benchmark_from_json(const std::string& json) {
 
     auto find_value = [&json](const std::string& key) -> float {
         size_t pos = json.find("\"" + key + "\":");
-        if (pos == std::string::npos) return 0.0f;
+        if (pos == std::string::npos)
+            return 0.0f;
         pos = json.find(":", pos) + 1;
         return std::stof(json.substr(pos));
     };
@@ -366,4 +365,4 @@ BenchmarkResult benchmark_from_json(const std::string& json) {
     return result;
 }
 
-} // namespace spmv
+}  // namespace spmv

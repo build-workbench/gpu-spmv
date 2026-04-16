@@ -1,9 +1,10 @@
 #include "spmv/csr_matrix.h"
-#include <cstring>
-#include <cstdlib>
-#include <fstream>
+
 #include <algorithm>
 #include <climits>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
 
 namespace spmv {
 
@@ -32,7 +33,8 @@ CSRMatrix* csr_create(int rows, int cols, int nnz) {
 }
 
 void csr_destroy(CSRMatrix* mat) {
-    if (!mat) return;
+    if (!mat)
+        return;
 
     if (mat->owns_host_memory) {
         delete[] mat->values;
@@ -49,6 +51,11 @@ void csr_destroy(CSRMatrix* mat) {
 
 int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
     if (!csr || !dense || rows <= 0 || cols <= 0) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    // Check for potential overflow in size calculation
+    if (rows > INT_MAX / cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
@@ -102,6 +109,12 @@ int csr_to_dense(const CSRMatrix* csr, float* dense) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
+    // Check for potential overflow in size calculation
+    size_t total_size = static_cast<size_t>(csr->num_rows) * static_cast<size_t>(csr->num_cols);
+    if (total_size > static_cast<size_t>(INT_MAX)) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
     // 初始化为零
     std::memset(dense, 0, csr->num_rows * csr->num_cols * sizeof(float));
 
@@ -137,7 +150,6 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
     return 0.0f;
 }
 
-
 int csr_to_gpu(CSRMatrix* mat) {
     if (!mat) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
@@ -167,46 +179,45 @@ int csr_to_gpu(CSRMatrix* mat) {
     };
 
     if (mat->nnz > 0) {
-        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values),
-                                     mat->nnz * sizeof(float));
+        cudaError_t err =
+            cudaMalloc(reinterpret_cast<void**>(&new_d_values), mat->nnz * sizeof(float));
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
 
-        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices),
-                         mat->nnz * sizeof(int));
+        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices), mat->nnz * sizeof(int));
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
     }
 
-    cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_row_ptrs),
-                                 (mat->num_rows + 1) * sizeof(int));
+    cudaError_t err =
+        cudaMalloc(reinterpret_cast<void**>(&new_d_row_ptrs), (mat->num_rows + 1) * sizeof(int));
     if (err != cudaSuccess) {
         cleanup_partial_allocations();
         return static_cast<int>(SpMVError::CUDA_MALLOC);
     }
 
     if (mat->nnz > 0) {
-        err = cudaMemcpy(new_d_values, mat->values,
-                         mat->nnz * sizeof(float), cudaMemcpyHostToDevice);
+        err =
+            cudaMemcpy(new_d_values, mat->values, mat->nnz * sizeof(float), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
         }
 
-        err = cudaMemcpy(new_d_col_indices, mat->col_indices,
-                         mat->nnz * sizeof(int), cudaMemcpyHostToDevice);
+        err = cudaMemcpy(new_d_col_indices, mat->col_indices, mat->nnz * sizeof(int),
+                         cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
         }
     }
 
-    err = cudaMemcpy(new_d_row_ptrs, mat->row_ptrs,
-                     (mat->num_rows + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(new_d_row_ptrs, mat->row_ptrs, (mat->num_rows + 1) * sizeof(int),
+                     cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
         cleanup_partial_allocations();
         return static_cast<int>(SpMVError::CUDA_MEMCPY);
@@ -227,19 +238,20 @@ int csr_from_gpu(CSRMatrix* mat) {
     }
 
     if (mat->nnz > 0 && mat->d_values && mat->d_col_indices) {
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values,
-                              mat->nnz * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices,
-                              mat->nnz * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values, mat->nnz * sizeof(float),
+                                     cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, mat->nnz * sizeof(int),
+                                     cudaMemcpyDeviceToHost));
     }
-    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->row_ptrs, mat->d_row_ptrs,
-                          (mat->num_rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->row_ptrs, mat->d_row_ptrs, (mat->num_rows + 1) * sizeof(int),
+                                 cudaMemcpyDeviceToHost));
 
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
 void csr_free_gpu(CSRMatrix* mat) {
-    if (!mat) return;
+    if (!mat)
+        return;
 
     if (mat->d_values) {
         cudaFree(mat->d_values);
@@ -359,4 +371,4 @@ CSRStats csr_compute_stats(const CSRMatrix* mat) {
     return stats;
 }
 
-} // namespace spmv
+}  // namespace spmv

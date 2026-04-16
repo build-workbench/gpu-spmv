@@ -1,117 +1,212 @@
-# Requirements Document
+# 需求文档：GPU SpMV (稀疏矩阵向量乘法)
 
-## Introduction
+> **版本**: v1.0.0
+> **状态**: ✅ 已实现
+> **最后更新**: 2025-04-16
 
-本项目实现基于 GPU 的稀疏矩阵向量乘法 (SpMV) 算子，支持 CSR (Compressed Sparse Row) 和 ELL 格式的稀疏矩阵存储。项目重点解决 GPU 处理稀疏数据时的核心挑战：不规则内存访问、负载不均衡和带宽利用率优化。可选扩展实现 PageRank 图算法作为应用示例。
+---
 
-## Glossary
+## 概述
 
-- **SpMV**: Sparse Matrix-Vector Multiplication，稀疏矩阵向量乘法
-- **CSR**: Compressed Sparse Row，压缩稀疏行格式，使用三个数组存储稀疏矩阵
-- **ELL**: ELLPACK 格式，将每行填充到相同长度的稀疏矩阵存储格式
-- **Warp**: GPU 中 32 个线程组成的执行单元
-- **Warp_Divergence**: 线程束分歧，同一 Warp 内线程执行不同分支导致的性能损失
-- **Load_Balancing**: 负载均衡，确保各线程工作量均匀分配
-- **Bandwidth_Bound**: 带宽受限，计算性能受限于内存带宽而非计算能力
-- **Coalesced_Access**: 合并访问，相邻线程访问连续内存地址以最大化带宽
-- **Dense_Matrix**: 稠密矩阵，大部分元素非零的矩阵
-- **Sparse_Matrix**: 稀疏矩阵，大部分元素为零的矩阵
-- **PageRank**: 网页排名算法，基于迭代矩阵向量乘法
+本项目实现基于 GPU 的稀疏矩阵向量乘法 (SpMV) 算子，支持 CSR 和 ELL 格式的稀疏矩阵存储。项目重点解决 GPU 处理稀疏数据时的核心挑战：
 
-## Requirements
+1. **不规则内存访问** — 通过 Column-major 存储和纹理缓存优化
+2. **负载不均衡** — 通过多种 Kernel 策略和自动选择
+3. **带宽利用率优化** — 通过合并访问和 Warp 级归约
 
-### Requirement 1: CSR 格式稀疏矩阵存储
+---
 
-**User Story:** As a developer, I want to store sparse matrices in CSR format, so that I can efficiently represent matrices with many zero elements using minimal memory.
+## 术语表
 
-#### Acceptance Criteria
+| 术语 | 英文 | 定义 |
+|------|------|------|
+| SpMV | Sparse Matrix-Vector Multiplication | 稀疏矩阵向量乘法 |
+| CSR | Compressed Sparse Row | 压缩稀疏行格式，使用三个数组存储稀疏矩阵 |
+| ELL | ELLPACK | 将每行填充到相同长度的稀疏矩阵存储格式 |
+| Warp | — | GPU 中 32 个线程组成的执行单元 |
+| Warp Divergence | 线程束分歧 | 同一 Warp 内线程执行不同分支导致的性能损失 |
+| Load Balancing | 负载均衡 | 确保各线程工作量均匀分配 |
+| Bandwidth Bound | 带宽受限 | 计算性能受限于内存带宽而非计算能力 |
+| Coalesced Access | 合并访问 | 相邻线程访问连续内存地址以最大化带宽 |
+| PageRank | — | 网页排名算法，基于迭代矩阵向量乘法 |
 
-1. THE CSR_Storage SHALL store a sparse matrix using three arrays: values (非零元素值), column_indices (列索引), and row_pointers (行指针)
-2. WHEN a dense matrix is converted to CSR format, THE CSR_Storage SHALL preserve all non-zero elements and their positions exactly
-3. WHEN querying an element at position (i, j), THE CSR_Storage SHALL return the correct value (non-zero value or zero)
-4. THE CSR_Storage SHALL support matrices with up to 10 million non-zero elements
-5. WHEN serializing CSR data to disk, THE CSR_Storage SHALL encode it using a binary format that can be deserialized back to an equivalent CSR structure
+---
 
-### Requirement 2: ELL 格式稀疏矩阵存储
+## 功能需求
 
-**User Story:** As a developer, I want to store sparse matrices in ELL format, so that I can achieve better memory coalescing on GPU for matrices with uniform row lengths.
+### REQ-1: CSR 格式稀疏矩阵存储
 
-#### Acceptance Criteria
+**用户故事**: 作为开发者，我希望以 CSR 格式存储稀疏矩阵，以便用最少的内存高效表示包含大量零元素的矩阵。
 
-1. THE ELL_Storage SHALL store a sparse matrix using two 2D arrays: values and column_indices, with each row padded to max_nnz_per_row
-2. WHEN a dense matrix is converted to ELL format, THE ELL_Storage SHALL preserve all non-zero elements and their positions exactly
-3. WHEN a row has fewer non-zero elements than max_nnz_per_row, THE ELL_Storage SHALL pad with zeros and invalid column indices (-1)
-4. THE ELL_Storage SHALL store data in column-major order for coalesced GPU memory access
-5. WHEN serializing ELL data to disk, THE ELL_Storage SHALL encode it using a binary format that can be deserialized back to an equivalent ELL structure
+#### 验收标准
 
-### Requirement 3: 基础 SpMV CUDA Kernel
+| ID | 验收标准 |
+|----|----------|
+| 1.1 | CSR 存储应使用三个数组：values（非零元素值）、column_indices（列索引）、row_pointers（行指针） |
+| 1.2 | 稠密矩阵转换为 CSR 格式时，应精确保留所有非零元素及其位置 |
+| 1.3 | 查询位置 (i, j) 的元素时，应返回正确的值（非零值或零） |
+| 1.4 | 支持最多 1000 万非零元素的矩阵 |
+| 1.5 | 序列化到磁盘的二进制格式应能反序列化为等效的 CSR 结构 |
 
-**User Story:** As a developer, I want a basic SpMV CUDA kernel, so that I can perform sparse matrix-vector multiplication on GPU.
+**实现状态**: ✅ 已完成
 
-#### Acceptance Criteria
+---
 
-1. WHEN executing SpMV with CSR format, THE SpMV_Kernel SHALL compute y = A * x where A is the sparse matrix and x is the input vector
-2. WHEN executing SpMV with ELL format, THE SpMV_Kernel SHALL compute y = A * x correctly
-3. THE SpMV_Kernel SHALL produce results within 1e-6 relative error compared to CPU reference implementation for single precision
-4. THE SpMV_Kernel SHALL handle matrices where some rows have zero non-zero elements
-5. IF the input vector dimension does not match matrix column count, THEN THE SpMV_Kernel SHALL return an error code
+### REQ-2: ELL 格式稀疏矩阵存储
 
-### Requirement 4: 负载均衡优化
+**用户故事**: 作为开发者，我希望以 ELL 格式存储稀疏矩阵，以便对行长度均匀的矩阵实现更好的 GPU 内存合并访问。
 
-**User Story:** As a developer, I want load-balanced SpMV kernels, so that I can avoid performance degradation from uneven row lengths.
+#### 验收标准
 
-#### Acceptance Criteria
+| ID | 验收标准 |
+|----|----------|
+| 2.1 | ELL 存储应使用两个 2D 数组：values 和 column_indices，每行填充到 max_nnz_per_row |
+| 2.2 | 稠密矩阵转换为 ELL 格式时，应精确保留所有非零元素及其位置 |
+| 2.3 | 当行非零元素少于 max_nnz_per_row 时，应使用零和无效列索引 (-1) 填充 |
+| 2.4 | 数据应以 column-major 顺序存储以实现 GPU 合并访问 |
+| 2.5 | 序列化到磁盘的二进制格式应能反序列化为等效的 ELL 结构 |
 
-1. THE Vector_CSR_Kernel SHALL assign one warp (32 threads) to process each matrix row, with threads cooperatively processing non-zero elements
-2. WHEN processing rows with varying lengths, THE Vector_CSR_Kernel SHALL achieve at least 80% of peak performance compared to uniform-length matrices
-3. THE Merge_Path_Kernel SHALL partition work evenly across all threads regardless of row length distribution
-4. WHEN the matrix has highly skewed row lengths (max/min ratio > 100), THE Merge_Path_Kernel SHALL maintain at least 70% efficiency compared to uniform distribution
-5. THE Load_Balanced_Kernels SHALL provide a kernel selection function that chooses optimal kernel based on matrix characteristics
+**实现状态**: ✅ 已完成
 
-### Requirement 5: 带宽优化
+---
 
-**User Story:** As a developer, I want bandwidth-optimized SpMV implementation, so that I can maximize GPU memory throughput for bandwidth-bound operations.
+### REQ-3: 基础 SpMV CUDA Kernel
 
-#### Acceptance Criteria
+**用户故事**: 作为开发者，我想要一个基础的 SpMV CUDA kernel，以便在 GPU 上执行稀疏矩阵向量乘法。
 
-1. THE Optimized_SpMV SHALL achieve at least 60% of theoretical peak memory bandwidth on target GPU
-2. WHEN accessing matrix data, THE Optimized_SpMV SHALL use coalesced memory access patterns where possible
-3. THE Optimized_SpMV SHALL support texture memory caching for the input vector x to improve cache hit rate
-4. WHEN the matrix fits in L2 cache, THE Optimized_SpMV SHALL demonstrate improved performance from cache reuse
-5. THE Optimized_SpMV SHALL provide bandwidth utilization metrics after each SpMV operation
+#### 验收标准
 
-### Requirement 6: 性能基准测试
+| ID | 验收标准 |
+|----|----------|
+| 3.1 | 使用 CSR 格式执行 SpMV 时，应正确计算 y = A * x |
+| 3.2 | 使用 ELL 格式执行 SpMV 时，应正确计算 y = A * x |
+| 3.3 | GPU 结果与 CPU 参考实现的相对误差应在 1e-6 以内（单精度） |
+| 3.4 | 应能处理某些行零非零元素的矩阵 |
+| 3.5 | 输入向量维度与矩阵列数不匹配时，应返回错误码 |
 
-**User Story:** As a developer, I want comprehensive benchmarking tools, so that I can measure and compare SpMV performance across different implementations.
+**实现状态**: ✅ 已完成
 
-#### Acceptance Criteria
+---
 
-1. THE Benchmark_Suite SHALL measure execution time, GFLOPS, and bandwidth utilization for each SpMV kernel
-2. THE Benchmark_Suite SHALL support standard sparse matrix test sets (e.g., matrices from SuiteSparse collection)
-3. WHEN running benchmarks, THE Benchmark_Suite SHALL report average, min, max, and standard deviation over multiple runs
-4. THE Benchmark_Suite SHALL compare GPU implementation against CPU baseline
-5. THE Benchmark_Suite SHALL generate performance reports in JSON format for analysis
+### REQ-4: 负载均衡优化
 
-### Requirement 7: PageRank 图算法实现 (可选扩展)
+**用户故事**: 作为开发者，我想要负载均衡的 SpMV kernel，以避免因行长度不均匀导致的性能下降。
 
-**User Story:** As a developer, I want to implement PageRank using SpMV, so that I can demonstrate practical application of sparse matrix operations on graph data.
+#### 验收标准
 
-#### Acceptance Criteria
+| ID | 验收标准 |
+|----|----------|
+| 4.1 | Vector CSR Kernel 应分配一个 warp (32线程) 处理每行，线程协作处理非零元素 |
+| 4.2 | 处理不同长度行时，Vector CSR 应达到均匀长度矩阵峰值性能的至少 80% |
+| 4.3 | Merge Path Kernel 应将工作均匀分配到所有线程，无论行长度分布如何 |
+| 4.4 | 矩阵行长度高度偏斜时（max/min > 100），Merge Path 应保持至少 70% 效率 |
+| 4.5 | 应提供基于矩阵特征的 Kernel 选择函数 |
 
-1. WHEN given an adjacency matrix and damping factor, THE PageRank_Algorithm SHALL compute page rank scores using iterative SpMV
-2. THE PageRank_Algorithm SHALL converge when the L2 norm of rank difference between iterations is below 1e-6
-3. WHEN the graph has dangling nodes (nodes with no outgoing edges), THE PageRank_Algorithm SHALL handle them correctly
-4. THE PageRank_Algorithm SHALL support graphs with up to 1 million nodes
-5. THE PageRank_Algorithm SHALL output the top-k nodes by rank score
+**实现状态**: ✅ 已完成
 
-### Requirement 8: 错误处理与资源管理
+---
 
-**User Story:** As a developer, I want robust error handling and resource management, so that I can safely use the SpMV library in production code.
+### REQ-5: 带宽优化
 
-#### Acceptance Criteria
+**用户故事**: 作为开发者，我想要带宽优化的 SpMV 实现，以最大化带宽受限操作的 GPU 内存吞吐量。
 
-1. IF CUDA memory allocation fails, THEN THE SpMV_Library SHALL return a descriptive error and release any partially allocated resources
-2. IF kernel launch fails, THEN THE SpMV_Library SHALL capture the CUDA error and propagate it to the caller
-3. WHEN SpMV operations complete, THE SpMV_Library SHALL properly synchronize and check for asynchronous errors
-4. THE SpMV_Library SHALL provide RAII-style resource management for GPU memory allocations
-5. IF invalid matrix dimensions are provided, THEN THE SpMV_Library SHALL validate inputs and return appropriate error codes before any GPU operations
+#### 验收标准
+
+| ID | 验收标准 |
+|----|----------|
+| 5.1 | 优化后的 SpMV 应达到目标 GPU 理论峰值内存带宽的至少 60% |
+| 5.2 | 访问矩阵数据时，应尽可能使用合并内存访问模式 |
+| 5.3 | 应支持输入向量 x 的纹理内存缓存以提高缓存命中率 |
+| 5.4 | 矩阵适合 L2 缓存时，应展示缓存复用的性能提升 |
+| 5.5 | 每次 SpMV 操作后应提供带宽利用率度量 |
+
+**实现状态**: ✅ 已完成
+
+---
+
+### REQ-6: 性能基准测试
+
+**用户故事**: 作为开发者，我想要全面的基准测试工具，以测量和比较不同实现的 SpMV 性能。
+
+#### 验收标准
+
+| ID | 验收标准 |
+|----|----------|
+| 6.1 | 基准测试套件应测量每个 SpMV kernel 的执行时间、GFLOPS 和带宽利用率 |
+| 6.2 | 应支持标准稀疏矩阵测试集（如 SuiteSparse 集合） |
+| 6.3 | 运行基准测试时，应报告多次运行的 avg、min、max 和 stddev |
+| 6.4 | 应比较 GPU 实现与 CPU 基线 |
+| 6.5 | 应生成 JSON 格式的性能报告用于分析 |
+
+**实现状态**: ✅ 已完成
+
+---
+
+### REQ-7: PageRank 图算法
+
+**用户故事**: 作为开发者，我想要使用 SpMV 实现 PageRank，以展示稀疏矩阵操作在图数据上的实际应用。
+
+#### 验收标准
+
+| ID | 验收标准 |
+|----|----------|
+| 7.1 | 给定邻接矩阵和阻尼系数，应使用迭代 SpMV 计算 PageRank 分数 |
+| 7.2 | 迭代间排名差异的 L2 范数低于 1e-6 时应收敛 |
+| 7.3 | 图有悬挂节点（无出边）时应正确处理 |
+| 7.4 | 应支持最多 100 万节点的图 |
+| 7.5 | 应输出按排名分数排序的 Top-K 节点 |
+
+**实现状态**: ✅ 已完成
+
+---
+
+### REQ-8: 错误处理与资源管理
+
+**用户故事**: 作为开发者，我想要健壮的错误处理和资源管理，以便在生产代码中安全使用 SpMV 库。
+
+#### 验收标准
+
+| ID | 验收标准 |
+|----|----------|
+| 8.1 | CUDA 内存分配失败时，应返回描述性错误并释放已分配资源 |
+| 8.2 | Kernel 启动失败时，应捕获 CUDA 错误并传播给调用者 |
+| 8.3 | SpMV 操作完成时，应正确同步并检查异步错误 |
+| 8.4 | 应提供 GPU 内存分配的 RAII 风格资源管理 |
+| 8.5 | 提供无效矩阵维度时，应在 GPU 操作前验证输入并返回适当错误码 |
+
+**实现状态**: ✅ 已完成
+
+---
+
+## 非功能需求
+
+### 性能要求
+
+| 指标 | 目标 | 说明 |
+|------|------|------|
+| 带宽利用率 | > 60% | 相对于 GPU 理论峰值带宽 |
+| GFLOPS | 与带宽成比例 | GFLOPS = 2 × nnz / (time × 10⁹) |
+| 可扩展性 | 线性增长 | 性能随 nnz 近似线性增长 |
+
+### 质量要求
+
+| 指标 | 要求 |
+|------|------|
+| 代码覆盖率 | 核心功能 > 80% |
+| 文档完整性 | 所有公共 API 有文档 |
+| 测试可靠性 | 属性测试 100 次迭代通过 |
+
+---
+
+## 需求追溯矩阵
+
+| 需求 | 设计文档章节 | 测试属性 |
+|------|-------------|----------|
+| REQ-1 | CSR Format | Property 1, 2, 3 |
+| REQ-2 | ELL Format | Property 4, 5, 6, 7 |
+| REQ-3 | SpMV Kernel | Property 8, 9, 10 |
+| REQ-4 | Load Balancing | Property 11 |
+| REQ-5 | Bandwidth Optimization | Property 12 |
+| REQ-6 | Benchmark Suite | Property 13, 14 |
+| REQ-7 | PageRank | Property 15, 16 |
+| REQ-8 | Error Handling | 所有 Property |

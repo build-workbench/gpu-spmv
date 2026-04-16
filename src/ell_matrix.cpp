@@ -1,7 +1,8 @@
 #include "spmv/ell_matrix.h"
+
+#include <algorithm>
 #include <cstring>
 #include <fstream>
-#include <algorithm>
 
 namespace spmv {
 
@@ -37,7 +38,8 @@ ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
 }
 
 void ell_destroy(ELLMatrix* mat) {
-    if (!mat) return;
+    if (!mat)
+        return;
 
     if (mat->owns_host_memory) {
         delete[] mat->values;
@@ -53,6 +55,11 @@ void ell_destroy(ELLMatrix* mat) {
 
 int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
     if (!ell || !dense || rows <= 0 || cols <= 0) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    // Check for potential overflow in size calculation
+    if (rows > INT_MAX / cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
@@ -173,9 +180,14 @@ int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr) {
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-
 int ell_to_dense(const ELLMatrix* ell, float* dense) {
     if (!ell || !dense) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    // Check for potential overflow in size calculation
+    size_t total_size = static_cast<size_t>(ell->num_rows) * static_cast<size_t>(ell->num_cols);
+    if (total_size > static_cast<size_t>(INT_MAX)) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
@@ -239,29 +251,26 @@ int ell_to_gpu(ELLMatrix* mat) {
     };
 
     if (size > 0) {
-        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values),
-                                     size * sizeof(float));
+        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values), size * sizeof(float));
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
 
-        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices),
-                         size * sizeof(int));
+        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices), size * sizeof(int));
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
 
-        err = cudaMemcpy(new_d_values, mat->values,
-                         size * sizeof(float), cudaMemcpyHostToDevice);
+        err = cudaMemcpy(new_d_values, mat->values, size * sizeof(float), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
         }
 
-        err = cudaMemcpy(new_d_col_indices, mat->col_indices,
-                         size * sizeof(int), cudaMemcpyHostToDevice);
+        err = cudaMemcpy(new_d_col_indices, mat->col_indices, size * sizeof(int),
+                         cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             cleanup_partial_allocations();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
@@ -282,17 +291,18 @@ int ell_from_gpu(ELLMatrix* mat) {
 
     size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
     if (size > 0 && mat->d_values && mat->d_col_indices) {
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values,
-                              size * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices,
-                              size * sizeof(int), cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(
+            cudaMemcpy(mat->values, mat->d_values, size * sizeof(float), cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, size * sizeof(int),
+                                     cudaMemcpyDeviceToHost));
     }
 
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
 void ell_free_gpu(ELLMatrix* mat) {
-    if (!mat) return;
+    if (!mat)
+        return;
 
     if (mat->d_values) {
         cudaFree(mat->d_values);
@@ -380,11 +390,12 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     // 统计实际非零元素数
     int total_nnz = 0;
     for (size_t i = 0; i < size; i++) {
-        if (mat->col_indices[i] >= 0) total_nnz++;
+        if (mat->col_indices[i] >= 0)
+            total_nnz++;
     }
     mat->nnz = total_nnz;
 
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-} // namespace spmv
+}  // namespace spmv

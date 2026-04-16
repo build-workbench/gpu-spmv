@@ -1,15 +1,16 @@
-#include <gtest/gtest.h>
-#include "spmv/ell_matrix.h"
 #include "spmv/csr_matrix.h"
+#include "spmv/ell_matrix.h"
 #include "spmv/test_utils.h"
+
 #include <cstdio>
+#include <gtest/gtest.h>
 #include <vector>
 
 using namespace spmv;
 using namespace spmv::test;
 
 class ELLPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
 };
@@ -34,9 +35,8 @@ TEST_F(ELLPropertyTest, DenseToSparseRoundTrip) {
         result = ell_to_dense(ell, dense_reconstructed.data());
         ASSERT_EQ(result, static_cast<int>(SpMVError::SUCCESS));
 
-        EXPECT_TRUE(floatArraysEqual(dense_original.data(),
-                                     dense_reconstructed.data(),
-                                     rows * cols))
+        EXPECT_TRUE(
+            floatArraysEqual(dense_original.data(), dense_reconstructed.data(), rows * cols))
             << "Round trip failed at iteration " << iter;
 
         ell_destroy(ell);
@@ -62,7 +62,8 @@ TEST_F(ELLPropertyTest, PaddingCorrectness) {
             // 计算该行实际非零元素数
             int actual_nnz = 0;
             for (int j = 0; j < cols; j++) {
-                if (dense[i * cols + j] != 0.0f) actual_nnz++;
+                if (dense[i * cols + j] != 0.0f)
+                    actual_nnz++;
             }
 
             // 验证填充位置
@@ -137,10 +138,8 @@ TEST_F(ELLPropertyTest, SerializationRoundTrip) {
 
         size_t size = static_cast<size_t>(ell_original->num_rows) * ell_original->max_nnz_per_row;
         if (size > 0) {
-            EXPECT_TRUE(floatArraysEqual(ell_original->values,
-                                         ell_loaded->values, size));
-            EXPECT_TRUE(intArraysEqual(ell_original->col_indices,
-                                       ell_loaded->col_indices, size));
+            EXPECT_TRUE(floatArraysEqual(ell_original->values, ell_loaded->values, size));
+            EXPECT_TRUE(intArraysEqual(ell_original->col_indices, ell_loaded->col_indices, size));
         }
 
         ell_destroy(ell_original);
@@ -201,16 +200,8 @@ TEST(ELLUnitTest, GPUTransfer) {
 }
 
 TEST(ELLUnitTest, HostMutationInvalidatesDeviceMirror) {
-    std::vector<float> dense_a = {
-        1, 0, 0,
-        0, 2, 0,
-        0, 0, 3
-    };
-    std::vector<float> dense_b = {
-        4, 5, 0,
-        0, 0, 6,
-        7, 0, 0
-    };
+    std::vector<float> dense_a = {1, 0, 0, 0, 2, 0, 0, 0, 3};
+    std::vector<float> dense_b = {4, 5, 0, 0, 0, 6, 7, 0, 0};
 
     ELLMatrix* ell = ell_create(0, 0, 0);
     ASSERT_EQ(ell_from_dense(ell, dense_a.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));

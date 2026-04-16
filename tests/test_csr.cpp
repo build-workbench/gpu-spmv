@@ -1,14 +1,15 @@
-#include <gtest/gtest.h>
 #include "spmv/csr_matrix.h"
 #include "spmv/test_utils.h"
+
 #include <cstdio>
+#include <gtest/gtest.h>
 #include <vector>
 
 using namespace spmv;
 using namespace spmv::test;
 
 class CSRPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
 };
@@ -33,9 +34,8 @@ TEST_F(CSRPropertyTest, DenseToSparseRoundTrip) {
         result = csr_to_dense(csr, dense_reconstructed.data());
         ASSERT_EQ(result, static_cast<int>(SpMVError::SUCCESS));
 
-        EXPECT_TRUE(floatArraysEqual(dense_original.data(),
-                                     dense_reconstructed.data(),
-                                     rows * cols))
+        EXPECT_TRUE(
+            floatArraysEqual(dense_original.data(), dense_reconstructed.data(), rows * cols))
             << "Round trip failed at iteration " << iter;
 
         csr_destroy(csr);
@@ -67,8 +67,7 @@ TEST_F(CSRPropertyTest, ElementLookupCorrectness) {
             float actual = csr_get_element(csr, r, c);
 
             EXPECT_FLOAT_EQ(expected, actual)
-                << "Element lookup failed at (" << r << ", " << c << ") "
-                << "iteration " << iter;
+                << "Element lookup failed at (" << r << ", " << c << ") " << "iteration " << iter;
         }
 
         csr_destroy(csr);
@@ -109,15 +108,12 @@ TEST_F(CSRPropertyTest, SerializationRoundTrip) {
         EXPECT_EQ(csr_original->nnz, csr_loaded->nnz);
 
         if (csr_original->nnz > 0) {
-            EXPECT_TRUE(floatArraysEqual(csr_original->values,
-                                         csr_loaded->values,
-                                         csr_original->nnz));
-            EXPECT_TRUE(intArraysEqual(csr_original->col_indices,
-                                       csr_loaded->col_indices,
+            EXPECT_TRUE(
+                floatArraysEqual(csr_original->values, csr_loaded->values, csr_original->nnz));
+            EXPECT_TRUE(intArraysEqual(csr_original->col_indices, csr_loaded->col_indices,
                                        csr_original->nnz));
         }
-        EXPECT_TRUE(intArraysEqual(csr_original->row_ptrs,
-                                   csr_loaded->row_ptrs,
+        EXPECT_TRUE(intArraysEqual(csr_original->row_ptrs, csr_loaded->row_ptrs,
                                    csr_original->num_rows + 1));
 
         csr_destroy(csr_original);
@@ -201,16 +197,8 @@ TEST(CSRUnitTest, GPUTransfer) {
 }
 
 TEST(CSRUnitTest, HostMutationInvalidatesDeviceMirror) {
-    std::vector<float> dense_a = {
-        1, 0, 0,
-        0, 2, 0,
-        0, 0, 3
-    };
-    std::vector<float> dense_b = {
-        4, 5, 0,
-        0, 0, 6,
-        7, 0, 0
-    };
+    std::vector<float> dense_a = {1, 0, 0, 0, 2, 0, 0, 0, 3};
+    std::vector<float> dense_b = {4, 5, 0, 0, 0, 6, 7, 0, 0};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
     ASSERT_EQ(csr_from_dense(csr, dense_a.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));

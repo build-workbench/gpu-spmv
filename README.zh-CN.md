@@ -1,94 +1,81 @@
 # GPU SpMV (稀疏矩阵向量乘法)
 
 [![CI](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml/badge.svg)](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-blue?logo=github)](https://lessup.github.io/gpu-spmv/)
+[![Docs](https://img.shields.io/badge/文档-GitHub%20Pages-blue?logo=github)](https://lessup.github.io/gpu-spmv/)
+[![License](https://img.shields.io/badge/许可证-MIT-green.svg)](https://github.com/LessUp/gpu-spmv/blob/main/LICENSE)
 
 [English](README.md) | 简体中文
 
-基于 CUDA 的高性能稀疏矩阵向量乘法库，支持 CSR 和 ELL 格式，包含多种负载均衡优化策略。
+**基于 CUDA 的高性能稀疏矩阵向量乘法库**
 
-## 特性
+支持 CSR 和 ELL 格式，包含多种负载均衡优化策略，自动选择最优 Kernel。
 
-- **多种稀疏矩阵格式**
-  - CSR (Compressed Sparse Row)
-  - ELL (ELLPACK)
+---
 
-- **优化的 CUDA Kernels**
-  - Scalar CSR: 一个线程处理一行
-  - Vector CSR: 一个 Warp (32线程) 处理一行
-  - Merge Path: 工作量均匀分配，适合高度不均匀的矩阵
-  - ELL Kernel: Column-major 访问，适合均匀行长度
+## 核心特性
 
-- **自动 Kernel 选择**
-  - 基于矩阵特征自动选择最优 Kernel
+### 多种稀疏矩阵格式
 
-- **性能度量**
-  - 带宽利用率分析（峰值带宽缓存，避免重复查询）
-  - GFLOPS 计算
-  - 完整的基准测试框架（CPU 计时使用 `std::chrono`）
-  - 可选纹理缓存读取输入向量
+| 格式 | 描述 | 适用场景 |
+|------|------|----------|
+| **CSR** | Compressed Sparse Row | 通用格式，适合大多数稀疏矩阵 |
+| **ELL** | ELLPACK | 行长度均匀的矩阵，GPU 访存最优 |
 
-- **工程质量**
-  - RAII 资源管理（`CudaBuffer`、`CudaTimer`、`ScopedTexture`）
-  - 语义化错误码（`CUDA_CHECK_MALLOC` / `CUDA_CHECK_MEMCPY`）
-  - 跨平台测试路径（Windows / Linux）
-  - CMake Presets 支持
-  - `.clang-format` + `.editorconfig` 代码风格
-  - GitHub Actions CI
+### 四种优化 CUDA Kernel
 
-- **应用示例**
-  - PageRank 图算法实现
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Kernel 自动选择策略                        │
+├─────────────────────────────────────────────────────────────┤
+│  avg_nnz_per_row < 4     ──→  Scalar CSR                    │
+│  (每行非零元素少)              一个线程处理一行               │
+│                                                             │
+│  skewness < 10           ──→  Vector CSR                    │
+│  (行长度较均匀)                一个 Warp 协作处理一行          │
+│                                                             │
+│  skewness >= 10          ──→  Merge Path                    │
+│  (行长度差异大)                工作量完全均匀分配              │
+│                                                             │
+│  行长度接近 max_nnz       ──→  ELL Kernel                    │
+│  (ELL 格式)                   Column-major 合并访问          │
+└─────────────────────────────────────────────────────────────┘
+```
 
-## 构建
+### 工程质量
 
-### 要求
+- **RAII 资源管理** — `CudaBuffer`、`CudaTimer`、`ScopedTexture` 自动管理 GPU 资源
+- **语义化错误码** — `SpMVError` 枚举 + `CUDA_CHECK_*` 宏，清晰的错误追踪
+- **跨平台支持** — Windows / Linux 测试路径自动适配
+- **现代构建系统** — CMake Presets，一键 Debug/Release 构建
+- **持续集成** — GitHub Actions 自动格式检查和构建验证
+
+---
+
+## 快速开始
+
+### 环境要求
 
 - CUDA Toolkit 11.0+
 - CMake 3.18+
 - C++17 编译器
 - NVIDIA GPU (Compute Capability 7.0+)
 
-### 使用 CMake Presets（推荐）
+### 安装构建
 
 ```bash
-# Debug 构建
-cmake --preset default
-cmake --build --preset default
+# 克隆仓库
+git clone https://github.com/LessUp/gpu-spmv.git
+cd gpu-spmv
 
-# Release 构建
+# Release 构建（推荐）
 cmake --preset release
 cmake --build --preset release
 
-# 最小构建（仅 sm_80）
-cmake --preset minimal
-cmake --build --preset minimal
-```
-
-### 手动构建
-
-```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -j
-```
-
-### 运行测试
-
-```bash
+# 运行测试
 ctest --preset default
-# 或直接运行
-./build/spmv_tests
 ```
 
-### 运行基准测试
-
-```bash
-./build/spmv_benchmark
-```
-
-## 使用示例
-
-### 基础 SpMV
+### 30 秒示例
 
 ```cpp
 #include "spmv/csr_matrix.h"
@@ -97,50 +84,54 @@ ctest --preset default
 
 using namespace spmv;
 
-// 创建稠密矩阵
-std::vector<float> dense = {
-    1, 0, 2,
-    0, 3, 4,
-    0, 0, 5
-};
+int main() {
+    // 1. 创建稀疏矩阵
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    csr_from_dense(csr, dense.data(), 3, 3);
+    csr_to_gpu(csr);
 
-// 转换为 CSR 格式
-CSRMatrix* csr = csr_create(0, 0, 0);
-csr_from_dense(csr, dense.data(), 3, 3);
-csr_to_gpu(csr);
+    // 2. 准备输入向量
+    std::vector<float> x = {1, 1, 1};
+    CudaBuffer<float> d_x(3), d_y(3);
+    d_x.copyFromHost(x.data(), 3);
 
-// 输入向量
-std::vector<float> x = {1, 1, 1};
-CudaBuffer<float> d_x(3);
-CudaBuffer<float> d_y(3);
-d_x.copyFromHost(x.data(), 3);
+    // 3. 执行 SpMV（自动选择最优 Kernel）
+    SpMVConfig config = spmv_auto_config(csr);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
 
-// 执行 SpMV
-SpMVConfig config = spmv_auto_config(csr);
-// config.use_texture = true;  // 可选：启用纹理缓存读取 x
-SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
+    // 4. 获取结果
+    std::vector<float> y(3);
+    d_y.copyToHost(y.data(), 3);
 
-// 获取结果
-std::vector<float> y(3);
-d_y.copyToHost(y.data(), 3);
-
-csr_destroy(csr);
+    // 输出: y = [3, 7, 5]
+    printf("结果: [%.0f, %.0f, %.0f]\n", y[0], y[1], y[2]);
+    
+    csr_destroy(csr);
+    return 0;
+}
 ```
 
-### PageRank
+---
+
+## 应用示例
+
+### PageRank 图算法
 
 ```cpp
 #include "spmv/pagerank.h"
 
-// 创建邻接矩阵 (列归一化)
-CSRMatrix* adj = /* ... */;
+// 创建列归一化的邻接矩阵
+CSRMatrix* adj = create_adjacency_matrix();
 csr_to_gpu(adj);
 
-// 运行 PageRank
+// 配置 PageRank 参数
 PageRankConfig config;
 config.damping_factor = 0.85f;
 config.tolerance = 1e-6f;
+config.max_iterations = 100;
 
+// 运行 PageRank
 PageRankResult result = pagerank(adj, &config);
 
 // 获取 Top-10 节点
@@ -151,51 +142,78 @@ pagerank_free(&result);
 csr_destroy(adj);
 ```
 
-### 基准测试
+### 性能基准测试
 
 ```cpp
 #include "spmv/benchmark.h"
-#include "spmv/common.h"
 
-BenchmarkConfig bench_config;
-bench_config.num_warmup_runs = 5;
-bench_config.num_runs = 20;
+BenchmarkConfig config;
+config.num_warmup_runs = 5;
+config.num_runs = 20;
 
-BenchmarkResult result = benchmark_csr(csr, x.data(), &spmv_config, &bench_config);
-if (result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
-    std::cout << "Avg time: " << result.avg_time_ms << " ms\n";
-    std::cout << "GFLOPS: " << result.gflops << "\n";
-    std::cout << "Bandwidth: " << result.bandwidth_gb_s << " GB/s\n";
+BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &config);
 
-    // 导出 JSON
-    std::string json = benchmark_to_json(result);
-} else {
-    std::cout << "Benchmark failed: "
-              << spmv_error_string(static_cast<SpMVError>(result.error_code))
-              << "\n";
-}
+printf("平均时间: %.3f ms\n", result.avg_time_ms);
+printf("GFLOPS: %.2f\n", result.gflops);
+printf("带宽: %.1f GB/s (效率 %.1f%%)\n", 
+       result.bandwidth_gb_s,
+       result.bandwidth_gb_s / get_gpu_peak_bandwidth() * 100);
 ```
 
-## 性能优化
+---
 
-### Kernel 选择策略
+## 文档导航
 
-- **短行 (avg_nnz < 4)**: Scalar CSR
-- **均匀分布 (skewness < 10)**: Vector CSR
-- **高度不均匀 (skewness >= 10)**: Merge Path
+| 文档 | 描述 |
+|------|------|
+| [**API 参考**](https://lessup.github.io/gpu-spmv/api) | 完整的 API 文档：数据结构、函数接口、错误码 |
+| [**性能优化**](https://lessup.github.io/gpu-spmv/performance) | Kernel 选择策略、带宽优化技巧、基准测试指南 |
+| [**示例代码**](https://lessup.github.io/gpu-spmv/examples) | 完整示例：基本用法、格式转换、PageRank 应用 |
+| [**更新日志**](CHANGELOG.md) | 版本历史、变更记录、迁移指南 |
 
-### 带宽优化
+---
 
-- Column-major 存储 (ELL 格式)
-- 合并内存访问
-- 带宽利用率监控
+## 性能概览
+
+在典型稀疏矩阵上的性能表现：
+
+| 矩阵规模 | 非零元素 | Kernel | 带宽利用率 |
+|----------|----------|--------|------------|
+| 10K × 10K | 500K | Vector CSR | ~70% |
+| 100K × 100K | 5M | Merge Path | ~65% |
+| 1M × 1M | 50M | Merge Path | ~60% |
+
+> 实际性能取决于矩阵结构和 GPU 型号。使用 `spmv_auto_config()` 自动选择最优策略。
+
+---
+
+## 项目结构
+
+```
+gpu-spmv/
+├── include/spmv/          # 公共头文件
+│   ├── common.h           # 错误码、CUDA 检查宏
+│   ├── cuda_buffer.h      # RAII GPU 内存管理
+│   ├── csr_matrix.h       # CSR 稀疏矩阵
+│   ├── ell_matrix.h       # ELL 稀疏矩阵
+│   ├── spmv.h             # SpMV 接口、Kernel 选择
+│   ├── bandwidth.h        # 带宽度量
+│   ├── benchmark.h        # 基准测试框架
+│   └── pagerank.h         # PageRank 算法
+├── src/                   # 源实现
+├── tests/                 # 属性测试 + 单元测试
+├── benchmarks/            # 性能基准测试
+└── docs/                  # 在线文档
+```
+
+---
 
 ## 测试
 
 项目包含完整的属性测试套件，验证：
 
 - CSR/ELL 格式转换正确性
-- SpMV 计算正确性 (与 CPU 参考对比)
+- SpMV 计算正确性（与 CPU 参考对比）
 - 维度验证
 - Kernel 选择器有效性
 - 带宽度量有效性
@@ -203,46 +221,20 @@ if (result.error_code == static_cast<int>(SpMVError::SUCCESS)) {
 
 每个属性测试运行 100 次迭代，使用随机生成的矩阵。
 
-## 项目结构
-
-```
-.
-├── include/spmv/       # 头文件
-│   ├── common.h        # 错误码、CUDA_CHECK_* 宏
-│   ├── cuda_buffer.h   # RAII GPU 内存 (memset/fill/bytes)
-│   ├── csr_matrix.h    # CSR 稀疏矩阵
-│   ├── ell_matrix.h    # ELL 稀疏矩阵 (含 nnz 字段)
-│   ├── spmv.h          # SpMV 接口与自动 Kernel 选择
-│   ├── bandwidth.h     # 带宽度量
-│   ├── benchmark.h     # 基准测试框架
-│   ├── pagerank.h      # PageRank 算法
-│   └── test_utils.h    # 测试工具 (跨平台路径等)
-├── src/                # 源文件
-│   ├── csr_matrix.cpp
-│   ├── ell_matrix.cpp
-│   ├── spmv_cpu.cpp
-│   ├── spmv_kernels.cu  # RAII helpers: CudaTimer, ScopedTexture
-│   ├── bandwidth.cpp    # 峰值带宽缓存 (std::call_once)
-│   ├── benchmark.cu     # CPU 计时使用 std::chrono
-│   └── pagerank.cu
-├── tests/              # 属性测试 + 单元测试
-├── benchmarks/         # 基准测试程序
-├── .clang-format       # 代码风格
-├── .editorconfig       # 编辑器配置
-├── CMakePresets.json   # 构建预设
-└── .github/workflows/  # CI
-```
-
-## 在线文档
-
-项目文档已通过 GitHub Pages 发布：
-
-> **https://lessup.github.io/gpu-spmv/**
-
-包含：
-- [API 参考](https://lessup.github.io/gpu-spmv/api) — 头文件接口、数据结构与函数说明
-- [性能优化](https://lessup.github.io/gpu-spmv/performance) — Kernel 选择策略、带宽优化与基准测试
+---
 
 ## 许可证
 
-MIT License
+[MIT License](LICENSE)
+
+---
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request

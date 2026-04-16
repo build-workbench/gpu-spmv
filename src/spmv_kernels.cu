@@ -1,6 +1,8 @@
-#include "spmv/spmv.h"
 #include "spmv/bandwidth.h"
+#include "spmv/spmv.h"
+
 #include <cuda_runtime.h>
+
 #include <chrono>
 
 namespace spmv {
@@ -42,9 +44,7 @@ struct CudaTimer {
 
     cudaError_t init_status() const { return status; }
 
-    cudaError_t record_start() {
-        return (status == cudaSuccess) ? cudaEventRecord(start) : status;
-    }
+    cudaError_t record_start() { return (status == cudaSuccess) ? cudaEventRecord(start) : status; }
 
     cudaError_t record_stop() {
         if (status != cudaSuccess) {
@@ -100,7 +100,8 @@ struct ScopedTexture {
     // Returns SpMVError code
     int create(const float* d_x, size_t count) {
         reset();
-        if (!d_x || count == 0) return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+        if (!d_x || count == 0)
+            return static_cast<int>(SpMVError::INVALID_ARGUMENT);
 
         cudaResourceDesc res_desc{};
         res_desc.resType = cudaResourceTypeLinear;
@@ -115,17 +116,15 @@ struct ScopedTexture {
         tex_desc.normalizedCoords = 0;
 
         cudaError_t err = cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr);
-        if (err != cudaSuccess) return static_cast<int>(SpMVError::CUDA_MALLOC);
+        if (err != cudaSuccess)
+            return static_cast<int>(SpMVError::CUDA_MALLOC);
         valid = true;
         return static_cast<int>(SpMVError::SUCCESS);
     }
 };
 
-static int prepare_texture_context(SpMVExecutionContext* context,
-                                   const float* d_x,
-                                   size_t x_length,
-                                   bool requested_texture,
-                                   cudaTextureObject_t* tex_out,
+static int prepare_texture_context(SpMVExecutionContext* context, const float* d_x, size_t x_length,
+                                   bool requested_texture, cudaTextureObject_t* tex_out,
                                    bool* use_texture_out) {
     if (!tex_out || !use_texture_out) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
@@ -178,10 +177,8 @@ static int prepare_texture_context(SpMVExecutionContext* context,
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-__device__ __forceinline__ float fetch_x(const float* x,
-                                         cudaTextureObject_t tex_x,
-                                         bool use_texture,
-                                         int idx) {
+__device__ __forceinline__ float fetch_x(const float* x, cudaTextureObject_t tex_x,
+                                         bool use_texture, int idx) {
     return use_texture ? tex1Dfetch<float>(tex_x, idx) : x[idx];
 }
 
@@ -192,12 +189,8 @@ struct MergeCoordinate {
 };
 
 // Merge Path 搜索
-__device__ MergeCoordinate merge_path_search(
-    int diagonal,
-    const int* row_ptrs,
-    int num_rows,
-    int nnz
-) {
+__device__ MergeCoordinate merge_path_search(int diagonal, const int* row_ptrs, int num_rows,
+                                             int nnz) {
     int x_min = max(diagonal - nnz, 0);
     int x_max = min(diagonal, num_rows);
 
@@ -219,17 +212,10 @@ __device__ MergeCoordinate merge_path_search(
 }
 
 // Merge Path Kernel
-__global__ void spmv_csr_merge_path_kernel(
-    int num_rows,
-    int nnz,
-    const int* row_ptrs,
-    const int* col_indices,
-    const float* values,
-    const float* x,
-    cudaTextureObject_t tex_x,
-    bool use_texture,
-    float* y
-) {
+__global__ void spmv_csr_merge_path_kernel(int num_rows, int nnz, const int* row_ptrs,
+                                           const int* col_indices, const float* values,
+                                           const float* x, cudaTextureObject_t tex_x,
+                                           bool use_texture, float* y) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int total_work = num_rows + nnz;
 
@@ -239,7 +225,8 @@ __global__ void spmv_csr_merge_path_kernel(
     int diagonal_start = tid * work_per_thread;
     int diagonal_end = min(diagonal_start + work_per_thread, total_work);
 
-    if (diagonal_start >= total_work) return;
+    if (diagonal_start >= total_work)
+        return;
 
     MergeCoordinate start = merge_path_search(diagonal_start, row_ptrs, num_rows, nnz);
     MergeCoordinate end = merge_path_search(diagonal_end, row_ptrs, num_rows, nnz);
@@ -276,16 +263,9 @@ __global__ void spmv_csr_merge_path_kernel(
 }
 
 // Vector CSR Kernel - 一个 Warp (32线程) 处理一行
-__global__ void spmv_csr_vector_kernel(
-    int num_rows,
-    const int* row_ptrs,
-    const int* col_indices,
-    const float* values,
-    const float* x,
-    cudaTextureObject_t tex_x,
-    bool use_texture,
-    float* y
-) {
+__global__ void spmv_csr_vector_kernel(int num_rows, const int* row_ptrs, const int* col_indices,
+                                       const float* values, const float* x,
+                                       cudaTextureObject_t tex_x, bool use_texture, float* y) {
     int warp_id = (blockIdx.x * blockDim.x + threadIdx.x) / 32;
     int lane_id = threadIdx.x % 32;
 
@@ -311,16 +291,9 @@ __global__ void spmv_csr_vector_kernel(
 }
 
 // Scalar CSR Kernel - 一个线程处理一行
-__global__ void spmv_csr_scalar_kernel(
-    int num_rows,
-    const int* row_ptrs,
-    const int* col_indices,
-    const float* values,
-    const float* x,
-    cudaTextureObject_t tex_x,
-    bool use_texture,
-    float* y
-) {
+__global__ void spmv_csr_scalar_kernel(int num_rows, const int* row_ptrs, const int* col_indices,
+                                       const float* values, const float* x,
+                                       cudaTextureObject_t tex_x, bool use_texture, float* y) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < num_rows) {
         float sum = 0.0f;
@@ -334,16 +307,9 @@ __global__ void spmv_csr_scalar_kernel(
 }
 
 // ELL Kernel
-__global__ void spmv_ell_kernel(
-    int num_rows,
-    int max_nnz_per_row,
-    const int* col_indices,
-    const float* values,
-    const float* x,
-    cudaTextureObject_t tex_x,
-    bool use_texture,
-    float* y
-) {
+__global__ void spmv_ell_kernel(int num_rows, int max_nnz_per_row, const int* col_indices,
+                                const float* values, const float* x, cudaTextureObject_t tex_x,
+                                bool use_texture, float* y) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < num_rows) {
         float sum = 0.0f;
@@ -359,7 +325,8 @@ __global__ void spmv_ell_kernel(
 }
 
 static bool is_valid_block_size(int block_size) {
-    return block_size >= 32 && block_size <= 1024 && (block_size % 32 == 0);
+    return block_size >= MIN_BLOCK_SIZE && block_size <= MAX_BLOCK_SIZE &&
+           (block_size % WARP_SIZE == 0);
 }
 
 static bool is_valid_csr_kernel_type(SpMVConfig::KernelType kernel_type) {
@@ -373,9 +340,8 @@ static bool is_valid_csr_kernel_type(SpMVConfig::KernelType kernel_type) {
     }
 }
 
-SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
-                    const SpMVConfig* config, int vec_size,
-                    SpMVExecutionContext* context) {
+SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMVConfig* config,
+                    int vec_size, SpMVExecutionContext* context) {
     SpMVResult result;
 
     if (!A || A->num_rows < 0 || A->num_cols < 0 || A->nnz < 0) {
@@ -405,9 +371,11 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
     }
 
     SpMVConfig default_config;
-    if (!config) config = &default_config;
+    if (!config)
+        config = &default_config;
 
-    if (!is_valid_csr_kernel_type(config->kernel_type) || !is_valid_block_size(config->block_size)) {
+    if (!is_valid_csr_kernel_type(config->kernel_type) ||
+        !is_valid_block_size(config->block_size)) {
         result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
         return result;
     }
@@ -421,9 +389,8 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
 
     if (A->nnz == 0 || x_length == 0) {
         cudaError_t err = cudaMemset(d_y, 0, A->num_rows * sizeof(float));
-        result.error_code = (err == cudaSuccess)
-            ? static_cast<int>(SpMVError::SUCCESS)
-            : static_cast<int>(SpMVError::CUDA_MEMCPY);
+        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
+                                                 : static_cast<int>(SpMVError::CUDA_MEMCPY);
         return result;
     }
 
@@ -434,8 +401,8 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
 
     if (use_texture && texture_length > 0) {
         if (context) {
-            int tex_status = prepare_texture_context(context, d_x, texture_length, use_texture, &tex_x,
-                                                     &use_texture);
+            int tex_status = prepare_texture_context(context, d_x, texture_length, use_texture,
+                                                     &tex_x, &use_texture);
             if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = tex_status;
                 return result;
@@ -478,25 +445,22 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
                 return result;
             }
             spmv_csr_merge_path_kernel<<<num_blocks, block_size>>>(
-                A->num_rows, A->nnz, A->d_row_ptrs, A->d_col_indices,
-                A->d_values, d_x, tex_x, use_texture, d_y
-            );
+                A->num_rows, A->nnz, A->d_row_ptrs, A->d_col_indices, A->d_values, d_x, tex_x,
+                use_texture, d_y);
             break;
         }
         case SpMVConfig::VECTOR_CSR: {
             int warps_per_block = block_size / 32;
             int num_warps = (A->num_rows + warps_per_block - 1) / warps_per_block;
-            spmv_csr_vector_kernel<<<num_warps, block_size>>>(
-                A->num_rows, A->d_row_ptrs, A->d_col_indices,
-                A->d_values, d_x, tex_x, use_texture, d_y
-            );
+            spmv_csr_vector_kernel<<<num_warps, block_size>>>(A->num_rows, A->d_row_ptrs,
+                                                              A->d_col_indices, A->d_values, d_x,
+                                                              tex_x, use_texture, d_y);
             break;
         }
         case SpMVConfig::SCALAR_CSR:
-            spmv_csr_scalar_kernel<<<num_blocks, block_size>>>(
-                A->num_rows, A->d_row_ptrs, A->d_col_indices,
-                A->d_values, d_x, tex_x, use_texture, d_y
-            );
+            spmv_csr_scalar_kernel<<<num_blocks, block_size>>>(A->num_rows, A->d_row_ptrs,
+                                                               A->d_col_indices, A->d_values, d_x,
+                                                               tex_x, use_texture, d_y);
             break;
         default:
             result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
@@ -515,8 +479,9 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
         return result;
     }
 
-    float elapsed_ms = std::chrono::duration<float, std::milli>(
-        std::chrono::steady_clock::now() - host_start).count();
+    float elapsed_ms =
+        std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - host_start)
+            .count();
     if (use_cuda_timer) {
         err = timer.record_stop();
         if (err == cudaSuccess) {
@@ -536,9 +501,8 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
     return result;
 }
 
-SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
-                    const SpMVConfig* config, int vec_size,
-                    SpMVExecutionContext* context) {
+SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMVConfig* config,
+                    int vec_size, SpMVExecutionContext* context) {
     SpMVResult result;
 
     if (!A || A->num_rows < 0 || A->num_cols < 0 || A->max_nnz_per_row < 0 || A->nnz < 0) {
@@ -562,7 +526,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
         return result;
     }
 
-    size_t storage_size = static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
+    size_t storage_size =
+        static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
     if (storage_size > 0 && (!A->d_col_indices || !A->d_values)) {
         result.error_code = static_cast<int>(SpMVError::INVALID_FORMAT);
         return result;
@@ -570,7 +535,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
 
     SpMVConfig default_config;
     default_config.kernel_type = SpMVConfig::ELL_KERNEL;
-    if (!config) config = &default_config;
+    if (!config)
+        config = &default_config;
 
     if (config->kernel_type != SpMVConfig::ELL_KERNEL || !is_valid_block_size(config->block_size)) {
         result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
@@ -586,9 +552,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
 
     if (storage_size == 0 || x_length == 0) {
         cudaError_t err = cudaMemset(d_y, 0, A->num_rows * sizeof(float));
-        result.error_code = (err == cudaSuccess)
-            ? static_cast<int>(SpMVError::SUCCESS)
-            : static_cast<int>(SpMVError::CUDA_MEMCPY);
+        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
+                                                 : static_cast<int>(SpMVError::CUDA_MEMCPY);
         return result;
     }
 
@@ -599,8 +564,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
 
     if (use_texture && texture_length > 0) {
         if (context) {
-            int tex_status = prepare_texture_context(context, d_x, texture_length, use_texture, &tex_x,
-                                                     &use_texture);
+            int tex_status = prepare_texture_context(context, d_x, texture_length, use_texture,
+                                                     &tex_x, &use_texture);
             if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = tex_status;
                 return result;
@@ -634,10 +599,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
     }
 
     cudaError_t err = cudaSuccess;
-    spmv_ell_kernel<<<num_blocks, block_size>>>(
-        A->num_rows, A->max_nnz_per_row,
-        A->d_col_indices, A->d_values, d_x, tex_x, use_texture, d_y
-    );
+    spmv_ell_kernel<<<num_blocks, block_size>>>(A->num_rows, A->max_nnz_per_row, A->d_col_indices,
+                                                A->d_values, d_x, tex_x, use_texture, d_y);
 
     err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -651,8 +614,9 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
         return result;
     }
 
-    float elapsed_ms = std::chrono::duration<float, std::milli>(
-        std::chrono::steady_clock::now() - host_start).count();
+    float elapsed_ms =
+        std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - host_start)
+            .count();
     if (use_cuda_timer) {
         err = timer.record_stop();
         if (err == cudaSuccess) {
@@ -672,4 +636,4 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
     return result;
 }
 
-} // namespace spmv
+}  // namespace spmv

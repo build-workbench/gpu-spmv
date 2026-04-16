@@ -1,10 +1,12 @@
 #include "spmv/spmv.h"
+
 #include <cstring>
 
 namespace spmv {
 
 void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
-    if (!A || !x || !y) return;
+    if (!A || !x || !y)
+        return;
 
     for (int i = 0; i < A->num_rows; i++) {
         float sum = 0.0f;
@@ -16,7 +18,8 @@ void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
 }
 
 void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
-    if (!A || !x || !y) return;
+    if (!A || !x || !y)
+        return;
 
     for (int i = 0; i < A->num_rows; i++) {
         float sum = 0.0f;
@@ -32,7 +35,7 @@ void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
 }
 
 SpMVConfig spmv_auto_config(const CSRMatrix* A) {
-    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, false);
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE, false);
     if (!A || A->num_rows < 0 || A->num_cols < 0 || A->nnz < 0 || !A->row_ptrs) {
         return config;
     }
@@ -41,7 +44,7 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
         return config;
     }
 
-    config.use_texture = (A->num_cols > 10000);
+    config.use_texture = (A->num_cols > TEXTURE_CACHE_THRESHOLD_COLS);
 
     CSRStats stats = csr_compute_stats(A);
 
@@ -56,4 +59,4 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
     return config;
 }
 
-} // namespace spmv
+}  // namespace spmv

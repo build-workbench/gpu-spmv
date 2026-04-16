@@ -1,24 +1,26 @@
-#include <gtest/gtest.h>
-#include "spmv/spmv.h"
 #include "spmv/csr_matrix.h"
-#include "spmv/ell_matrix.h"
 #include "spmv/cuda_buffer.h"
+#include "spmv/ell_matrix.h"
+#include "spmv/spmv.h"
 #include "spmv/test_utils.h"
-#include <vector>
-#include <cmath>
+
 #include <algorithm>
+#include <cmath>
+#include <gtest/gtest.h>
+#include <vector>
 
 using namespace spmv;
 using namespace spmv::test;
 
-static bool compareResults(const float* cpu_result, const float* gpu_result,
-                           int size, float rel_tol = 1e-6f) {
+static bool compareResults(const float* cpu_result, const float* gpu_result, int size,
+                           float rel_tol = 1e-6f) {
     for (int i = 0; i < size; i++) {
         float diff = std::abs(cpu_result[i] - gpu_result[i]);
         float max_val = std::max(std::abs(cpu_result[i]), std::abs(gpu_result[i]));
 
         if (max_val < 1e-10f) {
-            if (diff > 1e-6f) return false;
+            if (diff > 1e-6f)
+                return false;
         } else {
             float rel_error = diff / max_val;
             if (rel_error > rel_tol) {
@@ -30,7 +32,7 @@ static bool compareResults(const float* cpu_result, const float* gpu_result,
 }
 
 class SpMVPropertyTest : public ::testing::Test {
-protected:
+   protected:
     RandomGenerator rng{42};
     static constexpr int NUM_ITERATIONS = 100;
 };
@@ -60,11 +62,9 @@ TEST_F(SpMVPropertyTest, CSRCorrectness) {
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
 
-        std::vector<SpMVConfig> configs = {
-            SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
-            SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
-            SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)
-        };
+        std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
+                                           SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
+                                           SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)};
 
         for (const auto& config : configs) {
             SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
@@ -193,11 +193,8 @@ TEST(SpMVUnitTest, SingleElement) {
 
 TEST(SpMVUnitTest, ZeroRows) {
     // 矩阵有全零行
-    std::vector<float> dense = {
-        1, 2, 0,
-        0, 0, 0,  // 全零行
-        3, 0, 4
-    };
+    std::vector<float> dense = {1, 2, 0, 0, 0, 0,  // 全零行
+                                3, 0, 4};
     std::vector<float> x = {1, 1, 1};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
@@ -326,11 +323,9 @@ TEST(SpMVUnitTest, ZeroNnzMatricesProduceZeroOutputForAllCSRKernels) {
     CudaBuffer<float> d_y(4);
     d_x.copyFromHost(x.data(), x.size());
 
-    std::vector<SpMVConfig> configs = {
-        SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
-        SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
-        SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)
-    };
+    std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
+                                       SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
+                                       SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)};
 
     for (const auto& config : configs) {
         ASSERT_EQ(cudaMemset(d_y.get(), 0x7f, 4 * sizeof(float)), cudaSuccess);
@@ -390,14 +385,8 @@ TEST(SpMVUnitTest, MergePathHandlesHighlySkewedRows) {
 TEST(SpMVUnitTest, MergePathHandlesInterleavedEmptyRows) {
     const int rows = 6;
     const int cols = 6;
-    std::vector<float> dense = {
-        1, 0, 0, 0, 0, 2,
-        0, 0, 0, 0, 0, 0,
-        0, 3, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0,
-        4, 0, 5, 0, 0, 0,
-        0, 0, 0, 6, 0, 0
-    };
+    std::vector<float> dense = {1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 4, 0, 5, 0, 0, 0, 0, 0, 0, 6, 0, 0};
     std::vector<float> x = {1, 2, 3, 4, 5, 6};
 
     CSRMatrix* csr = csr_create(0, 0, 0);
@@ -650,4 +639,3 @@ TEST(SpMVUnitTest, MergePathTexturePathMatchesCpuReference) {
 
     csr_destroy(csr);
 }
-

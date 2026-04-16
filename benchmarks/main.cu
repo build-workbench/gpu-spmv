@@ -1,13 +1,15 @@
+#include "spmv/bandwidth.h"
+#include "spmv/benchmark.h"
 #include "spmv/csr_matrix.h"
 #include "spmv/ell_matrix.h"
-#include "spmv/spmv.h"
-#include "spmv/benchmark.h"
-#include "spmv/bandwidth.h"
 #include "spmv/pagerank.h"
+#include "spmv/spmv.h"
+
 #include <cuda_runtime.h>
+
 #include <iostream>
-#include <vector>
 #include <random>
+#include <vector>
 
 using namespace spmv;
 
@@ -42,8 +44,7 @@ void benchmark_spmv() {
     csr_from_dense(csr, dense.data(), rows, cols);
     csr_to_gpu(csr);
 
-    std::cout << "Matrix: " << rows << "x" << cols
-              << ", NNZ: " << csr->nnz
+    std::cout << "Matrix: " << rows << "x" << cols << ", NNZ: " << csr->nnz
               << ", Density: " << (float)csr->nnz / (rows * cols) << "\n\n";
 
     // 测试不同 Kernel
@@ -51,11 +52,9 @@ void benchmark_spmv() {
     bench_config.num_warmup_runs = 5;
     bench_config.num_runs = 20;
 
-    SpMVConfig configs[] = {
-        {SpMVConfig::SCALAR_CSR, 256, false},
-        {SpMVConfig::VECTOR_CSR, 256, false},
-        {SpMVConfig::MERGE_PATH, 256, false}
-    };
+    SpMVConfig configs[] = {{SpMVConfig::SCALAR_CSR, 256, false},
+                            {SpMVConfig::VECTOR_CSR, 256, false},
+                            {SpMVConfig::MERGE_PATH, 256, false}};
 
     const char* names[] = {"Scalar CSR", "Vector CSR", "Merge Path"};
 
@@ -65,8 +64,7 @@ void benchmark_spmv() {
         std::cout << names[i] << ":\n";
         if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
             std::cout << "  Benchmark failed: "
-                      << spmv_error_string(static_cast<SpMVError>(result.error_code))
-                      << "\n\n";
+                      << spmv_error_string(static_cast<SpMVError>(result.error_code)) << "\n\n";
             continue;
         }
 
@@ -83,8 +81,7 @@ void benchmark_spmv() {
     ComparisonResult comp = compare_gpu_cpu_csr(csr, x.data(), nullptr, &bench_config);
     if (comp.error_code != static_cast<int>(SpMVError::SUCCESS)) {
         std::cout << "  Comparison failed: "
-                  << spmv_error_string(static_cast<SpMVError>(comp.error_code))
-                  << "\n\n";
+                  << spmv_error_string(static_cast<SpMVError>(comp.error_code)) << "\n\n";
     } else {
         std::cout << "  GPU time: " << comp.gpu_result.avg_time_ms << " ms\n";
         std::cout << "  CPU time: " << comp.cpu_result.avg_time_ms << " ms\n";
@@ -140,8 +137,7 @@ void benchmark_pagerank() {
     PageRankResult result = pagerank(csr, &config);
     if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
         std::cout << "PageRank failed: "
-                  << spmv_error_string(static_cast<SpMVError>(result.error_code))
-                  << "\n\n";
+                  << spmv_error_string(static_cast<SpMVError>(result.error_code)) << "\n\n";
         pagerank_free(&result);
         csr_destroy(csr);
         return;
@@ -158,8 +154,8 @@ void benchmark_pagerank() {
 
     std::cout << "Top-10 Nodes:\n";
     for (int i = 0; i < 10; i++) {
-        std::cout << "  " << (i + 1) << ". Node " << top_10[i].node_id
-                  << ": " << top_10[i].rank << "\n";
+        std::cout << "  " << (i + 1) << ". Node " << top_10[i].node_id << ": " << top_10[i].rank
+                  << "\n";
     }
 
     pagerank_free(&result);

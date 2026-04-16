@@ -1,20 +1,22 @@
 #ifndef SPMV_CUDA_BUFFER_H
 #define SPMV_CUDA_BUFFER_H
 
-#include "common.h"
 #include <cuda_runtime.h>
+
 #include <cstddef>
 #include <utility>
 #include <vector>
 
+#include "common.h"
+
 namespace spmv {
 
 // RAII 风格的 GPU 内存管理
-template<typename T>
+template <typename T>
 class CudaBuffer {
-public:
+   public:
     CudaBuffer() : ptr_(nullptr), size_(0) {}
-    
+
     explicit CudaBuffer(size_t count) : ptr_(nullptr), size_(count) {
         if (count > 0) {
             cudaError_t err = cudaMalloc(&ptr_, count * sizeof(T));
@@ -23,28 +25,28 @@ public:
             }
         }
     }
-    
+
     ~CudaBuffer() {
         if (ptr_) {
             cudaFree(ptr_);
             ptr_ = nullptr;
         }
     }
-    
+
     // 禁止拷贝
     CudaBuffer(const CudaBuffer&) = delete;
     CudaBuffer& operator=(const CudaBuffer&) = delete;
-    
+
     // 允许移动
-    CudaBuffer(CudaBuffer&& other) noexcept 
-        : ptr_(other.ptr_), size_(other.size_) {
+    CudaBuffer(CudaBuffer&& other) noexcept : ptr_(other.ptr_), size_(other.size_) {
         other.ptr_ = nullptr;
         other.size_ = 0;
     }
-    
+
     CudaBuffer& operator=(CudaBuffer&& other) noexcept {
         if (this != &other) {
-            if (ptr_) cudaFree(ptr_);
+            if (ptr_)
+                cudaFree(ptr_);
             ptr_ = other.ptr_;
             size_ = other.size_;
             other.ptr_ = nullptr;
@@ -52,27 +54,29 @@ public:
         }
         return *this;
     }
-    
+
     T* get() { return ptr_; }
     const T* get() const { return ptr_; }
     size_t size() const { return size_; }
     size_t bytes() const { return size_ * sizeof(T); }
     bool empty() const { return ptr_ == nullptr || size_ == 0; }
-    
+
     // 将设备内存按字节置零（或指定字节值）
     void memset(int value = 0) {
         if (ptr_ && size_ > 0) {
             CUDA_CHECK_THROW(cudaMemset(ptr_, value, size_ * sizeof(T)));
         }
     }
-    
+
     // 用主机端的值填充整个缓冲区
     void fill(const T& value) {
-        if (!ptr_ || size_ == 0) return;
+        if (!ptr_ || size_ == 0)
+            return;
         std::vector<T> host_data(size_, value);
-        CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data.data(), size_ * sizeof(T), cudaMemcpyHostToDevice));
+        CUDA_CHECK_THROW(
+            cudaMemcpy(ptr_, host_data.data(), size_ * sizeof(T), cudaMemcpyHostToDevice));
     }
-    
+
     // 从主机复制数据到设备
     void copyFromHost(const T* host_data, size_t count) {
         if (count > size_) {
@@ -80,7 +84,7 @@ public:
         }
         CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
     }
-    
+
     // 从设备复制数据到主机
     void copyToHost(T* host_data, size_t count) const {
         if (count > size_) {
@@ -88,10 +92,11 @@ public:
         }
         CUDA_CHECK_THROW(cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
     }
-    
+
     // 重新分配
     void resize(size_t new_count) {
-        if (new_count == size_) return;
+        if (new_count == size_)
+            return;
         if (ptr_) {
             cudaFree(ptr_);
             ptr_ = nullptr;
@@ -101,7 +106,7 @@ public:
             CUDA_CHECK_THROW(cudaMalloc(&ptr_, new_count * sizeof(T)));
         }
     }
-    
+
     // 释放内存
     void release() {
         if (ptr_) {
@@ -110,12 +115,12 @@ public:
         }
         size_ = 0;
     }
-    
-private:
+
+   private:
     T* ptr_;
     size_t size_;
 };
 
-} // namespace spmv
+}  // namespace spmv
 
-#endif // SPMV_CUDA_BUFFER_H
+#endif  // SPMV_CUDA_BUFFER_H

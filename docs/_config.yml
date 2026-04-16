@@ -1,6 +1,6 @@
 title: GPU SpMV
 description: >-
-  基于 CUDA 的高性能稀疏矩阵向量乘法库 — CSR/ELL 格式、Merge Path 负载均衡、自动 Kernel 选择
+  高性能 CUDA 稀疏矩阵向量乘法库 — CSR/ELL 格式、Merge Path 负载均衡、自动 Kernel 选择
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
   - jekyll-remote-theme
@@ -13,6 +13,19 @@ url: https://lessup.github.io
 baseurl: /gpu-spmv
 lang: zh-CN
 author: LessUp
+
+# Navigation
+navigation:
+  - title: "首页"
+    url: "/"
+  - title: "API 参考"
+    url: "/api"
+  - title: "性能优化"
+    url: "/performance"
+  - title: "示例代码"
+    url: "/examples"
+  - title: "更新日志"
+    url: "/changelog"
 
 # Markdown rendering
 markdown: kramdown
