@@ -17,30 +17,29 @@ namespace spmv {
  * @brief Configuration for PageRank algorithm.
  */
 struct PageRankConfig {
-  float damping_factor;  ///< Damping factor (typically 0.85)
-  float tolerance;       ///< Convergence threshold (default 1e-6)
-  int max_iterations;    ///< Maximum iterations
+    float damping_factor;  ///< Damping factor (typically 0.85)
+    float tolerance;       ///< Convergence threshold (default 1e-6)
+    int max_iterations;    ///< Maximum iterations
 
-  PageRankConfig()
-      : damping_factor(0.85f), tolerance(1e-6f), max_iterations(100) {}
+    PageRankConfig() : damping_factor(0.85f), tolerance(1e-6f), max_iterations(100) {}
 };
 
 /**
  * @brief Result of PageRank computation.
  */
 struct PageRankResult {
-  float* ranks;          ///< PageRank scores [num_nodes]
-  int iterations;        ///< Actual iterations performed
-  float final_residual;  ///< Final residual value
-  bool converged;        ///< Whether algorithm converged
-  int error_code;        ///< 0 = success, negative = error
+    float* ranks;          ///< PageRank scores [num_nodes]
+    int iterations;        ///< Actual iterations performed
+    float final_residual;  ///< Final residual value
+    bool converged;        ///< Whether algorithm converged
+    int error_code;        ///< 0 = success, negative = error
 
-  PageRankResult()
-      : ranks(nullptr),
-        iterations(0),
-        final_residual(0.0f),
-        converged(false),
-        error_code(static_cast<int>(SpMVError::SUCCESS)) {}
+    PageRankResult()
+        : ranks(nullptr),
+          iterations(0),
+          final_residual(0.0f),
+          converged(false),
+          error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
 /**
@@ -54,8 +53,7 @@ struct PageRankResult {
  * @param config Algorithm configuration (nullptr = defaults).
  * @return PageRank result with scores.
  */
-PageRankResult pagerank(const CSRMatrix* adj_matrix,
-                        const PageRankConfig* config = nullptr);
+PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* config = nullptr);
 
 /**
  * @brief Free PageRank result memory.
@@ -68,8 +66,8 @@ void pagerank_free(PageRankResult* result);
  * @brief Node with its PageRank score for top-K queries.
  */
 struct TopKNode {
-  int node_id;  ///< Node identifier
-  float rank;   ///< PageRank score
+    int node_id;  ///< Node identifier
+    float rank;   ///< PageRank score
 };
 
 /**
@@ -80,8 +78,7 @@ struct TopKNode {
  * @param k Number of top nodes to retrieve.
  * @param top_k Output array of TopKNode [k].
  */
-void pagerank_top_k(const PageRankResult* result, int num_nodes, int k,
-                    TopKNode* top_k);
+void pagerank_top_k(const PageRankResult* result, int num_nodes, int k, TopKNode* top_k);
 
 }  // namespace spmv
 

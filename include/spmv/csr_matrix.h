@@ -27,23 +27,22 @@ namespace spmv {
  * Stores both host and device memory pointers with ownership tracking.
  */
 struct CSRMatrix {
-  int num_rows;  ///< Number of rows in the matrix
-  int num_cols;  ///< Number of columns in the matrix
-  int nnz;       ///< Total number of non-zero elements
+    int num_rows;  ///< Number of rows in the matrix
+    int num_cols;  ///< Number of columns in the matrix
+    int nnz;       ///< Total number of non-zero elements
 
-  float* values;     ///< Non-zero values array [nnz]
-  int* col_indices;  ///< Column indices array [nnz]
-  int* row_ptrs;     ///< Row pointers array [num_rows + 1]
+    float* values;     ///< Non-zero values array [nnz]
+    int* col_indices;  ///< Column indices array [nnz]
+    int* row_ptrs;     ///< Row pointers array [num_rows + 1]
 
-  // GPU device pointers
-  float* d_values;     ///< Device memory for values
-  int* d_col_indices;  ///< Device memory for column indices
-  int* d_row_ptrs;     ///< Device memory for row pointers
+    // GPU device pointers
+    float* d_values;     ///< Device memory for values
+    int* d_col_indices;  ///< Device memory for column indices
+    int* d_row_ptrs;     ///< Device memory for row pointers
 
-  // Memory ownership flags
-  bool owns_host_memory;  ///< True if host memory should be freed on destroy
-  bool
-      owns_device_memory;  ///< True if device memory should be freed on destroy
+    // Memory ownership flags
+    bool owns_host_memory;    ///< True if host memory should be freed on destroy
+    bool owns_device_memory;  ///< True if device memory should be freed on destroy
 };
 
 /**
@@ -147,10 +146,10 @@ int csr_deserialize(CSRMatrix* mat, const char* filename);
  * @brief Statistics about row lengths in a CSR matrix.
  */
 struct CSRStats {
-  float avg_nnz_per_row;  ///< Average non-zeros per row
-  int max_nnz_per_row;    ///< Maximum non-zeros in any row
-  int min_nnz_per_row;    ///< Minimum non-zeros in any row
-  float skewness;         ///< Ratio: max / (min + 1), measures irregularity
+    float avg_nnz_per_row;  ///< Average non-zeros per row
+    int max_nnz_per_row;    ///< Maximum non-zeros in any row
+    int min_nnz_per_row;    ///< Minimum non-zeros in any row
+    float skewness;         ///< Ratio: max / (min + 1), measures irregularity
 };
 
 /**

@@ -7,499 +7,493 @@
 namespace spmv {
 
 ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
-  if (rows < 0 || cols < 0 || max_nnz_per_row < 0) {
-    return nullptr;
-  }
-
-  ELLMatrix* mat = new ELLMatrix();
-  mat->num_rows = rows;
-  mat->num_cols = cols;
-  mat->max_nnz_per_row = max_nnz_per_row;
-  mat->nnz = 0;
-
-  size_t size = static_cast<size_t>(rows) * max_nnz_per_row;
-  mat->values = (size > 0) ? new float[size]() : nullptr;
-  mat->col_indices = (size > 0) ? new int[size]() : nullptr;
-
-  // 初始化列索引为 -1 (表示填充)
-  if (mat->col_indices) {
-    for (size_t i = 0; i < size; i++) {
-      mat->col_indices[i] = -1;
+    if (rows < 0 || cols < 0 || max_nnz_per_row < 0) {
+        return nullptr;
     }
-  }
 
-  mat->d_values = nullptr;
-  mat->d_col_indices = nullptr;
+    ELLMatrix* mat = new ELLMatrix();
+    mat->num_rows = rows;
+    mat->num_cols = cols;
+    mat->max_nnz_per_row = max_nnz_per_row;
+    mat->nnz = 0;
 
-  mat->owns_host_memory = true;
-  mat->owns_device_memory = false;
+    size_t size = static_cast<size_t>(rows) * max_nnz_per_row;
+    mat->values = (size > 0) ? new float[size]() : nullptr;
+    mat->col_indices = (size > 0) ? new int[size]() : nullptr;
 
-  return mat;
+    // 初始化列索引为 -1 (表示填充)
+    if (mat->col_indices) {
+        for (size_t i = 0; i < size; i++) {
+            mat->col_indices[i] = -1;
+        }
+    }
+
+    mat->d_values = nullptr;
+    mat->d_col_indices = nullptr;
+
+    mat->owns_host_memory = true;
+    mat->owns_device_memory = false;
+
+    return mat;
 }
 
 void ell_destroy(ELLMatrix* mat) {
-  if (!mat) return;
+    if (!mat)
+        return;
 
-  if (mat->owns_host_memory) {
-    delete[] mat->values;
-    delete[] mat->col_indices;
-  }
+    if (mat->owns_host_memory) {
+        delete[] mat->values;
+        delete[] mat->col_indices;
+    }
 
-  if (mat->owns_device_memory) {
-    ell_free_gpu(mat);
-  }
+    if (mat->owns_device_memory) {
+        ell_free_gpu(mat);
+    }
 
-  delete mat;
+    delete mat;
 }
 
 int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
-  if (!ell || !dense || rows <= 0 || cols <= 0) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  // Check for potential overflow in size calculation
-  if (rows > INT_MAX / cols) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  // 主机端内容变化后，旧的 GPU 镜像立即失效
-  ell_free_gpu(ell);
-
-  // 计算每行最大非零元素数
-  int max_nnz = 0;
-  for (int i = 0; i < rows; i++) {
-    int row_nnz = 0;
-    for (int j = 0; j < cols; j++) {
-      if (dense[i * cols + j] != 0.0f) {
-        row_nnz++;
-      }
+    if (!ell || !dense || rows <= 0 || cols <= 0) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-    max_nnz = std::max(max_nnz, row_nnz);
-  }
 
-  // 释放旧内存
-  if (ell->owns_host_memory) {
-    delete[] ell->values;
-    delete[] ell->col_indices;
-  }
-
-  // 分配新内存
-  ell->num_rows = rows;
-  ell->num_cols = cols;
-  ell->max_nnz_per_row = max_nnz;
-
-  size_t size = static_cast<size_t>(rows) * max_nnz;
-  ell->values = (size > 0) ? new float[size]() : nullptr;
-  ell->col_indices = (size > 0) ? new int[size]() : nullptr;
-  ell->owns_host_memory = true;
-
-  // 初始化为填充值
-  if (ell->col_indices) {
-    for (size_t i = 0; i < size; i++) {
-      ell->col_indices[i] = -1;
-      ell->values[i] = 0.0f;
+    // Check for potential overflow in size calculation
+    if (rows > INT_MAX / cols) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-  }
 
-  // 填充 ELL 数据 (Column-major)
-  int total_nnz = 0;
-  for (int i = 0; i < rows; i++) {
-    int k = 0;
-    for (int j = 0; j < cols; j++) {
-      float val = dense[i * cols + j];
-      if (val != 0.0f) {
-        int idx = ell_index(i, k, rows);
-        ell->values[idx] = val;
-        ell->col_indices[idx] = j;
-        k++;
-        total_nnz++;
-      }
+    // 主机端内容变化后，旧的 GPU 镜像立即失效
+    ell_free_gpu(ell);
+
+    // 计算每行最大非零元素数
+    int max_nnz = 0;
+    for (int i = 0; i < rows; i++) {
+        int row_nnz = 0;
+        for (int j = 0; j < cols; j++) {
+            if (dense[i * cols + j] != 0.0f) {
+                row_nnz++;
+            }
+        }
+        max_nnz = std::max(max_nnz, row_nnz);
     }
-  }
-  ell->nnz = total_nnz;
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    // 释放旧内存
+    if (ell->owns_host_memory) {
+        delete[] ell->values;
+        delete[] ell->col_indices;
+    }
+
+    // 分配新内存
+    ell->num_rows = rows;
+    ell->num_cols = cols;
+    ell->max_nnz_per_row = max_nnz;
+
+    size_t size = static_cast<size_t>(rows) * max_nnz;
+    ell->values = (size > 0) ? new float[size]() : nullptr;
+    ell->col_indices = (size > 0) ? new int[size]() : nullptr;
+    ell->owns_host_memory = true;
+
+    // 初始化为填充值
+    if (ell->col_indices) {
+        for (size_t i = 0; i < size; i++) {
+            ell->col_indices[i] = -1;
+            ell->values[i] = 0.0f;
+        }
+    }
+
+    // 填充 ELL 数据 (Column-major)
+    int total_nnz = 0;
+    for (int i = 0; i < rows; i++) {
+        int k = 0;
+        for (int j = 0; j < cols; j++) {
+            float val = dense[i * cols + j];
+            if (val != 0.0f) {
+                int idx = ell_index(i, k, rows);
+                ell->values[idx] = val;
+                ell->col_indices[idx] = j;
+                k++;
+                total_nnz++;
+            }
+        }
+    }
+    ell->nnz = total_nnz;
+
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr) {
-  if (!ell || !csr) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  if (!csr->row_ptrs || (csr->nnz > 0 && (!csr->values || !csr->col_indices))) {
-    return static_cast<int>(SpMVError::INVALID_FORMAT);
-  }
-
-  // 主机端内容变化后，旧的 GPU 镜像立即失效
-  ell_free_gpu(ell);
-
-  // 计算每行最大非零元素数
-  int max_nnz = 0;
-  for (int i = 0; i < csr->num_rows; i++) {
-    int row_nnz = csr->row_ptrs[i + 1] - csr->row_ptrs[i];
-    max_nnz = std::max(max_nnz, row_nnz);
-  }
-
-  // 释放旧内存
-  if (ell->owns_host_memory) {
-    delete[] ell->values;
-    delete[] ell->col_indices;
-  }
-
-  // 分配新内存
-  ell->num_rows = csr->num_rows;
-  ell->num_cols = csr->num_cols;
-  ell->max_nnz_per_row = max_nnz;
-
-  size_t size = static_cast<size_t>(csr->num_rows) * max_nnz;
-  ell->values = (size > 0) ? new float[size]() : nullptr;
-  ell->col_indices = (size > 0) ? new int[size]() : nullptr;
-  ell->owns_host_memory = true;
-
-  // 初始化为填充值
-  if (ell->col_indices) {
-    for (size_t i = 0; i < size; i++) {
-      ell->col_indices[i] = -1;
-      ell->values[i] = 0.0f;
+    if (!ell || !csr) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-  }
 
-  // 从 CSR 转换 (Column-major)
-  for (int i = 0; i < csr->num_rows; i++) {
-    int k = 0;
-    for (int j = csr->row_ptrs[i]; j < csr->row_ptrs[i + 1]; j++) {
-      int idx = ell_index(i, k, csr->num_rows);
-      ell->values[idx] = csr->values[j];
-      ell->col_indices[idx] = csr->col_indices[j];
-      k++;
+    if (!csr->row_ptrs || (csr->nnz > 0 && (!csr->values || !csr->col_indices))) {
+        return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
-  }
-  ell->nnz = csr->nnz;
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    // 主机端内容变化后，旧的 GPU 镜像立即失效
+    ell_free_gpu(ell);
+
+    // 计算每行最大非零元素数
+    int max_nnz = 0;
+    for (int i = 0; i < csr->num_rows; i++) {
+        int row_nnz = csr->row_ptrs[i + 1] - csr->row_ptrs[i];
+        max_nnz = std::max(max_nnz, row_nnz);
+    }
+
+    // 释放旧内存
+    if (ell->owns_host_memory) {
+        delete[] ell->values;
+        delete[] ell->col_indices;
+    }
+
+    // 分配新内存
+    ell->num_rows = csr->num_rows;
+    ell->num_cols = csr->num_cols;
+    ell->max_nnz_per_row = max_nnz;
+
+    size_t size = static_cast<size_t>(csr->num_rows) * max_nnz;
+    ell->values = (size > 0) ? new float[size]() : nullptr;
+    ell->col_indices = (size > 0) ? new int[size]() : nullptr;
+    ell->owns_host_memory = true;
+
+    // 初始化为填充值
+    if (ell->col_indices) {
+        for (size_t i = 0; i < size; i++) {
+            ell->col_indices[i] = -1;
+            ell->values[i] = 0.0f;
+        }
+    }
+
+    // 从 CSR 转换 (Column-major)
+    for (int i = 0; i < csr->num_rows; i++) {
+        int k = 0;
+        for (int j = csr->row_ptrs[i]; j < csr->row_ptrs[i + 1]; j++) {
+            int idx = ell_index(i, k, csr->num_rows);
+            ell->values[idx] = csr->values[j];
+            ell->col_indices[idx] = csr->col_indices[j];
+            k++;
+        }
+    }
+    ell->nnz = csr->nnz;
+
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 int ell_to_dense(const ELLMatrix* ell, float* dense) {
-  if (!ell || !dense) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  // Check for potential overflow in size calculation
-  size_t total_size =
-      static_cast<size_t>(ell->num_rows) * static_cast<size_t>(ell->num_cols);
-  if (total_size > static_cast<size_t>(INT_MAX)) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  // 初始化为零
-  std::memset(dense, 0, ell->num_rows * ell->num_cols * sizeof(float));
-
-  // 填充非零元素
-  for (int i = 0; i < ell->num_rows; i++) {
-    for (int k = 0; k < ell->max_nnz_per_row; k++) {
-      int idx = ell_index(i, k, ell->num_rows);
-      int col = ell->col_indices[idx];
-      if (col >= 0) {
-        dense[i * ell->num_cols + col] = ell->values[idx];
-      }
+    if (!ell || !dense) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-  }
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    // Check for potential overflow in size calculation
+    size_t total_size = static_cast<size_t>(ell->num_rows) * static_cast<size_t>(ell->num_cols);
+    if (total_size > static_cast<size_t>(INT_MAX)) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    // 初始化为零
+    std::memset(dense, 0, ell->num_rows * ell->num_cols * sizeof(float));
+
+    // 填充非零元素
+    for (int i = 0; i < ell->num_rows; i++) {
+        for (int k = 0; k < ell->max_nnz_per_row; k++) {
+            int idx = ell_index(i, k, ell->num_rows);
+            int col = ell->col_indices[idx];
+            if (col >= 0) {
+                dense[i * ell->num_cols + col] = ell->values[idx];
+            }
+        }
+    }
+
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 float ell_get_element(const ELLMatrix* mat, int row, int col) {
-  if (!mat || row < 0 || row >= mat->num_rows || col < 0 ||
-      col >= mat->num_cols) {
+    if (!mat || row < 0 || row >= mat->num_rows || col < 0 || col >= mat->num_cols) {
+        return 0.0f;
+    }
+
+    for (int k = 0; k < mat->max_nnz_per_row; k++) {
+        int idx = ell_index(row, k, mat->num_rows);
+        if (mat->col_indices[idx] == col) {
+            return mat->values[idx];
+        }
+        if (mat->col_indices[idx] < 0) {
+            break;  // 到达填充区域
+        }
+    }
+
     return 0.0f;
-  }
-
-  for (int k = 0; k < mat->max_nnz_per_row; k++) {
-    int idx = ell_index(row, k, mat->num_rows);
-    if (mat->col_indices[idx] == col) {
-      return mat->values[idx];
-    }
-    if (mat->col_indices[idx] < 0) {
-      break;  // 到达填充区域
-    }
-  }
-
-  return 0.0f;
 }
 
 int ell_to_gpu(ELLMatrix* mat) {
-  if (!mat) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
-
-  size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-  if (size > 0 && (!mat->values || !mat->col_indices)) {
-    return static_cast<int>(SpMVError::INVALID_FORMAT);
-  }
-
-  float* new_d_values = nullptr;
-  int* new_d_col_indices = nullptr;
-
-  auto cleanup_partial_allocations = [&]() {
-    if (new_d_values) {
-      cudaFree(new_d_values);
-      new_d_values = nullptr;
-    }
-    if (new_d_col_indices) {
-      cudaFree(new_d_col_indices);
-      new_d_col_indices = nullptr;
-    }
-  };
-
-  if (size > 0) {
-    cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values),
-                                 size * sizeof(float));
-    if (err != cudaSuccess) {
-      cleanup_partial_allocations();
-      return static_cast<int>(SpMVError::CUDA_MALLOC);
+    if (!mat) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices),
-                     size * sizeof(int));
-    if (err != cudaSuccess) {
-      cleanup_partial_allocations();
-      return static_cast<int>(SpMVError::CUDA_MALLOC);
+    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
+    if (size > 0 && (!mat->values || !mat->col_indices)) {
+        return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
 
-    err = cudaMemcpy(new_d_values, mat->values, size * sizeof(float),
-                     cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-      cleanup_partial_allocations();
-      return static_cast<int>(SpMVError::CUDA_MEMCPY);
+    float* new_d_values = nullptr;
+    int* new_d_col_indices = nullptr;
+
+    auto cleanup_partial_allocations = [&]() {
+        if (new_d_values) {
+            cudaFree(new_d_values);
+            new_d_values = nullptr;
+        }
+        if (new_d_col_indices) {
+            cudaFree(new_d_col_indices);
+            new_d_col_indices = nullptr;
+        }
+    };
+
+    if (size > 0) {
+        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values), size * sizeof(float));
+        if (err != cudaSuccess) {
+            cleanup_partial_allocations();
+            return static_cast<int>(SpMVError::CUDA_MALLOC);
+        }
+
+        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices), size * sizeof(int));
+        if (err != cudaSuccess) {
+            cleanup_partial_allocations();
+            return static_cast<int>(SpMVError::CUDA_MALLOC);
+        }
+
+        err = cudaMemcpy(new_d_values, mat->values, size * sizeof(float), cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            cleanup_partial_allocations();
+            return static_cast<int>(SpMVError::CUDA_MEMCPY);
+        }
+
+        err = cudaMemcpy(new_d_col_indices, mat->col_indices, size * sizeof(int),
+                         cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            cleanup_partial_allocations();
+            return static_cast<int>(SpMVError::CUDA_MEMCPY);
+        }
     }
 
-    err = cudaMemcpy(new_d_col_indices, mat->col_indices, size * sizeof(int),
-                     cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-      cleanup_partial_allocations();
-      return static_cast<int>(SpMVError::CUDA_MEMCPY);
-    }
-  }
-
-  ell_free_gpu(mat);
-  mat->d_values = new_d_values;
-  mat->d_col_indices = new_d_col_indices;
-  mat->owns_device_memory = true;
-  return static_cast<int>(SpMVError::SUCCESS);
+    ell_free_gpu(mat);
+    mat->d_values = new_d_values;
+    mat->d_col_indices = new_d_col_indices;
+    mat->owns_device_memory = true;
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 int ell_from_gpu(ELLMatrix* mat) {
-  if (!mat) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
+    if (!mat) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
 
-  size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-  if (size > 0 && mat->d_values && mat->d_col_indices) {
-    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values,
-                                 size * sizeof(float), cudaMemcpyDeviceToHost));
-    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices,
-                                 size * sizeof(int), cudaMemcpyDeviceToHost));
-  }
+    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
+    if (size > 0 && mat->d_values && mat->d_col_indices) {
+        CUDA_CHECK_MEMCPY(
+            cudaMemcpy(mat->values, mat->d_values, size * sizeof(float), cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, size * sizeof(int),
+                                     cudaMemcpyDeviceToHost));
+    }
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 void ell_free_gpu(ELLMatrix* mat) {
-  if (!mat) return;
+    if (!mat)
+        return;
 
-  cudaError_t err;
-  if (mat->d_values) {
-    err = cudaFree(mat->d_values);
-    if (err != cudaSuccess) {
-      fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
-              cudaGetErrorString(err));
+    cudaError_t err;
+    if (mat->d_values) {
+        err = cudaFree(mat->d_values);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
+        mat->d_values = nullptr;
     }
-    mat->d_values = nullptr;
-  }
-  if (mat->d_col_indices) {
-    err = cudaFree(mat->d_col_indices);
-    if (err != cudaSuccess) {
-      fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
-              cudaGetErrorString(err));
+    if (mat->d_col_indices) {
+        err = cudaFree(mat->d_col_indices);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
+        mat->d_col_indices = nullptr;
     }
-    mat->d_col_indices = nullptr;
-  }
-  mat->owns_device_memory = false;
+    mat->owns_device_memory = false;
 }
 
 int ell_serialize(const ELLMatrix* mat, const char* filename) {
-  if (!mat || !filename) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
+    if (!mat || !filename) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
 
-  std::ofstream file(filename, std::ios::binary);
-  if (!file) {
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  // 写入版本头和魔数
-  const uint32_t magic = 0x4C4C4553;  // "SELL" in little-endian
-  const uint32_t version = 1;
-  file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
-  file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
+    // 写入版本头和魔数
+    const uint32_t magic = 0x4C4C4553;  // "SELL" in little-endian
+    const uint32_t version = 1;
+    file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
-  file.write(reinterpret_cast<const char*>(&mat->num_rows), sizeof(int));
-  file.write(reinterpret_cast<const char*>(&mat->num_cols), sizeof(int));
-  file.write(reinterpret_cast<const char*>(&mat->max_nnz_per_row), sizeof(int));
+    file.write(reinterpret_cast<const char*>(&mat->num_rows), sizeof(int));
+    file.write(reinterpret_cast<const char*>(&mat->num_cols), sizeof(int));
+    file.write(reinterpret_cast<const char*>(&mat->max_nnz_per_row), sizeof(int));
 
-  size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-  if (size > 0) {
-    file.write(reinterpret_cast<const char*>(mat->values),
-               size * sizeof(float));
-    file.write(reinterpret_cast<const char*>(mat->col_indices),
-               size * sizeof(int));
-  }
+    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
+    if (size > 0) {
+        file.write(reinterpret_cast<const char*>(mat->values), size * sizeof(float));
+        file.write(reinterpret_cast<const char*>(mat->col_indices), size * sizeof(int));
+    }
 
-  // 计算并写入简单校验和
-  uint64_t checksum = 0;
-  checksum += static_cast<uint64_t>(mat->num_rows);
-  checksum += static_cast<uint64_t>(mat->num_cols);
-  checksum += static_cast<uint64_t>(mat->max_nnz_per_row);
-  for (size_t i = 0; i < size; i++) {
-    checksum += static_cast<uint64_t>(mat->col_indices[i]);
-  }
-  file.write(reinterpret_cast<const char*>(&checksum), sizeof(uint64_t));
+    // 计算并写入简单校验和
+    uint64_t checksum = 0;
+    checksum += static_cast<uint64_t>(mat->num_rows);
+    checksum += static_cast<uint64_t>(mat->num_cols);
+    checksum += static_cast<uint64_t>(mat->max_nnz_per_row);
+    for (size_t i = 0; i < size; i++) {
+        checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
+    file.write(reinterpret_cast<const char*>(&checksum), sizeof(uint64_t));
 
-  if (!file) {
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 int ell_deserialize(ELLMatrix* mat, const char* filename) {
-  if (!mat || !filename) {
-    return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-  }
+    if (!mat || !filename) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
 
-  std::ifstream file(filename, std::ios::binary);
-  if (!file) {
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  // 读取版本头和魔数
-  uint32_t magic, version;
-  file.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
-  file.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
+    // 读取版本头和魔数
+    uint32_t magic, version;
+    file.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
 
-  if (!file || magic != 0x4C4C4553) {  // "SELL"
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    if (!file || magic != 0x4C4C4553) {  // "SELL"
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  if (version > 1) {
-    fprintf(stderr,
-            "Warning: ELL file version %u is newer than supported version 1\n",
-            version);
-  }
+    if (version > 1) {
+        fprintf(stderr, "Warning: ELL file version %u is newer than supported version 1\n",
+                version);
+    }
 
-  int rows, cols, max_nnz;
-  file.read(reinterpret_cast<char*>(&rows), sizeof(int));
-  file.read(reinterpret_cast<char*>(&cols), sizeof(int));
-  file.read(reinterpret_cast<char*>(&max_nnz), sizeof(int));
+    int rows, cols, max_nnz;
+    file.read(reinterpret_cast<char*>(&rows), sizeof(int));
+    file.read(reinterpret_cast<char*>(&cols), sizeof(int));
+    file.read(reinterpret_cast<char*>(&max_nnz), sizeof(int));
 
-  if (!file || rows < 0 || cols < 0 || max_nnz < 0) {
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    if (!file || rows < 0 || cols < 0 || max_nnz < 0) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  // 主机端内容变化后，旧的 GPU 镜像立即失效
-  ell_free_gpu(mat);
+    // 主机端内容变化后，旧的 GPU 镜像立即失效
+    ell_free_gpu(mat);
 
-  if (mat->owns_host_memory) {
-    delete[] mat->values;
-    delete[] mat->col_indices;
-  }
+    if (mat->owns_host_memory) {
+        delete[] mat->values;
+        delete[] mat->col_indices;
+    }
 
-  mat->num_rows = rows;
-  mat->num_cols = cols;
-  mat->max_nnz_per_row = max_nnz;
+    mat->num_rows = rows;
+    mat->num_cols = cols;
+    mat->max_nnz_per_row = max_nnz;
 
-  size_t size = static_cast<size_t>(rows) * max_nnz;
-  mat->values = (size > 0) ? new float[size] : nullptr;
-  mat->col_indices = (size > 0) ? new int[size] : nullptr;
-  mat->owns_host_memory = true;
+    size_t size = static_cast<size_t>(rows) * max_nnz;
+    mat->values = (size > 0) ? new float[size] : nullptr;
+    mat->col_indices = (size > 0) ? new int[size] : nullptr;
+    mat->owns_host_memory = true;
 
-  if (size > 0) {
-    file.read(reinterpret_cast<char*>(mat->values), size * sizeof(float));
-    file.read(reinterpret_cast<char*>(mat->col_indices), size * sizeof(int));
-  }
+    if (size > 0) {
+        file.read(reinterpret_cast<char*>(mat->values), size * sizeof(float));
+        file.read(reinterpret_cast<char*>(mat->col_indices), size * sizeof(int));
+    }
 
-  // 读取并验证校验和
-  uint64_t stored_checksum;
-  file.read(reinterpret_cast<char*>(&stored_checksum), sizeof(uint64_t));
+    // 读取并验证校验和
+    uint64_t stored_checksum;
+    file.read(reinterpret_cast<char*>(&stored_checksum), sizeof(uint64_t));
 
-  if (!file) {
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  // 计算校验和
-  uint64_t computed_checksum = 0;
-  computed_checksum += static_cast<uint64_t>(rows);
-  computed_checksum += static_cast<uint64_t>(cols);
-  computed_checksum += static_cast<uint64_t>(max_nnz);
-  for (size_t i = 0; i < size; i++) {
-    computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
-  }
+    // 计算校验和
+    uint64_t computed_checksum = 0;
+    computed_checksum += static_cast<uint64_t>(rows);
+    computed_checksum += static_cast<uint64_t>(cols);
+    computed_checksum += static_cast<uint64_t>(max_nnz);
+    for (size_t i = 0; i < size; i++) {
+        computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
 
-  if (computed_checksum != stored_checksum) {
-    fprintf(stderr, "ELL file checksum mismatch: expected %lu, got %lu\n",
-            stored_checksum, computed_checksum);
-    return static_cast<int>(SpMVError::FILE_IO);
-  }
+    if (computed_checksum != stored_checksum) {
+        fprintf(stderr, "ELL file checksum mismatch: expected %lu, got %lu\n", stored_checksum,
+                computed_checksum);
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
 
-  // 统计实际非零元素数
-  int total_nnz = 0;
-  for (size_t i = 0; i < size; i++) {
-    if (mat->col_indices[i] >= 0) total_nnz++;
-  }
-  mat->nnz = total_nnz;
+    // 统计实际非零元素数
+    int total_nnz = 0;
+    for (size_t i = 0; i < size; i++) {
+        if (mat->col_indices[i] >= 0)
+            total_nnz++;
+    }
+    mat->nnz = total_nnz;
 
-  return static_cast<int>(SpMVError::SUCCESS);
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 bool ell_validate(const ELLMatrix* mat) {
-  if (!mat) {
-    return false;
-  }
-
-  // Check dimensions
-  if (mat->num_rows < 0 || mat->num_cols < 0 || mat->max_nnz_per_row < 0 ||
-      mat->nnz < 0) {
-    return false;
-  }
-
-  size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-
-  // If size > 0, values and col_indices must be non-null
-  if (size > 0 && (!mat->values || !mat->col_indices)) {
-    return false;
-  }
-
-  // Check col_indices are in valid range [-1, num_cols)
-  // -1 indicates padding, other values must be in [0, num_cols)
-  int actual_nnz = 0;
-  for (size_t i = 0; i < size; i++) {
-    int col = mat->col_indices[i];
-    if (col == -1) {
-      // Padding entry, value should be 0
-      // (not strictly required but good practice)
-    } else if (col < 0 || col >= mat->num_cols) {
-      return false;
-    } else {
-      actual_nnz++;
+    if (!mat) {
+        return false;
     }
-  }
 
-  // Check nnz count matches
-  if (actual_nnz != mat->nnz) {
-    return false;
-  }
+    // Check dimensions
+    if (mat->num_rows < 0 || mat->num_cols < 0 || mat->max_nnz_per_row < 0 || mat->nnz < 0) {
+        return false;
+    }
 
-  return true;
+    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
+
+    // If size > 0, values and col_indices must be non-null
+    if (size > 0 && (!mat->values || !mat->col_indices)) {
+        return false;
+    }
+
+    // Check col_indices are in valid range [-1, num_cols)
+    // -1 indicates padding, other values must be in [0, num_cols)
+    int actual_nnz = 0;
+    for (size_t i = 0; i < size; i++) {
+        int col = mat->col_indices[i];
+        if (col == -1) {
+            // Padding entry, value should be 0
+            // (not strictly required but good practice)
+        } else if (col < 0 || col >= mat->num_cols) {
+            return false;
+        } else {
+            actual_nnz++;
+        }
+    }
+
+    // Check nnz count matches
+    if (actual_nnz != mat->nnz) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace spmv

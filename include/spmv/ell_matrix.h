@@ -25,24 +25,23 @@ namespace spmv {
  * Uses column-major storage for GPU memory coalescing.
  */
 struct ELLMatrix {
-  int num_rows;         ///< Number of rows
-  int num_cols;         ///< Number of columns
-  int max_nnz_per_row;  ///< Maximum non-zeros in any row (determines padding)
-  int nnz;              ///< Actual total non-zero count
+    int num_rows;         ///< Number of rows
+    int num_cols;         ///< Number of columns
+    int max_nnz_per_row;  ///< Maximum non-zeros in any row (determines padding)
+    int nnz;              ///< Actual total non-zero count
 
-  /// Column-major storage: values[k * num_rows + row]
-  float* values;     ///< Values array [num_rows * max_nnz_per_row]
-  int* col_indices;  ///< Column indices [num_rows * max_nnz_per_row], -1 =
-                     ///< padding
+    /// Column-major storage: values[k * num_rows + row]
+    float* values;     ///< Values array [num_rows * max_nnz_per_row]
+    int* col_indices;  ///< Column indices [num_rows * max_nnz_per_row], -1 =
+                       ///< padding
 
-  // GPU device pointers
-  float* d_values;     ///< Device memory for values
-  int* d_col_indices;  ///< Device memory for column indices
+    // GPU device pointers
+    float* d_values;     ///< Device memory for values
+    int* d_col_indices;  ///< Device memory for column indices
 
-  // Memory ownership flags
-  bool owns_host_memory;  ///< True if host memory should be freed on destroy
-  bool
-      owns_device_memory;  ///< True if device memory should be freed on destroy
+    // Memory ownership flags
+    bool owns_host_memory;    ///< True if host memory should be freed on destroy
+    bool owns_device_memory;  ///< True if device memory should be freed on destroy
 };
 
 /**
@@ -151,7 +150,7 @@ int ell_deserialize(ELLMatrix* mat, const char* filename);
  * @return Linear index into values/col_indices arrays.
  */
 inline int ell_index(int row, int k, int num_rows) {
-  return k * num_rows + row;
+    return k * num_rows + row;
 }
 
 /**
