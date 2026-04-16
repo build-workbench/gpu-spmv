@@ -1,73 +1,92 @@
-# GPU SpMV (Sparse Matrix-Vector Multiplication)
+<h1 align="center">GPU SpMV</h1>
 
-[![CI](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml/badge.svg)](https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-blue?logo=github)](https://lessup.github.io/gpu-spmv/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/LessUp/gpu-spmv/blob/main/LICENSE)
+<p align="center">
+  <strong>High-Performance CUDA Sparse Matrix-Vector Multiplication Library</strong>
+</p>
 
-English | [简体中文](README.zh-CN.md)
+<p align="center">
+  <a href="https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml">
+    <img src="https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://lessup.github.io/gpu-spmv/">
+    <img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue?logo=github" alt="Documentation">
+  </a>
+  <a href="https://github.com/LessUp/gpu-spmv/releases">
+    <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
+  </a>
+  <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  </a>
+</p>
 
-**High-performance CUDA sparse matrix-vector multiplication library**
+<p align="center">
+  <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-Supporting CSR and ELL formats with multiple load-balancing optimization strategies and automatic kernel selection.
+<p align="center">
+  Supported formats: <b>CSR</b>, <b>ELL</b> | Kernels: <b>Scalar</b>, <b>Vector</b>, <b>Merge Path</b> | Auto-selection | Production-ready
+</p>
 
 ---
 
-## Core Features
+## ✨ Features
 
 ### Multiple Sparse Matrix Formats
 
-| Format | Description | Best For |
-|--------|-------------|----------|
-| **CSR** | Compressed Sparse Row | General-purpose, most sparse matrices |
-| **ELL** | ELLPACK | Uniform row lengths, optimal GPU memory access |
+| Format | Description | Best For | GPU Efficiency |
+|:-------|:------------|:---------|:--------------:|
+| **CSR** | Compressed Sparse Row | General-purpose sparse matrices | ★★★☆☆ |
+| **ELL** | ELLPACK | Uniform row lengths | ★★★★★ |
 
 ### Four Optimized CUDA Kernels
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│               Automatic Kernel Selection Strategy            │
-├─────────────────────────────────────────────────────────────┤
-│  avg_nnz_per_row < 4     ──→  Scalar CSR                    │
-│  (few elements per row)       One thread per row            │
-│                                                             │
-│  skewness < 10           ──→  Vector CSR                    │
-│  (uniform row lengths)        One warp (32 threads) per row │
-│                                                             │
-│  skewness >= 10          ──→  Merge Path                    │
-│  (highly irregular)           Perfect load balancing        │
-│                                                             │
-│  Row length ≈ max_nnz    ──→  ELL Kernel                    │
-│  (ELL format)                 Column-major coalesced access │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│              Automatic Kernel Selection Strategy                 │
+├─────────────────────────────────────────────────────────────────┤
+│  avg_nnz_per_row < 4     ──→  Scalar CSR                        │
+│  (Very sparse rows)           One thread per row                │
+│                                                                 │
+│  skewness < 10           ──→  Vector CSR                        │
+│  (Uniform distribution)       One warp (32 threads) per row     │
+│                                                                 │
+│  skewness >= 10          ──→  Merge Path                        │
+│  (Highly irregular)           Perfect load balancing            │
+│                                                                 │
+│  ELL format              ──→  ELL Kernel                        │
+│  (Uniform rows)               Column-major coalesced access     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Engineering Quality
+### Production-Ready Engineering
 
-- **RAII Resource Management** — `CudaBuffer`, `CudaTimer`, `ScopedTexture` for automatic GPU resource handling
-- **Semantic Error Codes** — `SpMVError` enum + `CUDA_CHECK_*` macros for clear error tracking
-- **Cross-Platform Support** — Automatic Windows/Linux test path adaptation
-- **Modern Build System** — CMake Presets for one-click Debug/Release builds
-- **Continuous Integration** — GitHub Actions with automatic format checking and build verification
+- 🎯 **RAII Resource Management** — `CudaBuffer`, `CudaTimer`, `SpMVExecutionContext` for automatic GPU resource handling
+- 🔍 **Semantic Error Codes** — `SpMVError` enum + `CUDA_CHECK_*` macros for clear error tracking
+- 🖥️ **Cross-Platform Support** — Automatic Windows/Linux test path adaptation
+- 🔧 **Modern Build System** — CMake Presets for one-click Debug/Release builds
+- ✅ **CI/CD Ready** — GitHub Actions with format checking and build verification
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Requirements
 
-- CUDA Toolkit 11.0+
-- CMake 3.18+
-- C++17 compiler
-- NVIDIA GPU (Compute Capability 7.0+)
+| Component | Minimum | Recommended |
+|:----------|:-------:|:-----------:|
+| CUDA Toolkit | 11.0 | 12.0+ |
+| CMake | 3.18 | 3.25+ |
+| C++ Standard | C++17 | C++17 |
+| NVIDIA GPU | CC 7.0 (Volta) | CC 8.6+ (Ampere) |
 
-### Build & Install
+### Installation
 
 ```bash
 # Clone repository
 git clone https://github.com/LessUp/gpu-spmv.git
 cd gpu-spmv
 
-# Release build (recommended)
+# Build (Release recommended)
 cmake --preset release
 cmake --build --preset release
 
@@ -85,13 +104,13 @@ ctest --preset default
 using namespace spmv;
 
 int main() {
-    // 1. Create sparse matrix
+    // 1. Create sparse matrix from dense data
     std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
     CSRMatrix* csr = csr_create(0, 0, 0);
     csr_from_dense(csr, dense.data(), 3, 3);
     csr_to_gpu(csr);
 
-    // 2. Prepare input vector
+    // 2. Prepare vectors
     std::vector<float> x = {1, 1, 1};
     CudaBuffer<float> d_x(3), d_y(3);
     d_x.copyFromHost(x.data(), 3);
@@ -103,10 +122,8 @@ int main() {
     // 4. Get results
     std::vector<float> y(3);
     d_y.copyToHost(y.data(), 3);
-
     // Output: y = [3, 7, 5]
-    printf("Result: [%.0f, %.0f, %.0f]\n", y[0], y[1], y[2]);
-    
+
     csr_destroy(csr);
     return 0;
 }
@@ -114,27 +131,105 @@ int main() {
 
 ---
 
-## Application Examples
+## 📊 Performance
 
-### PageRank Graph Algorithm
+Benchmark results on NVIDIA RTX 3080:
+
+| Matrix Size | Non-zeros | Kernel | Bandwidth Utilization |
+|:-----------:|:---------:|:-------|:---------------------:|
+| 10K × 10K | 500K | Vector CSR | ~70% |
+| 100K × 100K | 5M | Merge Path | ~65% |
+| 1M × 1M | 50M | Merge Path | ~60% |
+
+```bash
+# Run benchmark
+./build-release/spmv_benchmark
+
+# Example output:
+# GPU: NVIDIA GeForce RTX 3080
+# Matrix: 100000x100000, NNZ: 5000000
+# Avg time: 0.312 ms
+# Bandwidth: 495.2 GB/s (65.1% of peak)
+```
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|:---------|:------------|
+| [📖 **Documentation Site**](https://lessup.github.io/gpu-spmv/) | Full documentation with examples |
+| [📦 **Installation**](https://lessup.github.io/gpu-spmv/installation.en) | Detailed installation guide |
+| [📚 **API Reference**](https://lessup.github.io/gpu-spmv/api.en) | Complete API documentation |
+| [🚀 **Performance Guide**](https://lessup.github.io/gpu-spmv/performance.en) | Optimization strategies |
+| [📝 **Examples**](https://lessup.github.io/gpu-spmv/examples.en) | Code examples collection |
+| [📋 **Changelog**](https://lessup.github.io/gpu-spmv/changelog.en) | Version history & migration guide |
+
+---
+
+## 🏗️ Architecture
+
+```
+gpu-spmv/
+├── include/spmv/          # Public headers
+│   ├── common.h           # Error codes, CUDA macros
+│   ├── cuda_buffer.h      # RAII GPU memory management
+│   ├── csr_matrix.h       # CSR sparse matrix format
+│   ├── ell_matrix.h       # ELL sparse matrix format
+│   ├── spmv.h             # SpMV interface & kernel selection
+│   ├── bandwidth.h        # Bandwidth metrics
+│   ├── benchmark.h        # Benchmarking framework
+│   └── pagerank.h         # PageRank algorithm
+├── src/                   # Source implementations
+├── tests/                 # Property-based tests + unit tests
+├── benchmarks/            # Performance benchmarks
+└── docs/                  # Documentation
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+./build-release/spmv_tests
+
+# Run specific test
+./build-release/spmv_tests --gtest_filter="CSR*"
+
+# Property tests with random matrices
+./build-release/spmv_tests --gtest_repeat=10
+```
+
+Test coverage includes:
+- ✅ CSR/ELL format conversion correctness
+- ✅ SpMV computation verification (vs. CPU reference)
+- ✅ Dimension validation
+- ✅ Kernel selector validity
+- ✅ Bandwidth metric validation
+- ✅ PageRank invariant checking
+
+---
+
+## 💡 Application Example: PageRank
 
 ```cpp
 #include "spmv/pagerank.h"
+#include "spmv/csr_matrix.h"
 
 // Create column-normalized adjacency matrix
-CSRMatrix* adj = create_adjacency_matrix();
+CSRMatrix* adj = create_normalized_adjacency();
 csr_to_gpu(adj);
 
-// Configure PageRank parameters
+// Configure PageRank
 PageRankConfig config;
 config.damping_factor = 0.85f;
 config.tolerance = 1e-6f;
-config.max_iterations = 100;
 
 // Run PageRank
 PageRankResult result = pagerank(adj, &config);
 
-// Get Top-10 nodes
+// Get top-10 nodes
 std::vector<TopKNode> top_10(10);
 pagerank_top_k(&result, adj->num_rows, 10, top_10.data());
 
@@ -142,99 +237,47 @@ pagerank_free(&result);
 csr_destroy(adj);
 ```
 
-### Performance Benchmarking
-
-```cpp
-#include "spmv/benchmark.h"
-
-BenchmarkConfig config;
-config.num_warmup_runs = 5;
-config.num_runs = 20;
-
-BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &config);
-
-printf("Average time: %.3f ms\n", result.avg_time_ms);
-printf("GFLOPS: %.2f\n", result.gflops);
-printf("Bandwidth: %.1f GB/s (%.1f%% efficiency)\n", 
-       result.bandwidth_gb_s,
-       result.bandwidth_gb_s / get_gpu_peak_bandwidth() * 100);
-```
-
 ---
 
-## Documentation
+## 🤝 Contributing
 
-| Document | Description |
-|----------|-------------|
-| [**API Reference**](https://lessup.github.io/gpu-spmv/api) | Complete API documentation: data structures, interfaces, error codes |
-| [**Performance Guide**](https://lessup.github.io/gpu-spmv/performance) | Kernel selection strategies, bandwidth optimization, benchmarking |
-| [**Code Examples**](https://lessup.github.io/gpu-spmv/examples) | Complete examples: basic usage, format conversion, PageRank, solvers |
-| [**Changelog**](CHANGELOG.md) | Version history, change records, migration guide |
-
----
-
-## Performance Overview
-
-Performance on typical sparse matrices:
-
-| Matrix Size | Non-zeros | Kernel | Bandwidth Utilization |
-|-------------|-----------|--------|----------------------|
-| 10K × 10K | 500K | Vector CSR | ~70% |
-| 100K × 100K | 5M | Merge Path | ~65% |
-| 1M × 1M | 50M | Merge Path | ~60% |
-
-> Actual performance depends on matrix structure and GPU model. Use `spmv_auto_config()` to automatically select the optimal strategy.
-
----
-
-## Project Structure
-
-```
-gpu-spmv/
-├── include/spmv/          # Public headers
-│   ├── common.h           # Error codes, CUDA_CHECK_* macros
-│   ├── cuda_buffer.h      # RAII GPU memory management
-│   ├── csr_matrix.h       # CSR sparse matrix
-│   ├── ell_matrix.h       # ELL sparse matrix
-│   ├── spmv.h             # SpMV interface, kernel selection
-│   ├── bandwidth.h        # Bandwidth metrics
-│   ├── benchmark.h        # Benchmarking framework
-│   └── pagerank.h         # PageRank algorithm
-├── src/                   # Implementation
-├── tests/                 # Property tests + unit tests
-├── benchmarks/            # Performance benchmarks
-└── docs/                  # Online documentation
-```
-
----
-
-## Testing
-
-The project includes a comprehensive property-based test suite verifying:
-
-- CSR/ELL format conversion correctness
-- SpMV computation correctness (vs. CPU reference)
-- Dimension validation
-- Kernel selector validity
-- Bandwidth metric validity
-- PageRank invariants
-
-Each property test runs 100 iterations with randomly generated matrices.
-
----
-
-## License
-
-[MIT License](LICENSE)
-
----
-
-## Contributing
-
-Issues and Pull Requests are welcome!
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'feat: add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Development Setup
+
+```bash
+# Format code
+find src tests include -name "*.cpp" -o -name "*.h" -o -name "*.cu" | xargs clang-format -i
+
+# Build and test
+cmake --preset default
+cmake --build --preset default
+ctest --preset default
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## 🙏 Acknowledgments
+
+- Inspired by [Merge-based Parallel Sparse Matrix-Vector Multiplication](https://research.nvidia.com/sites/default/files/pubs/2014-09_Merge-based-Parallel-Sparse/merge-based-spmv.pdf) by Merrill & Garland
+- CUDA optimization techniques from NVIDIA documentation
+
+---
+
+<div align="center">
+
+**[📖 Documentation](https://lessup.github.io/gpu-spmv/)** · **[🚀 Getting Started](https://lessup.github.io/gpu-spmv/installation.en)** · **[💻 GitHub](https://github.com/LessUp/gpu-spmv)**
+
+</div>

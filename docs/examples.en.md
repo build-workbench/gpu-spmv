@@ -1,32 +1,32 @@
 ---
 layout: default
-title: 示例代码
-lang: zh
+title: Examples
+lang: en
 ---
 
 <p align="right">
-  <a href="examples.en.html">🇺🇸 English</a>
+  <a href="examples.html">🇨🇳 简体中文</a>
 </p>
 
-# 📝 示例代码
+# 📝 Code Examples
 
-本页面提供 GPU SpMV 库的完整示例代码，涵盖基础用法、高级特性和实际应用场景。
-
----
-
-## 目录
-
-- [基础示例](#基础示例)
-- [格式转换](#格式转换)
-- [执行上下文复用](#执行上下文复用)
-- [性能基准测试](#性能基准测试)
-- [PageRank 应用](#pagerank-应用)
+This page provides complete code examples for GPU SpMV library, covering basic usage, advanced features, and real-world applications.
 
 ---
 
-## 基础示例
+## Table of Contents
 
-### 最简 SpMV
+- [Basic Examples](#basic-examples)
+- [Format Conversion](#format-conversion)
+- [Context Reuse](#context-reuse)
+- [Benchmarking](#benchmarking)
+- [PageRank Application](#pagerank-application)
+
+---
+
+## Basic Examples
+
+### Minimal SpMV
 
 ```cpp
 #include "spmv/csr_matrix.h"
@@ -38,7 +38,7 @@ lang: zh
 using namespace spmv;
 
 int main() {
-    // 1. 定义稠密矩阵并转换为 CSR 格式
+    // 1. Define dense matrix and convert to CSR
     std::vector<float> dense = {
         1, 0, 2,
         0, 3, 4,
@@ -49,21 +49,21 @@ int main() {
     csr_from_dense(csr, dense.data(), 3, 3);
     csr_to_gpu(csr);
     
-    // 2. 准备输入向量
+    // 2. Prepare vectors
     std::vector<float> x = {1, 1, 1};
     CudaBuffer<float> d_x(3), d_y(3);
     d_x.copyFromHost(x.data(), 3);
     
-    // 3. 执行 SpMV（自动选择最优 Kernel）
+    // 3. Execute SpMV (auto-select kernel)
     SpMVConfig config = spmv_auto_config(csr);
     SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
     
-    // 4. 获取结果
+    // 4. Retrieve results
     std::vector<float> y(3);
     d_y.copyToHost(y.data(), 3);
     
-    std::cout << "结果: " << y[0] << " " << y[1] << " " << y[2] << std::endl;
-    std::cout << "时间: " << result.elapsed_ms << " ms" << std::endl;
+    std::cout << "Result: " << y[0] << " " << y[1] << " " << y[2] << std::endl;
+    std::cout << "Time: " << result.elapsed_ms << " ms" << std::endl;
     
     csr_destroy(csr);
     return 0;
@@ -72,9 +72,9 @@ int main() {
 
 ---
 
-## 格式转换
+## Format Conversion
 
-### CSR 转 ELL
+### CSR to ELL Conversion
 
 ```cpp
 #include "spmv/csr_matrix.h"
@@ -83,14 +83,14 @@ int main() {
 void format_conversion() {
     CSRMatrix* csr = /* ... */;
     
-    // 计算 ELL 存储效率
+    // Calculate ELL storage efficiency
     CSRStats stats = csr_compute_stats(csr);
     float fill_ratio = (float)csr->nnz / (csr->num_rows * stats.max_nnz_per_row);
     
     if (fill_ratio > 0.7) {
         ELLMatrix* ell = ell_create(0, 0, 0);
         ell_from_csr(ell, csr);
-        // 使用 ELL 获得更好的 GPU 性能
+        // Use ELL for better GPU performance
         ell_destroy(ell);
     }
     
@@ -100,9 +100,9 @@ void format_conversion() {
 
 ---
 
-## 执行上下文复用
+## Context Reuse
 
-### 纹理缓存复用
+### Texture Cache Reuse
 
 ```cpp
 #include "spmv/spmv.h"
@@ -117,13 +117,14 @@ void context_reuse() {
     SpMVConfig config;
     config.use_texture = true;
     
-    // 创建可复用的执行上下文
+    // Create reusable context
     SpMVExecutionContext context;
     
-    // 多次执行，纹理对象只创建一次
+    // Multiple executions with texture reuse
     for (int iter = 0; iter < 100; iter++) {
         SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), 
                                      &config, csr->num_cols, &context);
+        // Texture object created only once
     }
     
     csr_destroy(csr);
@@ -132,9 +133,9 @@ void context_reuse() {
 
 ---
 
-## 性能基准测试
+## Benchmarking
 
-### 完整基准测试示例
+### Full Benchmark Example
 
 ```cpp
 #include "spmv/csr_matrix.h"
@@ -144,24 +145,24 @@ void context_reuse() {
 using namespace spmv;
 
 int main() {
-    // 生成或加载矩阵
+    // Generate or load matrix
     CSRMatrix* csr = /* ... */;
     csr_to_gpu(csr);
     
     std::vector<float> x(csr->num_cols, 1.0f);
     
-    // 配置基准测试
+    // Benchmark configuration
     BenchmarkConfig bench_config;
     bench_config.num_warmup_runs = 10;
     bench_config.num_runs = 50;
     
-    // 执行基准测试
+    // Run benchmark
     BenchmarkResult result = benchmark_csr(csr, x.data(), nullptr, &bench_config);
     
     if (result.error_code == 0) {
-        std::cout << "平均时间: " << result.avg_time_ms << " ms\n";
+        std::cout << "Average time: " << result.avg_time_ms << " ms\n";
         std::cout << "GFLOPS: " << result.gflops << "\n";
-        std::cout << "带宽: " << result.bandwidth_gb_s << " GB/s\n";
+        std::cout << "Bandwidth: " << result.bandwidth_gb_s << " GB/s\n";
     }
     
     csr_destroy(csr);
@@ -171,9 +172,9 @@ int main() {
 
 ---
 
-## PageRank 应用
+## PageRank Application
 
-### 基础 PageRank
+### Basic PageRank
 
 ```cpp
 #include "spmv/pagerank.h"
@@ -184,31 +185,31 @@ int main() {
 using namespace spmv;
 
 int main() {
-    // 创建并归一化邻接矩阵
+    // Create and normalize adjacency matrix
     CSRMatrix* adj = /* ... */;
     csr_to_gpu(adj);
     
-    // 配置 PageRank
+    // Configure PageRank
     PageRankConfig config;
     config.damping_factor = 0.85f;
     config.tolerance = 1e-6f;
     config.max_iterations = 100;
     
-    // 执行 PageRank
+    // Run PageRank
     PageRankResult result = pagerank(adj, &config);
     
     if (result.error_code == 0) {
-        std::cout << "是否收敛: " << (result.converged ? "是" : "否") << "\n";
-        std::cout << "迭代次数: " << result.iterations << "\n";
+        std::cout << "Converged: " << (result.converged ? "Yes" : "No") << "\n";
+        std::cout << "Iterations: " << result.iterations << "\n";
         
-        // 获取 Top-K 节点
+        // Get Top-K nodes
         int k = 10;
         std::vector<TopKNode> top_k(k);
         pagerank_top_k(&result, adj->num_rows, k, top_k.data());
         
-        std::cout << "Top-" << k << " 节点:\n";
+        std::cout << "Top-" << k << " nodes:\n";
         for (int i = 0; i < k; i++) {
-            std::cout << "  " << (i+1) << ". 节点 " << top_k[i].node_id 
+            std::cout << "  " << (i+1) << ". Node " << top_k[i].node_id 
                       << ": " << top_k[i].rank << "\n";
         }
     }
@@ -223,6 +224,6 @@ int main() {
 
 <div align="center">
 
-**[← API 参考](api)** · **[ 性能优化 →](performance)**
+**[← API Reference](api.en)** · **[ Performance →](performance.en)**
 
 </div>
