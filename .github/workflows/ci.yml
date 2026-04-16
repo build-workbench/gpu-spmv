@@ -25,11 +25,11 @@ jobs:
       - name: Install clang-format
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format-17
+          sudo apt-get install -y clang-format-18
 
       - name: Check formatting
         run: |
-          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) | xargs clang-format-17 --dry-run --Werror
+          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) | xargs clang-format-18 --dry-run --Werror
 
   configure-no-cuda:
     name: Configure Without CUDA
