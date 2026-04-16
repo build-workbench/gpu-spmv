@@ -22,13 +22,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check C/C++/CUDA formatting
-        uses: jidicula/clang-format-action@v4.13.0
-        with:
-          clang-format-version: '17'
-          check-path: '.'
-          exclude-regex: '(^|/)(build[^/]*|third_party|external|vendor|\.git)(/|$)'
-          fallback-style: 'Google'
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-17
+
+      - name: Check formatting
+        run: |
+          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) | xargs clang-format-17 --dry-run --Werror
 
   configure-no-cuda:
     name: Configure Without CUDA
