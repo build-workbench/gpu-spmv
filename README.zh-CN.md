@@ -23,9 +23,24 @@
   <a href="README.md">English</a> | <b>简体中文</b>
 </p>
 
-<p align="center">
-  支持格式: <b>CSR</b>, <b>ELL</b> | 内核: <b>Scalar</b>, <b>Vector</b>, <b>Merge Path</b> | 自动选择 | 生产就绪
-</p>
+---
+
+## 📋 规范文档
+
+本项目遵循**规范驱动开发（SDD）**。所有规范文档位于 `/specs/` 目录：
+
+| 规范类型 | 位置 | 描述 |
+|---------|------|------|
+| 产品需求 | [`specs/product/`](specs/product/) | 功能定义和验收标准 |
+| 技术 RFC | [`specs/rfc/`](specs/rfc/) | 架构和设计决策 |
+| API 规范 | [`specs/api/`](specs/api/) | 公共 API 文档 |
+| 测试规范 | [`specs/testing/`](specs/testing/) | 属性测试要求 |
+
+**核心文档**：
+- [产品需求](specs/product/spmv-gpu.md) - 完整功能规格
+- [核心架构 RFC](specs/rfc/0001-core-architecture.md) - 技术设计文档
+- [公共 API 规范](specs/api/public-api.md) - 完整 API 参考
+- [属性测试](specs/testing/property-tests.feature) - BDD 测试规格
 
 ---
 
@@ -243,11 +258,20 @@ csr_destroy(adj);
 
 我们欢迎各种形式的贡献！详情请参阅 [Contributing Guide](CONTRIBUTING.md)。
 
+**本项目遵循规范驱动开发**。贡献前请查阅：
+- [如何参与规范编写](CONTRIBUTING.md#spec-driven-development-workflow)
+- [开发环境搭建](CONTRIBUTING.md#development-setup)
+- [代码风格指南](CONTRIBUTING.md#style-guidelines)
+
+### 贡献者快速入门
+
 1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+2. 查阅 `/specs/` 中的相关规范
+3. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+4. **先更新规范**（如果添加/修改功能）
+5. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+6. 推送到分支 (`git push origin feature/amazing-feature`)
+7. 创建 Pull Request
 
 ### 开发环境
 

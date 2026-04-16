@@ -20,12 +20,27 @@
 </p>
 
 <p align="center">
-  <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
+  <a href="README.md"><b>English</b></a> | <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-<p align="center">
-  Supported formats: <b>CSR</b>, <b>ELL</b> | Kernels: <b>Scalar</b>, <b>Vector</b>, <b>Merge Path</b> | Auto-selection | Production-ready
-</p>
+---
+
+## 📋 Specification Documents
+
+This project follows **Spec-Driven Development (SDD)**. All specifications are located in `/specs/`:
+
+| Spec Type | Location | Description |
+|-----------|----------|-------------|
+| Product Requirements | [`specs/product/`](specs/product/) | Feature definitions and acceptance criteria |
+| Technical RFCs | [`specs/rfc/`](specs/rfc/) | Architecture and design decisions |
+| API Specifications | [`specs/api/`](specs/api/) | Public API documentation |
+| Testing Specs | [`specs/testing/`](specs/testing/) | Property-based test requirements |
+
+**Key Documents**:
+- [Product Requirements](specs/product/spmv-gpu.md) - Complete feature specifications
+- [Core Architecture RFC](specs/rfc/0001-core-architecture.md) - Technical design document
+- [Public API Spec](specs/api/public-api.md) - Complete API reference
+- [Property Tests](specs/testing/property-tests.feature) - BDD test specifications
 
 ---
 
@@ -243,11 +258,20 @@ csr_destroy(adj);
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+**This project follows Spec-Driven Development**. Before contributing, please review:
+- [How to contribute to specs](CONTRIBUTING.md#spec-driven-development-workflow)
+- [Development setup guide](CONTRIBUTING.md#development-setup)
+- [Style guidelines](CONTRIBUTING.md#style-guidelines)
+
+### Quick Start for Contributors
+
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Review relevant specs in `/specs/`
+3. Create a feature branch (`git checkout -b feature/amazing-feature`)
+4. **Update specs first** (if adding/modifying features)
+5. Commit changes (`git commit -m 'feat: add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ### Development Setup
 
