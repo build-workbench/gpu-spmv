@@ -213,3 +213,27 @@ TEST(CSRUnitTest, HostMutationInvalidatesDeviceMirror) {
 
     csr_destroy(csr);
 }
+
+// **Feature: spmv-gpu, Matrix Validation**
+TEST(CSRUnitTest, ValidateValidMatrix) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};  // 3x3
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    int result = csr_from_dense(csr, dense.data(), 3, 3);
+    ASSERT_EQ(result, static_cast<int>(SpMVError::SUCCESS));
+
+    EXPECT_TRUE(csr_validate(csr));
+
+    csr_destroy(csr);
+}
+
+TEST(CSRUnitTest, ValidateNullMatrix) {
+    EXPECT_FALSE(csr_validate(nullptr));
+}
+
+TEST(CSRUnitTest, ValidateEmptyMatrix) {
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_NE(csr, nullptr);
+    EXPECT_TRUE(csr_validate(csr));
+    csr_destroy(csr);
+}

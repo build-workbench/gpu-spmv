@@ -4,6 +4,17 @@
 
 namespace spmv {
 
+// Global thresholds for kernel selection (can be tuned per-GPU architecture)
+static SpMVThresholds g_thresholds;
+
+SpMVThresholds spmv_get_thresholds() {
+    return g_thresholds;
+}
+
+void spmv_set_thresholds(const SpMVThresholds& thresholds) {
+    g_thresholds = thresholds;
+}
+
 void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
     if (!A || !x || !y)
         return;
@@ -44,13 +55,13 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
         return config;
     }
 
-    config.use_texture = (A->num_cols > TEXTURE_CACHE_THRESHOLD_COLS);
+    config.use_texture = (A->num_cols > g_thresholds.texture_cols_threshold);
 
     CSRStats stats = csr_compute_stats(A);
 
-    if (stats.avg_nnz_per_row < 4.0f) {
+    if (stats.avg_nnz_per_row < g_thresholds.avg_nnz_threshold) {
         config.kernel_type = SpMVConfig::SCALAR_CSR;
-    } else if (stats.skewness < 10.0f) {
+    } else if (stats.skewness < g_thresholds.skewness_threshold) {
         config.kernel_type = SpMVConfig::VECTOR_CSR;
     } else {
         config.kernel_type = SpMVConfig::MERGE_PATH;

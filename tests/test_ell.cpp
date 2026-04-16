@@ -215,3 +215,27 @@ TEST(ELLUnitTest, HostMutationInvalidatesDeviceMirror) {
 
     ell_destroy(ell);
 }
+
+// **Feature: spmv-gpu, ELL Matrix Validation**
+TEST(ELLUnitTest, ValidateValidMatrix) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};  // 3x3
+
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    int result = ell_from_dense(ell, dense.data(), 3, 3);
+    ASSERT_EQ(result, static_cast<int>(SpMVError::SUCCESS));
+
+    EXPECT_TRUE(ell_validate(ell));
+
+    ell_destroy(ell);
+}
+
+TEST(ELLUnitTest, ValidateNullMatrix) {
+    EXPECT_FALSE(ell_validate(nullptr));
+}
+
+TEST(ELLUnitTest, ValidateEmptyMatrix) {
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_NE(ell, nullptr);
+    EXPECT_TRUE(ell_validate(ell));
+    ell_destroy(ell);
+}

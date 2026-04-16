@@ -10,20 +10,35 @@
 
 namespace spmv {
 
-// 错误码定义
+/**
+ * @file common.h
+ * @brief Common definitions, error codes, and CUDA utilities.
+ */
+
+/**
+ * @brief Error codes for SpMV operations.
+ *
+ * These error codes are returned by most SpMV functions to indicate
+ * success or failure of the operation.
+ */
 enum class SpMVError {
-    SUCCESS = 0,
-    INVALID_DIMENSION = -1,
-    CUDA_MALLOC = -2,
-    CUDA_MEMCPY = -3,
-    KERNEL_LAUNCH = -4,
-    INVALID_FORMAT = -5,
-    FILE_IO = -6,
-    OUT_OF_MEMORY = -7,
-    INVALID_ARGUMENT = -8
+    SUCCESS = 0,             ///< Operation completed successfully
+    INVALID_DIMENSION = -1,  ///< Matrix or vector dimensions are invalid
+    CUDA_MALLOC = -2,        ///< CUDA memory allocation failed
+    CUDA_MEMCPY = -3,        ///< CUDA memory copy failed
+    KERNEL_LAUNCH = -4,      ///< CUDA kernel launch failed
+    INVALID_FORMAT = -5,     ///< Sparse matrix format is invalid
+    FILE_IO = -6,            ///< File I/O error
+    OUT_OF_MEMORY = -7,      ///< Host memory allocation failed
+    INVALID_ARGUMENT = -8    ///< Invalid argument passed to function
 };
 
-// 错误码转字符串
+/**
+ * @brief Convert error code to human-readable string.
+ *
+ * @param err The error code to convert.
+ * @return A string describing the error.
+ */
 inline const char* spmv_error_string(SpMVError err) {
     switch (err) {
         case SpMVError::SUCCESS:
@@ -49,18 +64,38 @@ inline const char* spmv_error_string(SpMVError err) {
     }
 }
 
-// CUDA 异常类
+/**
+ * @brief Exception class for CUDA errors.
+ *
+ * Thrown when a CUDA operation fails. Contains the CUDA error code
+ * and a descriptive message.
+ */
 class CudaException : public std::runtime_error {
    public:
+    /**
+     * @brief Construct a CudaException from a CUDA error code.
+     * @param err The CUDA error code.
+     */
     explicit CudaException(cudaError_t err)
         : std::runtime_error(std::string("CUDA error: ") + cudaGetErrorString(err)), error_(err) {}
+
+    /**
+     * @brief Get the CUDA error code.
+     * @return The CUDA error code.
+     */
     cudaError_t error() const { return error_; }
 
    private:
     cudaError_t error_;
 };
 
-// CUDA 错误检查宏 —— 按实际操作类型返回对应的错误码
+/**
+ * @brief Check CUDA memory allocation and return error code on failure.
+ * @param call The CUDA call to execute.
+ *
+ * This macro executes the CUDA call and returns CUDA_MALLOC error
+ * if the call fails. Use for cudaMalloc and similar functions.
+ */
 #define CUDA_CHECK_MALLOC(call)                                                     \
     do {                                                                            \
         cudaError_t err = call;                                                     \
@@ -71,6 +106,13 @@ class CudaException : public std::runtime_error {
         }                                                                           \
     } while (0)
 
+/**
+ * @brief Check CUDA memory copy and return error code on failure.
+ * @param call The CUDA call to execute.
+ *
+ * This macro executes the CUDA call and returns CUDA_MEMCPY error
+ * if the call fails. Use for cudaMemcpy and similar functions.
+ */
 #define CUDA_CHECK_MEMCPY(call)                                                     \
     do {                                                                            \
         cudaError_t err = call;                                                     \
@@ -81,9 +123,16 @@ class CudaException : public std::runtime_error {
         }                                                                           \
     } while (0)
 
-// 向后兼容：CUDA_CHECK 映射到 CUDA_MALLOC（用于分配场景）
+/// @brief Backward compatible alias for CUDA_CHECK_MALLOC
 #define CUDA_CHECK(call) CUDA_CHECK_MALLOC(call)
 
+/**
+ * @brief Check CUDA call and throw exception on failure.
+ * @param call The CUDA call to execute.
+ *
+ * This macro executes the CUDA call and throws CudaException
+ * if the call fails.
+ */
 #define CUDA_CHECK_THROW(call)              \
     do {                                    \
         cudaError_t err = call;             \

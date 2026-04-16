@@ -8,68 +8,172 @@
 
 namespace spmv {
 
-// CSR (Compressed Sparse Row) 格式稀疏矩阵
+/**
+ * @file csr_matrix.h
+ * @brief CSR (Compressed Sparse Row) sparse matrix format.
+ *
+ * The CSR format stores a sparse matrix using three arrays:
+ * - values: Non-zero values stored row by row
+ * - col_indices: Column index for each non-zero value
+ * - row_ptrs: Index into values/col_indices where each row starts
+ *
+ * This format is memory-efficient and works well for matrices
+ * with moderate row-length variation.
+ */
+
+/**
+ * @brief CSR (Compressed Sparse Row) sparse matrix structure.
+ *
+ * Stores both host and device memory pointers with ownership tracking.
+ */
 struct CSRMatrix {
-    int num_rows;  // 矩阵行数
-    int num_cols;  // 矩阵列数
-    int nnz;       // 非零元素总数
+    int num_rows;  ///< Number of rows in the matrix
+    int num_cols;  ///< Number of columns in the matrix
+    int nnz;       ///< Total number of non-zero elements
 
-    float* values;     // 非零元素值数组 [nnz]
-    int* col_indices;  // 列索引数组 [nnz]
-    int* row_ptrs;     // 行指针数组 [num_rows + 1]
+    float* values;     ///< Non-zero values array [nnz]
+    int* col_indices;  ///< Column indices array [nnz]
+    int* row_ptrs;     ///< Row pointers array [num_rows + 1]
 
-    // GPU 端指针
-    float* d_values;
-    int* d_col_indices;
-    int* d_row_ptrs;
+    // GPU device pointers
+    float* d_values;     ///< Device memory for values
+    int* d_col_indices;  ///< Device memory for column indices
+    int* d_row_ptrs;     ///< Device memory for row pointers
 
-    // 标记是否拥有内存
-    bool owns_host_memory;
-    bool owns_device_memory;
+    // Memory ownership flags
+    bool owns_host_memory;    ///< True if host memory should be freed on destroy
+    bool owns_device_memory;  ///< True if device memory should be freed on destroy
 };
 
-// 创建 CSR 矩阵
+/**
+ * @brief Create an empty CSR matrix.
+ *
+ * @param rows Number of rows.
+ * @param cols Number of columns.
+ * @param nnz Number of non-zero elements (preallocate space).
+ * @return Pointer to new matrix, or nullptr on invalid input.
+ */
 CSRMatrix* csr_create(int rows, int cols, int nnz);
 
-// 销毁 CSR 矩阵
+/**
+ * @brief Destroy a CSR matrix and free all memory.
+ *
+ * Frees both host and device memory if owned.
+ *
+ * @param mat Matrix to destroy (may be nullptr).
+ */
 void csr_destroy(CSRMatrix* mat);
 
-// 从稠密矩阵转换为 CSR 格式
-// dense: 行优先存储的稠密矩阵 [rows * cols]
-// 返回: 0 成功, 负数错误码
+/**
+ * @brief Convert a dense matrix to CSR format.
+ *
+ * @param csr Output CSR matrix (must be pre-created).
+ * @param dense Input dense matrix in row-major order [rows * cols].
+ * @param rows Number of rows.
+ * @param cols Number of columns.
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols);
 
-// 将 CSR 矩阵转换回稠密矩阵
-// dense: 输出缓冲区 [num_rows * num_cols]
+/**
+ * @brief Convert a CSR matrix to dense format.
+ *
+ * @param csr Input CSR matrix.
+ * @param dense Output dense matrix [num_rows * num_cols].
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_to_dense(const CSRMatrix* csr, float* dense);
 
-// 查询元素值
+/**
+ * @brief Get the value at a specific position.
+ *
+ * @param mat The CSR matrix.
+ * @param row Row index (0-indexed).
+ * @param col Column index (0-indexed).
+ * @return The value at (row, col), or 0.0f if out of bounds or not stored.
+ */
 float csr_get_element(const CSRMatrix* mat, int row, int col);
 
-// 传输到 GPU
+/**
+ * @brief Copy matrix data to GPU memory.
+ *
+ * Allocates device memory and copies host data to device.
+ * Any existing device memory is freed first.
+ *
+ * @param mat Matrix to upload.
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_to_gpu(CSRMatrix* mat);
 
-// 从 GPU 传输回主机
+/**
+ * @brief Copy matrix data from GPU to host memory.
+ *
+ * @param mat Matrix with device data to download.
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_from_gpu(CSRMatrix* mat);
 
-// 释放 GPU 内存
+/**
+ * @brief Free GPU memory associated with the matrix.
+ *
+ * @param mat Matrix whose device memory should be freed.
+ */
 void csr_free_gpu(CSRMatrix* mat);
 
-// 序列化到文件
+/**
+ * @brief Serialize matrix to binary file.
+ *
+ * File format includes magic number, version, and checksum for integrity.
+ *
+ * @param mat Matrix to serialize.
+ * @param filename Output file path.
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_serialize(const CSRMatrix* mat, const char* filename);
 
-// 从文件反序列化
+/**
+ * @brief Deserialize matrix from binary file.
+ *
+ * Validates magic number, version, and checksum.
+ *
+ * @param mat Output matrix (will be reallocated).
+ * @param filename Input file path.
+ * @return 0 on success, negative error code on failure.
+ */
 int csr_deserialize(CSRMatrix* mat, const char* filename);
 
-// 计算每行非零元素数量的统计信息
+/**
+ * @brief Statistics about row lengths in a CSR matrix.
+ */
 struct CSRStats {
-    float avg_nnz_per_row;
-    int max_nnz_per_row;
-    int min_nnz_per_row;
-    float skewness;  // max / (min + 1)
+    float avg_nnz_per_row;  ///< Average non-zeros per row
+    int max_nnz_per_row;    ///< Maximum non-zeros in any row
+    int min_nnz_per_row;    ///< Minimum non-zeros in any row
+    float skewness;         ///< Ratio: max / (min + 1), measures irregularity
 };
 
+/**
+ * @brief Compute statistics about the matrix structure.
+ *
+ * @param mat The CSR matrix.
+ * @return Statistics structure.
+ */
 CSRStats csr_compute_stats(const CSRMatrix* mat);
+
+/**
+ * @brief Validate matrix structure integrity.
+ *
+ * Checks:
+ * - Dimensions are non-negative
+ * - Pointers are valid
+ * - row_ptrs is monotonically increasing
+ * - row_ptrs[0] == 0 and row_ptrs[num_rows] == nnz
+ * - All column indices are in valid range [0, num_cols)
+ *
+ * @param mat Matrix to validate.
+ * @return true if structure is valid, false otherwise.
+ */
+bool csr_validate(const CSRMatrix* mat);
 
 }  // namespace spmv
 

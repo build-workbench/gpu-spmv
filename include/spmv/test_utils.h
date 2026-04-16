@@ -86,7 +86,13 @@ inline std::string getTempFilePath(const char* filename) {
         tmp = ".";
     return std::string(tmp) + "\\" + filename;
 #else
-    return std::string("/tmp/") + filename;
+    // Use environment variables or fallback to /tmp
+    const char* tmpdir = std::getenv("TMPDIR");
+    if (!tmpdir)
+        tmpdir = std::getenv("TMP");
+    if (!tmpdir)
+        tmpdir = "/tmp";
+    return std::string(tmpdir) + "/" + filename;
 #endif
 }
 

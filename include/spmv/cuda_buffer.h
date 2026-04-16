@@ -11,12 +11,45 @@
 
 namespace spmv {
 
-// RAII 风格的 GPU 内存管理
+/**
+ * @file cuda_buffer.h
+ * @brief RAII-style GPU memory management.
+ *
+ * Provides a template class for automatic GPU memory management
+ * following RAII principles. Memory is automatically freed when
+ * the buffer goes out of scope.
+ */
+
+/**
+ * @brief RAII wrapper for GPU memory.
+ *
+ * @tparam T Element type.
+ *
+ * This class manages GPU memory with automatic cleanup.
+ * It is move-only (not copyable) to prevent accidental double-frees.
+ *
+ * Example usage:
+ * @code
+ * CudaBuffer<float> buf(1000);  // Allocates 1000 floats
+ * buf.copyFromHost(host_data, 1000);
+ * // Use buf.get() to get device pointer
+ * // Memory freed automatically when buf goes out of scope
+ * @endcode
+ */
 template <typename T>
 class CudaBuffer {
    public:
+    /**
+     * @brief Construct an empty buffer.
+     */
     CudaBuffer() : ptr_(nullptr), size_(0) {}
 
+    /**
+     * @brief Construct a buffer with given capacity.
+     *
+     * @param count Number of elements to allocate.
+     * @throws CudaException if allocation fails.
+     */
     explicit CudaBuffer(size_t count) : ptr_(nullptr), size_(count) {
         if (count > 0) {
             cudaError_t err = cudaMalloc(&ptr_, count * sizeof(T));
@@ -26,6 +59,9 @@ class CudaBuffer {
         }
     }
 
+    /**
+     * @brief Destructor - frees GPU memory.
+     */
     ~CudaBuffer() {
         if (ptr_) {
             cudaFree(ptr_);
@@ -33,16 +69,21 @@ class CudaBuffer {
         }
     }
 
-    // 禁止拷贝
+    // Non-copyable
     CudaBuffer(const CudaBuffer&) = delete;
     CudaBuffer& operator=(const CudaBuffer&) = delete;
 
-    // 允许移动
+    /**
+     * @brief Move constructor.
+     */
     CudaBuffer(CudaBuffer&& other) noexcept : ptr_(other.ptr_), size_(other.size_) {
         other.ptr_ = nullptr;
         other.size_ = 0;
     }
 
+    /**
+     * @brief Move assignment operator.
+     */
     CudaBuffer& operator=(CudaBuffer&& other) noexcept {
         if (this != &other) {
             if (ptr_)
@@ -55,20 +96,50 @@ class CudaBuffer {
         return *this;
     }
 
+    /**
+     * @brief Get raw device pointer.
+     * @return Device pointer (may be nullptr).
+     */
     T* get() { return ptr_; }
+
+    /**
+     * @brief Get const raw device pointer.
+     * @return Const device pointer.
+     */
     const T* get() const { return ptr_; }
+
+    /**
+     * @brief Get number of elements.
+     * @return Element count.
+     */
     size_t size() const { return size_; }
+
+    /**
+     * @brief Get buffer size in bytes.
+     * @return Byte count.
+     */
     size_t bytes() const { return size_ * sizeof(T); }
+
+    /**
+     * @brief Check if buffer is empty.
+     * @return true if no memory allocated.
+     */
     bool empty() const { return ptr_ == nullptr || size_ == 0; }
 
-    // 将设备内存按字节置零（或指定字节值）
+    /**
+     * @brief Fill buffer with a byte value.
+     * @param value Byte value to fill (default 0).
+     */
     void memset(int value = 0) {
         if (ptr_ && size_ > 0) {
             CUDA_CHECK_THROW(cudaMemset(ptr_, value, size_ * sizeof(T)));
         }
     }
 
-    // 用主机端的值填充整个缓冲区
+    /**
+     * @brief Fill buffer with a value.
+     * @param value Value to fill all elements with.
+     */
     void fill(const T& value) {
         if (!ptr_ || size_ == 0)
             return;
@@ -77,7 +148,13 @@ class CudaBuffer {
             cudaMemcpy(ptr_, host_data.data(), size_ * sizeof(T), cudaMemcpyHostToDevice));
     }
 
-    // 从主机复制数据到设备
+    /**
+     * @brief Copy data from host to device.
+     *
+     * @param host_data Source host pointer.
+     * @param count Number of elements to copy.
+     * @throws std::runtime_error if count exceeds buffer size.
+     */
     void copyFromHost(const T* host_data, size_t count) {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
@@ -85,7 +162,13 @@ class CudaBuffer {
         CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
     }
 
-    // 从设备复制数据到主机
+    /**
+     * @brief Copy data from device to host.
+     *
+     * @param host_data Destination host pointer.
+     * @param count Number of elements to copy.
+     * @throws std::runtime_error if count exceeds buffer size.
+     */
     void copyToHost(T* host_data, size_t count) const {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
@@ -93,7 +176,12 @@ class CudaBuffer {
         CUDA_CHECK_THROW(cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
     }
 
-    // 重新分配
+    /**
+     * @brief Resize buffer (reallocates if necessary).
+     *
+     * @param new_count New element count.
+     * @throws CudaException if allocation fails.
+     */
     void resize(size_t new_count) {
         if (new_count == size_)
             return;
@@ -107,7 +195,9 @@ class CudaBuffer {
         }
     }
 
-    // 释放内存
+    /**
+     * @brief Release memory and reset to empty.
+     */
     void release() {
         if (ptr_) {
             cudaFree(ptr_);
@@ -117,8 +207,8 @@ class CudaBuffer {
     }
 
    private:
-    T* ptr_;
-    size_t size_;
+    T* ptr_;       ///< Device pointer
+    size_t size_;  ///< Element count
 };
 
 }  // namespace spmv

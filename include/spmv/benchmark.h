@@ -10,21 +10,33 @@
 
 namespace spmv {
 
-// 基准测试结果
+/**
+ * @file benchmark.h
+ * @brief Benchmarking utilities for SpMV operations.
+ *
+ * Provides tools for measuring SpMV performance with
+ * multiple runs, statistics, and GPU/CPU comparison.
+ */
+
+/**
+ * @brief Result of a benchmark run.
+ *
+ * Contains timing statistics from multiple runs.
+ */
 struct BenchmarkResult {
-    std::string name;         // 测试名称
-    float execution_time_ms;  // 执行时间 (ms)
-    float gflops;             // 计算吞吐量
-    float bandwidth_gb_s;     // 带宽利用率
+    std::string name;         ///< Test name
+    float execution_time_ms;  ///< Execution time (ms)
+    float gflops;             ///< Computed GFLOPS
+    float bandwidth_gb_s;     ///< Memory bandwidth (GB/s)
 
-    // 统计信息 (多次运行)
-    float avg_time_ms;
-    float min_time_ms;
-    float max_time_ms;
-    float stddev_time_ms;
+    // Statistics from multiple runs
+    float avg_time_ms;     ///< Average time across runs
+    float min_time_ms;     ///< Minimum time
+    float max_time_ms;     ///< Maximum time
+    float stddev_time_ms;  ///< Standard deviation
 
-    int num_runs;    // 成功采样次数
-    int error_code;  // 0 = 成功，负数见 SpMVError
+    int num_runs;    ///< Number of successful runs
+    int error_code;  ///< 0 = success, negative = error
 
     BenchmarkResult()
         : execution_time_ms(0.0f),
@@ -38,41 +50,83 @@ struct BenchmarkResult {
           error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
-// 基准测试配置
+/**
+ * @brief Configuration for benchmark runs.
+ */
 struct BenchmarkConfig {
-    int num_warmup_runs;  // 预热运行次数
-    int num_runs;         // 测试运行次数
-    bool compare_cpu;     // 是否与 CPU 对比
+    int num_warmup_runs;  ///< Warmup runs (not timed)
+    int num_runs;         ///< Timed runs
+    bool compare_cpu;     ///< Include CPU comparison
 
     BenchmarkConfig() : num_warmup_runs(5), num_runs(20), compare_cpu(true) {}
 };
 
-// 运行 CSR SpMV 基准测试
+/**
+ * @brief Run CSR SpMV benchmark.
+ *
+ * @param A CSR matrix with device data.
+ * @param x Input vector (device memory).
+ * @param config SpMV kernel configuration.
+ * @param bench_config Benchmark settings.
+ * @return Benchmark results.
+ */
 BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
                               const BenchmarkConfig* bench_config = nullptr);
 
-// 运行 ELL SpMV 基准测试
+/**
+ * @brief Run ELL SpMV benchmark.
+ *
+ * @param A ELL matrix with device data.
+ * @param x Input vector (device memory).
+ * @param bench_config Benchmark settings.
+ * @return Benchmark results.
+ */
 BenchmarkResult benchmark_ell(const ELLMatrix* A, const float* x,
                               const BenchmarkConfig* bench_config = nullptr);
 
-// 对比 GPU vs CPU
+/**
+ * @brief Result of GPU vs CPU comparison.
+ */
 struct ComparisonResult {
-    BenchmarkResult gpu_result;
-    BenchmarkResult cpu_result;
-    float speedup;   // GPU speedup over CPU
-    int error_code;  // 0 = 成功，负数见 SpMVError
+    BenchmarkResult gpu_result;  ///< GPU benchmark result
+    BenchmarkResult cpu_result;  ///< CPU benchmark result
+    float speedup;               ///< GPU speedup factor
+    int error_code;              ///< 0 = success
 
     ComparisonResult() : speedup(0.0f), error_code(static_cast<int>(SpMVError::SUCCESS)) {}
 };
 
+/**
+ * @brief Compare GPU and CPU SpMV performance.
+ *
+ * @param A CSR matrix with device data.
+ * @param x Input vector.
+ * @param config SpMV configuration.
+ * @param bench_config Benchmark settings.
+ * @return Comparison results.
+ */
 ComparisonResult compare_gpu_cpu_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
                                      const BenchmarkConfig* bench_config = nullptr);
 
-// JSON 序列化
+/**
+ * @brief Serialize benchmark result to JSON.
+ * @param result Benchmark result.
+ * @return JSON string.
+ */
 std::string benchmark_to_json(const BenchmarkResult& result);
+
+/**
+ * @brief Serialize comparison result to JSON.
+ * @param result Comparison result.
+ * @return JSON string.
+ */
 std::string comparison_to_json(const ComparisonResult& result);
 
-// JSON 反序列化
+/**
+ * @brief Parse benchmark result from JSON.
+ * @param json JSON string.
+ * @return Benchmark result.
+ */
 BenchmarkResult benchmark_from_json(const std::string& json);
 
 }  // namespace spmv

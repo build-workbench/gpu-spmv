@@ -304,12 +304,21 @@ void ell_free_gpu(ELLMatrix* mat) {
     if (!mat)
         return;
 
+    cudaError_t err;
     if (mat->d_values) {
-        cudaFree(mat->d_values);
+        err = cudaFree(mat->d_values);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
         mat->d_values = nullptr;
     }
     if (mat->d_col_indices) {
-        cudaFree(mat->d_col_indices);
+        err = cudaFree(mat->d_col_indices);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
         mat->d_col_indices = nullptr;
     }
     mat->owns_device_memory = false;
@@ -325,6 +334,12 @@ int ell_serialize(const ELLMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
+    // 写入版本头和魔数
+    const uint32_t magic = 0x4C4C4553;  // "SELL" in little-endian
+    const uint32_t version = 1;
+    file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
+
     file.write(reinterpret_cast<const char*>(&mat->num_rows), sizeof(int));
     file.write(reinterpret_cast<const char*>(&mat->num_cols), sizeof(int));
     file.write(reinterpret_cast<const char*>(&mat->max_nnz_per_row), sizeof(int));
@@ -334,6 +349,16 @@ int ell_serialize(const ELLMatrix* mat, const char* filename) {
         file.write(reinterpret_cast<const char*>(mat->values), size * sizeof(float));
         file.write(reinterpret_cast<const char*>(mat->col_indices), size * sizeof(int));
     }
+
+    // 计算并写入简单校验和
+    uint64_t checksum = 0;
+    checksum += static_cast<uint64_t>(mat->num_rows);
+    checksum += static_cast<uint64_t>(mat->num_cols);
+    checksum += static_cast<uint64_t>(mat->max_nnz_per_row);
+    for (size_t i = 0; i < size; i++) {
+        checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
+    file.write(reinterpret_cast<const char*>(&checksum), sizeof(uint64_t));
 
     if (!file) {
         return static_cast<int>(SpMVError::FILE_IO);
@@ -350,6 +375,20 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // 读取版本头和魔数
+    uint32_t magic, version;
+    file.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
+
+    if (!file || magic != 0x4C4C4553) {  // "SELL"
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    if (version > 1) {
+        fprintf(stderr, "Warning: ELL file version %u is newer than supported version 1\n",
+                version);
     }
 
     int rows, cols, max_nnz;
@@ -383,7 +422,26 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
         file.read(reinterpret_cast<char*>(mat->col_indices), size * sizeof(int));
     }
 
+    // 读取并验证校验和
+    uint64_t stored_checksum;
+    file.read(reinterpret_cast<char*>(&stored_checksum), sizeof(uint64_t));
+
     if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // 计算校验和
+    uint64_t computed_checksum = 0;
+    computed_checksum += static_cast<uint64_t>(rows);
+    computed_checksum += static_cast<uint64_t>(cols);
+    computed_checksum += static_cast<uint64_t>(max_nnz);
+    for (size_t i = 0; i < size; i++) {
+        computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
+
+    if (computed_checksum != stored_checksum) {
+        fprintf(stderr, "ELL file checksum mismatch: expected %lu, got %lu\n", stored_checksum,
+                computed_checksum);
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
@@ -396,6 +454,46 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     mat->nnz = total_nnz;
 
     return static_cast<int>(SpMVError::SUCCESS);
+}
+
+bool ell_validate(const ELLMatrix* mat) {
+    if (!mat) {
+        return false;
+    }
+
+    // Check dimensions
+    if (mat->num_rows < 0 || mat->num_cols < 0 || mat->max_nnz_per_row < 0 || mat->nnz < 0) {
+        return false;
+    }
+
+    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
+
+    // If size > 0, values and col_indices must be non-null
+    if (size > 0 && (!mat->values || !mat->col_indices)) {
+        return false;
+    }
+
+    // Check col_indices are in valid range [-1, num_cols)
+    // -1 indicates padding, other values must be in [0, num_cols)
+    int actual_nnz = 0;
+    for (size_t i = 0; i < size; i++) {
+        int col = mat->col_indices[i];
+        if (col == -1) {
+            // Padding entry, value should be 0
+            // (not strictly required but good practice)
+        } else if (col < 0 || col >= mat->num_cols) {
+            return false;
+        } else {
+            actual_nnz++;
+        }
+    }
+
+    // Check nnz count matches
+    if (actual_nnz != mat->nnz) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace spmv

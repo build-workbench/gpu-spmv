@@ -253,16 +253,29 @@ void csr_free_gpu(CSRMatrix* mat) {
     if (!mat)
         return;
 
+    cudaError_t err;
     if (mat->d_values) {
-        cudaFree(mat->d_values);
+        err = cudaFree(mat->d_values);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
         mat->d_values = nullptr;
     }
     if (mat->d_col_indices) {
-        cudaFree(mat->d_col_indices);
+        err = cudaFree(mat->d_col_indices);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
         mat->d_col_indices = nullptr;
     }
     if (mat->d_row_ptrs) {
-        cudaFree(mat->d_row_ptrs);
+        err = cudaFree(mat->d_row_ptrs);
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
+                    cudaGetErrorString(err));
+        }
         mat->d_row_ptrs = nullptr;
     }
     mat->owns_device_memory = false;
@@ -278,6 +291,12 @@ int csr_serialize(const CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
+    // 写入版本头和魔数
+    const uint32_t magic = 0x52534353;  // "SCSR" in little-endian
+    const uint32_t version = 1;
+    file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
+    file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
+
     // 写入头部信息
     file.write(reinterpret_cast<const char*>(&mat->num_rows), sizeof(int));
     file.write(reinterpret_cast<const char*>(&mat->num_cols), sizeof(int));
@@ -289,6 +308,19 @@ int csr_serialize(const CSRMatrix* mat, const char* filename) {
         file.write(reinterpret_cast<const char*>(mat->col_indices), mat->nnz * sizeof(int));
     }
     file.write(reinterpret_cast<const char*>(mat->row_ptrs), (mat->num_rows + 1) * sizeof(int));
+
+    // 计算并写入简单校验和（数据字节和）
+    uint64_t checksum = 0;
+    checksum += static_cast<uint64_t>(mat->num_rows);
+    checksum += static_cast<uint64_t>(mat->num_cols);
+    checksum += static_cast<uint64_t>(mat->nnz);
+    for (int i = 0; i < mat->nnz; i++) {
+        checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
+    for (int i = 0; i <= mat->num_rows; i++) {
+        checksum += static_cast<uint64_t>(mat->row_ptrs[i]);
+    }
+    file.write(reinterpret_cast<const char*>(&checksum), sizeof(uint64_t));
 
     if (!file) {
         return static_cast<int>(SpMVError::FILE_IO);
@@ -305,6 +337,20 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     std::ifstream file(filename, std::ios::binary);
     if (!file) {
         return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // 读取版本头和魔数
+    uint32_t magic, version;
+    file.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
+
+    if (!file || magic != 0x52534353) {  // "SCSR"
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    if (version > 1) {
+        fprintf(stderr, "Warning: CSR file version %u is newer than supported version 1\n",
+                version);
     }
 
     // 读取头部信息
@@ -343,7 +389,29 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     }
     file.read(reinterpret_cast<char*>(mat->row_ptrs), (rows + 1) * sizeof(int));
 
+    // 读取并验证校验和
+    uint64_t stored_checksum;
+    file.read(reinterpret_cast<char*>(&stored_checksum), sizeof(uint64_t));
+
     if (!file) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // 计算校验和
+    uint64_t computed_checksum = 0;
+    computed_checksum += static_cast<uint64_t>(rows);
+    computed_checksum += static_cast<uint64_t>(cols);
+    computed_checksum += static_cast<uint64_t>(nnz);
+    for (int i = 0; i < nnz; i++) {
+        computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
+    }
+    for (int i = 0; i <= rows; i++) {
+        computed_checksum += static_cast<uint64_t>(mat->row_ptrs[i]);
+    }
+
+    if (computed_checksum != stored_checksum) {
+        fprintf(stderr, "CSR file checksum mismatch: expected %lu, got %lu\n", stored_checksum,
+                computed_checksum);
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
@@ -369,6 +437,53 @@ CSRStats csr_compute_stats(const CSRMatrix* mat) {
     stats.skewness = static_cast<float>(stats.max_nnz_per_row) / (stats.min_nnz_per_row + 1);
 
     return stats;
+}
+
+bool csr_validate(const CSRMatrix* mat) {
+    if (!mat) {
+        return false;
+    }
+
+    // Check dimensions
+    if (mat->num_rows < 0 || mat->num_cols < 0 || mat->nnz < 0) {
+        return false;
+    }
+
+    // Check required pointers
+    if (!mat->row_ptrs) {
+        return false;
+    }
+
+    // If nnz > 0, values and col_indices must be non-null
+    if (mat->nnz > 0 && (!mat->values || !mat->col_indices)) {
+        return false;
+    }
+
+    // Check row_ptrs[0] == 0
+    if (mat->row_ptrs[0] != 0) {
+        return false;
+    }
+
+    // Check row_ptrs[num_rows] == nnz
+    if (mat->row_ptrs[mat->num_rows] != mat->nnz) {
+        return false;
+    }
+
+    // Check row_ptrs is monotonically increasing
+    for (int i = 0; i < mat->num_rows; i++) {
+        if (mat->row_ptrs[i + 1] < mat->row_ptrs[i]) {
+            return false;
+        }
+    }
+
+    // Check col_indices are within valid range [0, num_cols)
+    for (int i = 0; i < mat->nnz; i++) {
+        if (mat->col_indices[i] < 0 || mat->col_indices[i] >= mat->num_cols) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 }  // namespace spmv
