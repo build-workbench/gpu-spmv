@@ -1,71 +1,102 @@
-# GPU SpMV Documentation Configuration
-# Jekyll configuration for GitHub Pages
+# ═════════════════════════════════════════════════════════════════
+# GPU SpMV 文档站点配置 - 采用 just-the-docs 主题 (企业级文档方案)
+# ═════════════════════════════════════════════════════════════════
 
+# ─────────────────────────────────────────────────────────────────
+# 基础站点配置
+# ─────────────────────────────────────────────────────────────────
 title: GPU SpMV
 description: >-
-  High-performance CUDA Sparse Matrix-Vector Multiplication Library
-  高性能 CUDA 稀疏矩阵向量乘法库
+  High-Performance CUDA Sparse Matrix-Vector Multiplication Library
+  |
+  基于 CUDA 的高性能稀疏矩阵向量乘法库
 
-remote_theme: pages-themes/cayman@v0.2.0
+# ─────────────────────────────────────────────────────────────────
+# 主题配置 - 使用 just-the-docs (最佳选择)
+# ─────────────────────────────────────────────────────────────────
+remote_theme: just-the-docs/just-the-docs@v0.8.1
+
+# ─────────────────────────────────────────────────────────────────
+# 插件系统
+# ─────────────────────────────────────────────────────────────────
 plugins:
-  - jekyll-remote-theme
-  - jekyll-seo-tag
+  - jekyll-seo-tag          # SEO 优化
+  - jekyll-github-metadata  # GitHub 集成
+  - jekyll-sitemap          # 自动生成站点地图
+  - jekyll-relative-links   # 相对链接支持
 
+# ─────────────────────────────────────────────────────────────────
+# 仓库和构建配置
+# ─────────────────────────────────────────────────────────────────
 repository: LessUp/gpu-spmv
-show_downloads: true
-
-# Site Configuration
+baseurl: /gpu-spmv          # 仓库名作为 baseurl
 url: https://lessup.github.io
-baseurl: /gpu-spmv
-author: LessUp
 
-# Multi-language Configuration
-# Supported languages: en (English), zh (Chinese)
-default_lang: en
-languages:
-  - code: en
-    name: English
-    flag: 🇺🇸
-  - code: zh
-    name: 简体中文
-    flag: 🇨🇳
+# ─────────────────────────────────────────────────────────────────
+# JUST THE DOCS 高级配置
+# ─────────────────────────────────────────────────────────────────
 
-# Navigation - English
-nav_en:
-  - title: "Home"
-    url: "/index.en"
-  - title: "Installation"
-    url: "/installation.en"
-  - title: "API Reference"
-    url: "/api.en"
-  - title: "Examples"
-    url: "/examples.en"
-  - title: "Performance"
-    url: "/performance.en"
-  - title: "Architecture"
-    url: "/architecture.en"
-  - title: "Changelog"
-    url: "/changelog.en"
+# ┌─────────────────────────────────────────────────────────────┐
+# │ 搜索配置 (Lunr.js 全文搜索)                                   │
+# └─────────────────────────────────────────────────────────────┘
+search_enabled: true
+search:
+  heading_level: 3           # 搜索标题层级
+  previews: 3                # 预览结果数
+  preview_words_before: 5    # 预览前置词数
+  preview_words_after: 10    # 预览后置词数
+  tokenizer_separator: /[\s/]+/  # 分词器
+  rel_url: true              # 相对 URL
+  button: true               # 搜索按钮
 
-# Navigation - Chinese
-nav_zh:
-  - title: "首页"
-    url: "/"
-  - title: "安装指南"
-    url: "/installation"
-  - title: "API 参考"
-    url: "/api"
-  - title: "示例代码"
-    url: "/examples"
-  - title: "性能优化"
-    url: "/performance"
-  - title: "架构设计"
-    url: "/architecture"
-  - title: "更新日志"
-    url: "/changelog"
+# ┌─────────────────────────────────────────────────────────────┐
+# │ 侧边栏导航配置                                               │
+# └─────────────────────────────────────────────────────────────┘
+aux_links:
+  "📦 GitHub 仓库":
+    - "//github.com/LessUp/gpu-spmv"
+  "📋 更新日志":
+    - "//github.com/LessUp/gpu-spmv/blob/main/CHANGELOG.md"
 
-# Markdown Rendering
-markdown: kramdown
+aux_links_new_tab: true      # 辅助链接在新标签页打开
+
+# 返回页头链接
+back_to_top: true
+back_to_top_text: "返回顶部 / Back to top"
+
+# 页脚内容
+footer_content: >
+  <p>GPU SpMV Documentation | 
+  Licensed under <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">MIT License</a></p>
+  <p>Copyright &copy; 2024-2025 LessUp</p>
+
+# 上次编辑时间（自动从 Git 获取）
+last_edit_timestamp: true
+last_edit_time_format: "%Y-%m-%d %H:%M %z"
+
+# GH 编辑链接
+github_edit_link: true
+github_edit_link_text: "编辑此页 / Edit this page on GitHub"
+
+# 页面导航
+nav_external_links:
+  - title: GPU SpMV on GitHub
+    url: https://github.com/LessUp/gpu-spmv
+
+# 启用复制代码按钮
+enable_copy_code_button: true
+
+# 首页按钮
+heading_anchors: true
+
+# 颜色方案 (支持切换)
+color_scheme: dark          # 提供: light, dark, auto (默认: light)
+color_scheme_toggle: true   # 允许用户切换
+
+# 折叠边栏
+nav_fold: true
+
+# 代码高亮
 kramdown:
   input: GFM
   hard_wrap: false
@@ -76,31 +107,23 @@ kramdown:
       line_numbers: false
     block:
       line_numbers: true
-      start_line: 1
 
-# Default Layout
-defaults:
-  - scope:
-      path: ""
-    values:
-      layout: default
+# Favicon
+favicon_ico: "/assets/images/favicon.ico"
 
-# Exclude Files
+# 排除文件
 exclude:
   - Gemfile
   - Gemfile.lock
   - vendor
-  - "*.cu"
-  - "*.cuh"
-  - "*.cpp"
-  - "*.h"
-  - README.md
-
-# Collections for multi-language support
-collections:
-  docs_en:
-    output: true
-    permalink: /:name.en/
-  docs_zh:
-    output: true
-    permalink: /:name/
+  - _site
+  
+# 默认值
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+      lang: "zh"
+      has_children: false

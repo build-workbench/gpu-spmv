@@ -1,0 +1,80 @@
+/* ═════════════════════════════════════════════════════════════════
+   GPU SpMV 文档站点 - 自定义样式 (企业级深色主题)
+   ═════════════════════════════════════════════════════════════════ */
+
+:root {
+  --spmv-primary: #2563eb;
+  --spmv-primary-light: #3b82f6;
+  --spmv-primary-dark: #1d4ed8;
+  --spmv-accent: #06b6d4;
+  --spmv-accent-light: #22d3ee;
+  --spmv-success: #10b981;
+  --spmv-glow: 0 0 20px rgba(37, 99, 235, 0.3);
+}
+
+[data-color-scheme="light"] {
+  --spmv-bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.site-title {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  background: linear-gradient(135deg, var(--spmv-primary) 0%, var(--spmv-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.side-bar {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-list .nav-list-item .nav-list-link {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nav-list .nav-list-item .nav-list-link:hover {
+  box-shadow: var(--spmv-glow);
+}
+
+.main-content h1 {
+  background: linear-gradient(135deg, var(--spmv-primary) 0%, var(--spmv-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--spmv-primary), var(--spmv-accent)) 1;
+  padding-bottom: 0.5rem;
+}
+
+.main-content h2 {
+  color: var(--spmv-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.3rem;
+}
+
+.main-content h3 {
+  color: var(--spmv-accent);
+}
+
+div.highlight {
+  background: #0d1117 !important;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+table th {
+  background: linear-gradient(135deg, var(--spmv-primary) 0%, var(--spmv-primary-dark) 100%) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.search-input:focus {
+  border-color: var(--spmv-primary) !important;
+  box-shadow: var(--spmv-glow) !important;
+}
+
+.site-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
+}
