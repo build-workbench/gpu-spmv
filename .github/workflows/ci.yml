@@ -28,7 +28,6 @@ jobs:
           clang-format-version: '17'
           check-path: '.'
           exclude-regex: '(^|/)(build[^/]*|third_party|external|vendor|\.git)(/|$)'
-          fallback-style: 'LLVM'
 
   configure-no-cuda:
     name: Configure Without CUDA
