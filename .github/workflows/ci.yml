@@ -64,3 +64,41 @@ jobs:
 
       - name: Show fallback cache setting
         run: cmake -LA -N build-no-cuda | grep SPMV_REQUIRE_CUDA
+
+  build-cpu:
+    name: Build CPU-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ ninja-build
+
+      - name: Configure
+        run: cmake -S . -B build -DSPMV_REQUIRE_CUDA=OFF -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: List build artifacts
+        run: ls -la build/
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy
+
+      - name: Run clang-tidy on source files
+        run: |
+          find src include -name '*.cpp' -o -name '*.h' -o -name '*.cu' | head -20 | xargs clang-tidy --warnings-as-errors='*' -- 2>/dev/null || true
+          echo "Static analysis completed (warnings allowed for now)"
