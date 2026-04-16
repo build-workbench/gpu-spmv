@@ -17,11 +17,12 @@ namespace spmv {
 
 /// @name CUDA Configuration Constants
 /// @{
-constexpr int WARP_SIZE = 32;                        ///< CUDA warp size
-constexpr int MIN_BLOCK_SIZE = 32;                   ///< Minimum CUDA block size
-constexpr int MAX_BLOCK_SIZE = 1024;                 ///< Maximum CUDA block size
-constexpr int DEFAULT_BLOCK_SIZE = 256;              ///< Default CUDA block size
-constexpr int TEXTURE_CACHE_THRESHOLD_COLS = 10000;  ///< Use texture cache above this
+constexpr int WARP_SIZE = 32;            ///< CUDA warp size
+constexpr int MIN_BLOCK_SIZE = 32;       ///< Minimum CUDA block size
+constexpr int MAX_BLOCK_SIZE = 1024;     ///< Maximum CUDA block size
+constexpr int DEFAULT_BLOCK_SIZE = 256;  ///< Default CUDA block size
+constexpr int TEXTURE_CACHE_THRESHOLD_COLS =
+    10000;  ///< Use texture cache above this
 /// @}
 
 /**
@@ -30,19 +31,20 @@ constexpr int TEXTURE_CACHE_THRESHOLD_COLS = 10000;  ///< Use texture cache abov
  * These can be tuned for different GPU architectures.
  */
 struct SpMVThresholds {
-    float avg_nnz_threshold;     ///< Below this: use scalar kernel (default: 4.0)
-    float skewness_threshold;    ///< Below this: use vector kernel (default: 10.0)
-    int texture_cols_threshold;  ///< Above this: use texture cache (default: 10000)
+  float avg_nnz_threshold;   ///< Below this: use scalar kernel (default: 4.0)
+  float skewness_threshold;  ///< Below this: use vector kernel (default: 10.0)
+  int texture_cols_threshold;  ///< Above this: use texture cache (default:
+                               ///< 10000)
 
-    SpMVThresholds()
-        : avg_nnz_threshold(4.0f),
-          skewness_threshold(10.0f),
-          texture_cols_threshold(TEXTURE_CACHE_THRESHOLD_COLS) {}
+  SpMVThresholds()
+      : avg_nnz_threshold(4.0f),
+        skewness_threshold(10.0f),
+        texture_cols_threshold(TEXTURE_CACHE_THRESHOLD_COLS) {}
 
-    SpMVThresholds(float avg_nnz, float skewness, int texture_cols)
-        : avg_nnz_threshold(avg_nnz),
-          skewness_threshold(skewness),
-          texture_cols_threshold(texture_cols) {}
+  SpMVThresholds(float avg_nnz, float skewness, int texture_cols)
+      : avg_nnz_threshold(avg_nnz),
+        skewness_threshold(skewness),
+        texture_cols_threshold(texture_cols) {}
 };
 
 /**
@@ -61,23 +63,28 @@ void spmv_set_thresholds(const SpMVThresholds& thresholds);
  * @brief Configuration for SpMV kernel execution.
  */
 struct SpMVConfig {
-    /**
-     * @brief Kernel type for SpMV operation.
-     */
-    enum KernelType {
-        SCALAR_CSR,  ///< One thread per row (best for very sparse rows)
-        VECTOR_CSR,  ///< One warp per row (best for uniform distribution)
-        MERGE_PATH,  ///< Load-balanced partitioning (best for skewed matrices)
-        ELL_KERNEL   ///< ELL format kernel (column-major coalesced access)
-    };
+  /**
+   * @brief Kernel type for SpMV operation.
+   */
+  enum KernelType {
+    SCALAR_CSR,  ///< One thread per row (best for very sparse rows)
+    VECTOR_CSR,  ///< One warp per row (best for uniform distribution)
+    MERGE_PATH,  ///< Load-balanced partitioning (best for skewed matrices)
+    ELL_KERNEL   ///< ELL format kernel (column-major coalesced access)
+  };
 
-    KernelType kernel_type;  ///< Selected kernel type
-    int block_size;          ///< CUDA block size
-    bool use_texture;        ///< Use texture cache for x vector
+  KernelType kernel_type;  ///< Selected kernel type
+  int block_size;          ///< CUDA block size
+  bool use_texture;        ///< Use texture cache for x vector
 
-    SpMVConfig() : kernel_type(SCALAR_CSR), block_size(DEFAULT_BLOCK_SIZE), use_texture(false) {}
-    SpMVConfig(KernelType kernel_type_, int block_size_, bool use_texture_)
-        : kernel_type(kernel_type_), block_size(block_size_), use_texture(use_texture_) {}
+  SpMVConfig()
+      : kernel_type(SCALAR_CSR),
+        block_size(DEFAULT_BLOCK_SIZE),
+        use_texture(false) {}
+  SpMVConfig(KernelType kernel_type_, int block_size_, bool use_texture_)
+      : kernel_type(kernel_type_),
+        block_size(block_size_),
+        use_texture(use_texture_) {}
 };
 
 /**
@@ -87,71 +94,78 @@ struct SpMVConfig {
  * Move-only; not copyable.
  */
 struct SpMVExecutionContext {
-    cudaTextureObject_t tex_x;  ///< Texture object for x vector
-    const float* cached_x;      ///< Cached x pointer
-    size_t cached_x_length;     ///< Cached x length
-    bool texture_enabled;       ///< Whether texture is enabled
+  cudaTextureObject_t tex_x;  ///< Texture object for x vector
+  const float* cached_x;      ///< Cached x pointer
+  size_t cached_x_length;     ///< Cached x length
+  bool texture_enabled;       ///< Whether texture is enabled
 
-    SpMVExecutionContext()
-        : tex_x(0), cached_x(nullptr), cached_x_length(0), texture_enabled(false) {}
+  SpMVExecutionContext()
+      : tex_x(0),
+        cached_x(nullptr),
+        cached_x_length(0),
+        texture_enabled(false) {}
 
-    ~SpMVExecutionContext() { reset(); }
+  ~SpMVExecutionContext() { reset(); }
 
-    SpMVExecutionContext(const SpMVExecutionContext&) = delete;
-    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
+  SpMVExecutionContext(const SpMVExecutionContext&) = delete;
+  SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
 
-    SpMVExecutionContext(SpMVExecutionContext&& other) noexcept
-        : tex_x(other.tex_x),
-          cached_x(other.cached_x),
-          cached_x_length(other.cached_x_length),
-          texture_enabled(other.texture_enabled) {
-        other.tex_x = 0;
-        other.cached_x = nullptr;
-        other.cached_x_length = 0;
-        other.texture_enabled = false;
+  SpMVExecutionContext(SpMVExecutionContext&& other) noexcept
+      : tex_x(other.tex_x),
+        cached_x(other.cached_x),
+        cached_x_length(other.cached_x_length),
+        texture_enabled(other.texture_enabled) {
+    other.tex_x = 0;
+    other.cached_x = nullptr;
+    other.cached_x_length = 0;
+    other.texture_enabled = false;
+  }
+
+  SpMVExecutionContext& operator=(SpMVExecutionContext&& other) noexcept {
+    if (this != &other) {
+      reset();
+      tex_x = other.tex_x;
+      cached_x = other.cached_x;
+      cached_x_length = other.cached_x_length;
+      texture_enabled = other.texture_enabled;
+      other.tex_x = 0;
+      other.cached_x = nullptr;
+      other.cached_x_length = 0;
+      other.texture_enabled = false;
     }
+    return *this;
+  }
 
-    SpMVExecutionContext& operator=(SpMVExecutionContext&& other) noexcept {
-        if (this != &other) {
-            reset();
-            tex_x = other.tex_x;
-            cached_x = other.cached_x;
-            cached_x_length = other.cached_x_length;
-            texture_enabled = other.texture_enabled;
-            other.tex_x = 0;
-            other.cached_x = nullptr;
-            other.cached_x_length = 0;
-            other.texture_enabled = false;
-        }
-        return *this;
+  /**
+   * @brief Reset context, freeing texture object.
+   */
+  void reset() {
+    if (tex_x != 0) {
+      cudaDestroyTextureObject(tex_x);
+      tex_x = 0;
     }
-
-    /**
-     * @brief Reset context, freeing texture object.
-     */
-    void reset() {
-        if (tex_x != 0) {
-            cudaDestroyTextureObject(tex_x);
-            tex_x = 0;
-        }
-        cached_x = nullptr;
-        cached_x_length = 0;
-        texture_enabled = false;
-    }
+    cached_x = nullptr;
+    cached_x_length = 0;
+    texture_enabled = false;
+  }
 };
 
 /**
  * @brief Result of an SpMV operation.
  */
 struct SpMVResult {
-    float* y;              ///< Output vector (device pointer)
-    float elapsed_ms;      ///< Execution time in milliseconds
-    float gflops;          ///< Computed GFLOPS (2 * nnz / time / 1e9)
-    float bandwidth_gb_s;  ///< Memory bandwidth in GB/s
-    int error_code;        ///< 0 = success, negative = error
+  float* y;              ///< Output vector (device pointer)
+  float elapsed_ms;      ///< Execution time in milliseconds
+  float gflops;          ///< Computed GFLOPS (2 * nnz / time / 1e9)
+  float bandwidth_gb_s;  ///< Memory bandwidth in GB/s
+  int error_code;        ///< 0 = success, negative = error
 
-    SpMVResult()
-        : y(nullptr), elapsed_ms(0.0f), gflops(0.0f), bandwidth_gb_s(0.0f), error_code(0) {}
+  SpMVResult()
+      : y(nullptr),
+        elapsed_ms(0.0f),
+        gflops(0.0f),
+        bandwidth_gb_s(0.0f),
+        error_code(0) {}
 };
 
 /**
@@ -187,8 +201,9 @@ void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
  * @param context Optional execution context for texture caching.
  * @return Result with timing and error code.
  */
-SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMVConfig* config,
-                    int vec_size = -1, SpMVExecutionContext* context = nullptr);
+SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
+                    const SpMVConfig* config, int vec_size = -1,
+                    SpMVExecutionContext* context = nullptr);
 
 /**
  * @brief GPU implementation of ELL SpMV.
@@ -201,8 +216,9 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
  * @param context Optional execution context for texture caching.
  * @return Result with timing and error code.
  */
-SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMVConfig* config,
-                    int vec_size = -1, SpMVExecutionContext* context = nullptr);
+SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
+                    const SpMVConfig* config, int vec_size = -1,
+                    SpMVExecutionContext* context = nullptr);
 
 /**
  * @brief Automatically select optimal kernel configuration.
@@ -223,7 +239,7 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A);
  * @return true if dimensions are compatible.
  */
 inline bool spmv_validate_dimensions(int num_cols, int vec_size) {
-    return num_cols == vec_size;
+  return num_cols == vec_size;
 }
 
 }  // namespace spmv

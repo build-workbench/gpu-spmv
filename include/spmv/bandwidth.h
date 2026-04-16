@@ -8,12 +8,14 @@ namespace spmv {
 
 // 带宽度量
 struct BandwidthMetrics {
-    float theoretical_bandwidth_gb_s;  // GPU 理论峰值带宽
-    float achieved_bandwidth_gb_s;     // 实际达到的带宽
-    float efficiency;                  // 带宽利用率 = achieved / theoretical
+  float theoretical_bandwidth_gb_s;  // GPU 理论峰值带宽
+  float achieved_bandwidth_gb_s;     // 实际达到的带宽
+  float efficiency;                  // 带宽利用率 = achieved / theoretical
 
-    BandwidthMetrics()
-        : theoretical_bandwidth_gb_s(0.0f), achieved_bandwidth_gb_s(0.0f), efficiency(0.0f) {}
+  BandwidthMetrics()
+      : theoretical_bandwidth_gb_s(0.0f),
+        achieved_bandwidth_gb_s(0.0f),
+        efficiency(0.0f) {}
 };
 
 // 计算 CSR SpMV 的带宽
