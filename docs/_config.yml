@@ -7,8 +7,7 @@
 # ─────────────────────────────────────────────────────────────────
 title: GPU SpMV
 description: >-
-  High-Performance CUDA Sparse Matrix-Vector Multiplication Library
-  |
+  High-Performance CUDA Sparse Matrix-Vector Multiplication Library |
   基于 CUDA 的高性能稀疏矩阵向量乘法库
 
 # ─────────────────────────────────────────────────────────────────
@@ -24,6 +23,7 @@ plugins:
   - jekyll-github-metadata  # GitHub 集成
   - jekyll-sitemap          # 自动生成站点地图
   - jekyll-relative-links   # 相对链接支持
+  - jekyll-feed             # RSS feed
 
 # ─────────────────────────────────────────────────────────────────
 # 仓库和构建配置
@@ -31,6 +31,22 @@ plugins:
 repository: LessUp/gpu-spmv
 baseurl: /gpu-spmv          # 仓库名作为 baseurl
 url: https://lessup.github.io
+
+# ─────────────────────────────────────────────────────────────────
+# SEO 和社交媒体配置
+# ─────────────────────────────────────────────────────────────────
+lang: zh
+timezone: Asia/Shanghai
+
+# Open Graph / Twitter Cards
+twitter:
+  username: LessUp
+  card: summary_large_image
+
+social:
+  name: LessUp
+  links:
+    - https://github.com/LessUp/gpu-spmv
 
 # ─────────────────────────────────────────────────────────────────
 # JUST THE DOCS 高级配置
@@ -53,9 +69,11 @@ search:
 # │ 侧边栏导航配置                                               │
 # └─────────────────────────────────────────────────────────────┘
 aux_links:
-  "📦 GitHub 仓库":
+  "📦 GitHub":
     - "//github.com/LessUp/gpu-spmv"
-  "📋 更新日志":
+  "📖 API Docs":
+    - "//lessup.github.io/gpu-spmv/api"
+  "📋 Changelog":
     - "//github.com/LessUp/gpu-spmv/blob/main/CHANGELOG.md"
 
 aux_links_new_tab: true      # 辅助链接在新标签页打开
@@ -66,31 +84,35 @@ back_to_top_text: "返回顶部 / Back to top"
 
 # 页脚内容
 footer_content: >
-  <p>GPU SpMV Documentation | 
+  <p>GPU SpMV Documentation |
   Licensed under <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">MIT License</a></p>
-  <p>Copyright &copy; 2024-2025 LessUp</p>
+  <p>Copyright &copy; 2024-2026 LessUp</p>
 
 # 上次编辑时间（自动从 Git 获取）
 last_edit_timestamp: true
 last_edit_time_format: "%Y-%m-%d %H:%M %z"
 
 # GH 编辑链接
-github_edit_link: true
-github_edit_link_text: "编辑此页 / Edit this page on GitHub"
+gh_edit_link: true
+gh_edit_link_text: "编辑此页 / Edit this page on GitHub"
+gh_edit_repository: "https://github.com/LessUp/gpu-spmv"
+gh_edit_branch: "master"
+gh_edit_view_mode: "tree"
 
 # 页面导航
 nav_external_links:
   - title: GPU SpMV on GitHub
-    url: https://github.com/LessUp/gpu-spmv
+    url: https://github.com/LessUp/gpu-spmi
+    hide_icon: false
 
 # 启用复制代码按钮
 enable_copy_code_button: true
 
-# 首页按钮
+# 标题锚点
 heading_anchors: true
 
 # 颜色方案 (支持切换)
-color_scheme: dark          # 提供: light, dark, auto (默认: light)
+color_scheme: light          # 提供: light, dark, auto (默认: light)
 color_scheme_toggle: true   # 允许用户切换
 
 # 折叠边栏
@@ -117,7 +139,9 @@ exclude:
   - Gemfile.lock
   - vendor
   - _site
-  
+  - "*.tmp"
+  - "*.swp"
+
 # 默认值
 defaults:
   - scope:
@@ -127,3 +151,4 @@ defaults:
       layout: "default"
       lang: "zh"
       has_children: false
+      last_modified_date_time_format: "%Y-%m-%d %H:%M:%S %z"
