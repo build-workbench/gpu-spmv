@@ -130,6 +130,9 @@ kramdown:
     block:
       line_numbers: true
 
+# Logo
+logo: "/assets/images/logo.svg"
+
 # Favicon
 favicon_ico: "/assets/images/favicon.ico"
 
