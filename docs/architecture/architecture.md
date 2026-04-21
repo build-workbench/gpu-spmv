@@ -6,6 +6,10 @@ nav_order: 2
 lang: zh
 ---
 
+<p align="right">
+  <a href="architecture.en">🇺🇸 English</a>
+</p>
+
 # 🏗️ 架构设计
 {: .no_toc }
 

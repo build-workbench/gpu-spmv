@@ -185,14 +185,15 @@ class CudaBuffer {
     void resize(size_t new_count) {
         if (new_count == size_)
             return;
+        T* new_ptr = nullptr;
+        if (new_count > 0) {
+            CUDA_CHECK_THROW(cudaMalloc(&new_ptr, new_count * sizeof(T)));
+        }
         if (ptr_) {
             cudaFree(ptr_);
-            ptr_ = nullptr;
         }
+        ptr_ = new_ptr;
         size_ = new_count;
-        if (new_count > 0) {
-            CUDA_CHECK_THROW(cudaMalloc(&ptr_, new_count * sizeof(T)));
-        }
     }
 
     /**

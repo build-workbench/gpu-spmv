@@ -6,6 +6,10 @@ has_children: false
 lang: zh
 ---
 
+<p align="right">
+  <a href="api.en">🇺🇸 English</a>
+</p>
+
 # 📚 API 参考
 {: .no_toc }
 

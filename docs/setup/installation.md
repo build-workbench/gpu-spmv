@@ -6,6 +6,10 @@ nav_order: 1
 lang: zh
 ---
 
+<p align="right">
+  <a href="installation.en">🇺🇸 English</a>
+</p>
+
 # 📦 安装指南
 {: .no_toc }
 

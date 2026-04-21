@@ -3,7 +3,12 @@ layout: default
 title: Installation
 parent: Documentation
 nav_order: 1
+lang: en
 ---
+
+<p align="right">
+  <a href="installation">🇨🇳 简体中文</a>
+</p>
 
 # 📦 Installation
 {: .no_toc }

@@ -6,6 +6,10 @@ has_children: false
 lang: en
 ---
 
+<p align="right">
+  <a href="api">🇨🇳 简体中文</a>
+</p>
+
 # 📚 API Reference
 {: .no_toc }
 

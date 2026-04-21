@@ -3,7 +3,12 @@ layout: default
 title: Architecture
 parent: Documentation
 nav_order: 2
+lang: en
 ---
+
+<p align="right">
+  <a href="architecture">🇨🇳 简体中文</a>
+</p>
 
 # 🏗️ Architecture
 {: .no_toc }

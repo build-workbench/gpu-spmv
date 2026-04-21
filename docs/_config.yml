@@ -73,8 +73,8 @@ aux_links:
     - "//github.com/LessUp/gpu-spmv"
   "📖 API Docs":
     - "//lessup.github.io/gpu-spmv/api"
-  "📋 Changelog":
-    - "//github.com/LessUp/gpu-spmv/blob/main/CHANGELOG.md"
+  "📋 Releases":
+    - "//github.com/LessUp/gpu-spmv/releases"
 
 aux_links_new_tab: true      # 辅助链接在新标签页打开
 
@@ -102,7 +102,7 @@ gh_edit_view_mode: "tree"
 # 页面导航
 nav_external_links:
   - title: GPU SpMV on GitHub
-    url: https://github.com/LessUp/gpu-spmi
+    url: https://github.com/LessUp/gpu-spmv
     hide_icon: false
 
 # 启用复制代码按钮

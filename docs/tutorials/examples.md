@@ -6,6 +6,10 @@ has_children: false
 lang: zh
 ---
 
+<p align="right">
+  <a href="examples.en">🇺🇸 English</a>
+</p>
+
 # 📝 示例代码
 {: .no_toc }
 

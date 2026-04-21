@@ -6,6 +6,10 @@ has_children: false
 lang: en
 ---
 
+<p align="right">
+  <a href="performance">🇨🇳 简体中文</a>
+</p>
+
 # 🚀 Performance Optimization
 {: .no_toc }
 

@@ -6,6 +6,10 @@ nav_order: 6
 lang: zh
 ---
 
+<p align="right">
+  <a href="changelog.en">🇺🇸 English</a>
+</p>
+
 # 📋 更新日志
 {: .no_toc }
 

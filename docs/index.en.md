@@ -4,16 +4,21 @@ title: Home
 nav_order: 1
 has_children: false
 permalink: /index.en
+lang: en
 ---
 
-# GPU SpMV Documentation
-{: .fs-9 }
+<p align="right">
+  <a href="/">🇨🇳 简体中文</a>
+</p>
+
+# GPU SpMV
+{: .fs-9 .fw-700 .text-center }
 
 High-Performance CUDA Sparse Matrix-Vector Multiplication Library
-{: .fs-6 .fw-300 }
+{: .fs-6 .fw-300 .text-center .text-grey-dk-500 }
 
-[Get Started](installation.en){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View Examples](examples.en){: .btn .btn-green .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Get Started](setup/installation.en){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[View Examples](tutorials/examples.en){: .btn .btn-green .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [GitHub](https://github.com/LessUp/gpu-spmv){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -92,11 +97,11 @@ SpMVResult result = spmv_csr(csr, d_x, d_y, &config, n);
 
 | Document | Description |
 |:---------|:------------|
-| [📦 Installation](installation.en) | System requirements, dependencies |
-| [🏗️ Architecture](architecture.en) | System design, algorithms |
-| [📚 API Reference](api.en) | Complete API documentation |
-| [📝 Examples](examples.en) | Basic to advanced examples |
-| [🚀 Performance](performance.en) | Optimization strategies |
+| [📦 Installation](setup/installation.en) | System requirements, dependencies |
+| [🏗️ Architecture](architecture/architecture.en) | System design, algorithms |
+| [📚 API Reference](tutorials/api.en) | Complete API documentation |
+| [📝 Examples](tutorials/examples.en) | Basic to advanced examples |
+| [🚀 Performance](tutorials/performance.en) | Optimization strategies |
 | [📋 Changelog](changelog.en) | Version history |
 
 ---
@@ -113,5 +118,5 @@ SpMVResult result = spmv_csr(csr, d_x, d_y, &config, n);
 
 <div class="text-center text-small text-grey-dk-300" style="margin-top: 3rem;">
   <p>GPU SpMV is licensed under <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">MIT License</a></p>
-  <p>Copyright &copy; 2024-2025 LessUp</p>
+  <p>Copyright &copy; 2024-2026 LessUp</p>
 </div>

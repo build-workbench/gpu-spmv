@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <new>
 
 namespace spmv {
 
@@ -237,7 +238,14 @@ int csr_from_gpu(CSRMatrix* mat) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
+    if (!mat->row_ptrs) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
     if (mat->nnz > 0 && mat->d_values && mat->d_col_indices) {
+        if (!mat->values || !mat->col_indices) {
+            return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+        }
         CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values, mat->nnz * sizeof(float),
                                      cudaMemcpyDeviceToHost));
         CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, mat->nnz * sizeof(int),
@@ -377,10 +385,20 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     mat->num_rows = rows;
     mat->num_cols = cols;
     mat->nnz = nnz;
-    mat->values = (nnz > 0) ? new float[nnz] : nullptr;
-    mat->col_indices = (nnz > 0) ? new int[nnz] : nullptr;
-    mat->row_ptrs = new int[rows + 1];
+    mat->values = (nnz > 0) ? new (std::nothrow) float[nnz] : nullptr;
+    mat->col_indices = (nnz > 0) ? new (std::nothrow) int[nnz] : nullptr;
+    mat->row_ptrs = new (std::nothrow) int[rows + 1];
     mat->owns_host_memory = true;
+
+    if ((nnz > 0 && (!mat->values || !mat->col_indices)) || !mat->row_ptrs) {
+        delete[] mat->values;
+        delete[] mat->col_indices;
+        delete[] mat->row_ptrs;
+        mat->values = nullptr;
+        mat->col_indices = nullptr;
+        mat->row_ptrs = nullptr;
+        return static_cast<int>(SpMVError::OUT_OF_MEMORY);
+    }
 
     // 读取数据
     if (nnz > 0) {

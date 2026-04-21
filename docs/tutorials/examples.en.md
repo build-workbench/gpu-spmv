@@ -6,6 +6,10 @@ has_children: false
 lang: en
 ---
 
+<p align="right">
+  <a href="examples">🇨🇳 简体中文</a>
+</p>
+
 # 📝 Examples
 {: .no_toc }
 

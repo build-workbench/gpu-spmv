@@ -6,6 +6,10 @@ has_children: false
 lang: zh
 ---
 
+<p align="right">
+  <a href="performance.en">🇺🇸 English</a>
+</p>
+
 # 🚀 性能优化
 {: .no_toc }
 

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <fstream>
+#include <new>
 
 namespace spmv {
 
@@ -291,6 +292,9 @@ int ell_from_gpu(ELLMatrix* mat) {
 
     size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
     if (size > 0 && mat->d_values && mat->d_col_indices) {
+        if (!mat->values || !mat->col_indices) {
+            return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+        }
         CUDA_CHECK_MEMCPY(
             cudaMemcpy(mat->values, mat->d_values, size * sizeof(float), cudaMemcpyDeviceToHost));
         CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, size * sizeof(int),
@@ -413,9 +417,17 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     mat->max_nnz_per_row = max_nnz;
 
     size_t size = static_cast<size_t>(rows) * max_nnz;
-    mat->values = (size > 0) ? new float[size] : nullptr;
-    mat->col_indices = (size > 0) ? new int[size] : nullptr;
+    mat->values = (size > 0) ? new (std::nothrow) float[size] : nullptr;
+    mat->col_indices = (size > 0) ? new (std::nothrow) int[size] : nullptr;
     mat->owns_host_memory = true;
+
+    if (size > 0 && (!mat->values || !mat->col_indices)) {
+        delete[] mat->values;
+        delete[] mat->col_indices;
+        mat->values = nullptr;
+        mat->col_indices = nullptr;
+        return static_cast<int>(SpMVError::OUT_OF_MEMORY);
+    }
 
     if (size > 0) {
         file.read(reinterpret_cast<char*>(mat->values), size * sizeof(float));

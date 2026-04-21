@@ -5,7 +5,7 @@ lang: en
 ---
 
 <p align="right">
-  <a href="changelog.html">🇨🇳 简体中文</a>
+  <a href="changelog">🇨🇳 简体中文</a>
 </p>
 
 # 📋 Changelog

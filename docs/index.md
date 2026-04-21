@@ -7,6 +7,10 @@ permalink: /
 lang: zh
 ---
 
+<p align="right">
+  <a href="index.en">🇺🇸 English</a>
+</p>
+
 # GPU SpMV
 {: .fs-9 .fw-700 .text-center }
 
@@ -167,23 +171,23 @@ ctest --preset default
 
 <div class="grid grid-cols-3 gap-4" markdown="1">
 
-### 📦 [安装指南](installation)
+### 📦 [安装指南](setup/installation)
 
 系统要求、依赖安装、构建步骤
 
-### 🏗️ [架构设计](architecture)
+### 🏗️ [架构设计](architecture/architecture)
 
 系统架构、核心算法、设计决策
 
-### 📚 [API 参考](api)
+### 📚 [API 参考](tutorials/api)
 
 完整接口文档、数据结构、错误处理
 
-### 📝 [示例代码](examples)
+### 📝 [示例代码](tutorials/examples)
 
 基础用法、高级特性、完整应用
 
-### 🚀 [性能优化](performance)
+### 🚀 [性能优化](tutorials/performance)
 
 调优策略、基准测试、最佳实践
 
