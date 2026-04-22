@@ -1,44 +1,43 @@
 # ═════════════════════════════════════════════════════════════════
-# GPU SpMV 文档站点配置 - 采用 just-the-docs 主题 (企业级文档方案)
+# GPU SpMV Documentation Site Configuration
+# Theme: just-the-docs (Optimized for product showcase)
 # ═════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────────
-# 基础站点配置
+# Site Identity
 # ─────────────────────────────────────────────────────────────────
 title: GPU SpMV
-description: >-
-  High-Performance CUDA Sparse Matrix-Vector Multiplication Library |
-  基于 CUDA 的高性能稀疏矩阵向量乘法库
+description: >
+  High-Performance CUDA Sparse Matrix-Vector Multiplication Library.
+  70%+ memory bandwidth utilization with intelligent kernel selection.
 
 # ─────────────────────────────────────────────────────────────────
-# 主题配置 - 使用 just-the-docs (最佳选择)
+# Theme Configuration
 # ─────────────────────────────────────────────────────────────────
 remote_theme: just-the-docs/just-the-docs@v0.8.1
 
 # ─────────────────────────────────────────────────────────────────
-# 插件系统
+# Plugins
 # ─────────────────────────────────────────────────────────────────
 plugins:
-  - jekyll-seo-tag          # SEO 优化
-  - jekyll-github-metadata  # GitHub 集成
-  - jekyll-sitemap          # 自动生成站点地图
-  - jekyll-relative-links   # 相对链接支持
-  - jekyll-feed             # RSS feed
+  - jekyll-seo-tag
+  - jekyll-github-metadata
+  - jekyll-sitemap
+  - jekyll-relative-links
 
 # ─────────────────────────────────────────────────────────────────
-# 仓库和构建配置
+# Repository & Build Settings
 # ─────────────────────────────────────────────────────────────────
 repository: LessUp/gpu-spmv
-baseurl: /gpu-spmv          # 仓库名作为 baseurl
+baseurl: /gpu-spmv
 url: https://lessup.github.io
 
 # ─────────────────────────────────────────────────────────────────
-# SEO 和社交媒体配置
+# SEO & Social
 # ─────────────────────────────────────────────────────────────────
 lang: zh
 timezone: Asia/Shanghai
 
-# Open Graph / Twitter Cards
 twitter:
   username: LessUp
   card: summary_large_image
@@ -48,77 +47,75 @@ social:
   links:
     - https://github.com/LessUp/gpu-spmv
 
-# ─────────────────────────────────────────────────────────────────
-# JUST THE DOCS 高级配置
-# ─────────────────────────────────────────────────────────────────
+# Open Graph defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      image: /assets/images/og-image.png
+      author: LessUp
 
-# ┌─────────────────────────────────────────────────────────────┐
-# │ 搜索配置 (Lunr.js 全文搜索)                                   │
-# └─────────────────────────────────────────────────────────────┘
-search_enabled: true
-search:
-  heading_level: 3           # 搜索标题层级
-  previews: 3                # 预览结果数
-  preview_words_before: 5    # 预览前置词数
-  preview_words_after: 10    # 预览后置词数
-  tokenizer_separator: /[\s/]+/  # 分词器
-  rel_url: true              # 相对 URL
-  button: true               # 搜索按钮
-
-# ┌─────────────────────────────────────────────────────────────┐
-# │ 侧边栏导航配置                                               │
-# └─────────────────────────────────────────────────────────────┘
+# ─────────────────────────────────────────────────────────────────
+# Navigation
+# ─────────────────────────────────────────────────────────────────
 aux_links:
-  "📦 GitHub":
-    - "//github.com/LessUp/gpu-spmv"
-  "📖 API Docs":
-    - "//lessup.github.io/gpu-spmv/api"
-  "📋 Releases":
-    - "//github.com/LessUp/gpu-spmv/releases"
+  "GitHub":
+    - "https://github.com/LessUp/gpu-spmv"
+  "Releases":
+    - "https://github.com/LessUp/gpu-spmv/releases"
 
-aux_links_new_tab: true      # 辅助链接在新标签页打开
+aux_links_new_tab: true
 
-# 返回页头链接
-back_to_top: true
-back_to_top_text: "返回顶部 / Back to top"
-
-# 页脚内容
-footer_content: >
-  <p>GPU SpMV Documentation |
-  Licensed under <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">MIT License</a></p>
-  <p>Copyright &copy; 2024-2026 LessUp</p>
-
-# 上次编辑时间（自动从 Git 获取）
-last_edit_timestamp: true
-last_edit_time_format: "%Y-%m-%d %H:%M %z"
-
-# GH 编辑链接
-gh_edit_link: true
-gh_edit_link_text: "编辑此页 / Edit this page on GitHub"
-gh_edit_repository: "https://github.com/LessUp/gpu-spmv"
-gh_edit_branch: "master"
-gh_edit_view_mode: "tree"
-
-# 页面导航
 nav_external_links:
   - title: GPU SpMV on GitHub
     url: https://github.com/LessUp/gpu-spmv
     hide_icon: false
 
-# 启用复制代码按钮
+# ─────────────────────────────────────────────────────────────────
+# UI Configuration
+# ─────────────────────────────────────────────────────────────────
+color_scheme: dark
+color_scheme_toggle: true
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: >
+  <p>GPU SpMV &copy; 2024-2026 LessUp. MIT License.</p>
+
+heading_anchors: true
 enable_copy_code_button: true
 
-# 标题锚点
-heading_anchors: true
+# ─────────────────────────────────────────────────────────────────
+# Search Configuration
+# ─────────────────────────────────────────────────────────────────
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 2
+  preview_words_before: 3
+  preview_words_after: 10
+  button: true
 
-# 颜色方案 (支持切换)
-color_scheme: light          # 提供: light, dark, auto (默认: light)
-color_scheme_toggle: true   # 允许用户切换
+# ─────────────────────────────────────────────────────────────────
+# Branding
+# ─────────────────────────────────────────────────────────────────
+logo: "/assets/images/logo.svg"
+favicon_ico: "/assets/images/favicon.svg"
 
-# 折叠边栏
-nav_fold: true
+# ─────────────────────────────────────────────────────────────────
+# Edit Link
+# ─────────────────────────────────────────────────────────────────
+gh_edit_link: true
+gh_edit_link_text: "Edit this page"
+gh_edit_repository: "https://github.com/LessUp/gpu-spmv"
+gh_edit_branch: "main"
+gh_edit_view_mode: "tree"
 
-# 代码高亮
+# ─────────────────────────────────────────────────────────────────
+# Markdown Processing
+# ─────────────────────────────────────────────────────────────────
 kramdown:
   input: GFM
   hard_wrap: false
@@ -130,13 +127,9 @@ kramdown:
     block:
       line_numbers: true
 
-# Logo
-logo: "/assets/images/logo.svg"
-
-# Favicon
-favicon_ico: "/assets/images/favicon.ico"
-
-# 排除文件
+# ─────────────────────────────────────────────────────────────────
+# Exclusions
+# ─────────────────────────────────────────────────────────────────
 exclude:
   - Gemfile
   - Gemfile.lock
@@ -144,14 +137,12 @@ exclude:
   - _site
   - "*.tmp"
   - "*.swp"
+  - README.md
+  - changelog/20*.md
+  - changelog/README.md
+  - changelog/template.md
 
-# 默认值
-defaults:
-  - scope:
-      path: ""
-      type: "pages"
-    values:
-      layout: "default"
-      lang: "zh"
-      has_children: false
-      last_modified_date_time_format: "%Y-%m-%d %H:%M:%S %z"
+# ─────────────────────────────────────────────────────────────────
+# i18n Data
+# ─────────────────────────────────────────────────────────────────
+data_dir: _data

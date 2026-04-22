@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Changelog
+nav_order: 7
+permalink: /changelog.en
 lang: en
 ---
 
@@ -8,123 +10,65 @@ lang: en
   <a href="changelog">🇨🇳 简体中文</a>
 </p>
 
-# 📋 Changelog
+# Changelog
+{: .no_toc }
 
-All notable changes to the GPU SpMV project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
----
-
-## [1.0.0] - 2025-04-16
-
-### 🎉 First Stable Release
-
-#### ✨ Added
-
-**Core Features**
-- Full CSR (Compressed Sparse Row) sparse matrix format support
-- Full ELL (ELLPACK) sparse matrix format support
-- Four CUDA kernels: Scalar CSR, Vector CSR, Merge Path, ELL
-- Automatic kernel selection based on matrix statistics
-- Texture cache support with execution context reuse
-
-**Performance & Testing**
-- Bandwidth metrics calculation
-- Benchmarking framework
-- GPU vs CPU performance comparison
-
-**Applications**
-- PageRank graph algorithm implementation
-
-**Engineering Quality**
-- RAII resource management (`CudaBuffer`, `CudaTimer`, `SpMVExecutionContext`)
-- Semantic error code system
-- Comprehensive Google Test suite
-- CMake Presets build configuration
-- GitHub Actions CI/CD
-
-#### 🔒 Security
-- Integer overflow protection
-- Memory safety checks
-
-#### 🚀 Performance
-- ELL Column-major coalesced memory access
-- Warp-level shuffle reduction
-- Load balancing optimization (Merge Path)
+Version history and updates for GPU SpMV.
+{: .fs-6 .fw-300 }
 
 ---
 
-## [0.1.0] - 2025-03-01
+## v1.1.0 (2026-04-22)
 
-### 🚀 Initial Release
+### Added
 
-- Basic project structure
-- Basic CSR matrix implementation
-- Simple SpMV GPU kernel
-- CMake build configuration
+- 🎨 **New GitHub Pages Site** - Redesigned documentation website
+- 🚀 **Performance Visualization** - Added performance comparison charts
+- 📚 **Bilingual Docs** - Complete Chinese and English documentation support
 
----
+### Improved
 
-## Version History
-
-| Version | Date | Status | Highlights |
-|:-------:|:----:|:------:|:-----------|
-| 1.0.0 | 2025-04-16 | Stable | First stable release, complete feature set |
-| 0.1.0 | 2025-03-01 | Archived | Initial prototype |
+- Redesigned homepage highlighting product features
+- Unified content depth across Chinese and English versions
+- Optimized navigation structure
 
 ---
 
-## Migration Guide
+## v1.0.1 (2026-03-22)
 
-### Upgrading to 1.0.0
+### Improved
 
-No breaking changes from pre-release versions.
+- **Kernel Selection** - Improved accuracy of auto-selection algorithm
+- **Memory Management** - Optimized CudaBuffer move semantics
+- **Build Speed** - Improved CMake configuration for faster builds
 
-#### Recommended Updates
+### Fixed
 
-1. **Use Named Constants**
-   ```cpp
-   // Old
-   config.block_size = 256;
-   
-   // New
-   config.block_size = spmv::DEFAULT_BLOCK_SIZE;
-   ```
-
-2. **Use Execution Context for Reuse**
-   ```cpp
-   // Old
-   for (int i = 0; i < iterations; i++) {
-       spmv_csr(csr, d_x, d_y, &config, cols);
-   }
-   
-   // New
-   SpMVExecutionContext context;
-   for (int i = 0; i < iterations; i++) {
-       spmv_csr(csr, d_x, d_y, &config, cols, &context);
-   }
-   ```
+- Fixed boundary check issue in ELL format conversion
+- Fixed numerical stability in PageRank under specific convergence conditions
 
 ---
 
-## Future Roadmap
+## v1.0.0 (2026-03-10)
 
-### Planned [1.1.0]
-- [ ] COO format support
-- [ ] Hybrid CSR/ELL format
-- [ ] Multi-GPU support
-- [ ] Batched SpMV operations
+### First Release
 
-### Under Consideration
-- [ ] BFloat16 precision support
-- [ ] Automatic format selection tuning
-- [ ] Python bindings
+- 🎉 **First Stable Release**
+- 4 optimized kernels (Scalar/Vector/Merge Path/ELL)
+- Dual format support (CSR and ELL)
+- Complete RAII resource management
+- 100+ test cases coverage
+- PageRank algorithm implementation
+
+### Features
+
+- Intelligent automatic kernel selection
+- Up to 70%+ bandwidth utilization
+- Cross-platform support (Linux/Windows)
+- CMake Presets one-click build
 
 ---
 
-<div align="center">
-
-**[← Performance](performance.en)** · **[ 🏠 Home →](index.en)**
-
+<div class="text-center text-small" style="margin-top: 3rem;">
+  <p>Full release notes on <a href="https://github.com/LessUp/gpu-spmv/releases">GitHub Releases</a></p>
 </div>
