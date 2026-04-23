@@ -116,10 +116,79 @@ ctest --preset default  # 所有测试应该通过 ✅
 
 ⏱️ **构建时间**：现代计算机约 2 分钟
 
+---
+
+## 📦 依赖项与集成
+
+### 依赖项
+
+| 依赖 | 必需 | 说明 |
+|:-----|:----:|:-----|
+| CUDA Toolkit 11.0+ | 是 | GPU 内核和设备支持 |
+| CMake 3.18+ | 是 | 构建系统 |
+| Google Test | 仅构建 | CMake 自动获取 |
+| clang-format 14+ | 仅开发 | 代码格式化 (`pip install clang-format`) |
+
+### 纯 CPU 构建（无需 GPU）
+
+适用于 CI 环境或无 CUDA 的机器：
+
+```bash
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+cmake --build build-no-cuda
+ctest --test-dir build-no-cuda
+```
+
+> **注意**：纯 CPU 构建会禁用 GPU 内核，仅运行格式验证和 CPU 测试。
+
+### 集成方式
+
+#### 方式 1：CMake FetchContent（推荐）
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    gpu_spmv
+    GIT_REPOSITORY https://github.com/LessUp/gpu-spmv.git
+    GIT_TAG        v0.2.0  # 使用特定版本
+)
+FetchContent_MakeAvailable(gpu_spmv)
+
+target_link_libraries(your_target PRIVATE spmv)
+```
+
+#### 方式 2：Git 子模块
+
+```bash
+git submodule add https://github.com/LessUp/gpu-spmv.git third_party/gpu-spmv
+```
+
+```cmake
+add_subdirectory(third_party/gpu-spmv)
+target_link_libraries(your_target PRIVATE spmv)
+```
+
+#### 方式 3：系统安装
+
+```bash
+cmake --preset release
+cmake --build --preset release
+cmake --install build-release --prefix /usr/local
+```
+
+```cmake
+find_package(gpu_spmv REQUIRED)
+target_link_libraries(your_target PRIVATE gpu_spmv::spmv)
+```
+
+---
+
 ### 💻 30 秒示例
 
 ```cpp
 #include <spmv/spmv.h>
+#include <cuda_runtime.h>
+#include <stdio.h>
 
 int main() {
     // 1. 创建 3×3 稀疏矩阵: [1 0 2; 0 3 4; 0 0 5]
@@ -131,6 +200,7 @@ int main() {
     // 2. 准备向量
     CudaBuffer<float> d_x(3), d_y(3);
     float h_x[] = {1, 1, 1};
+    float h_y[3];
     cudaMemcpy(d_x.data(), h_x, sizeof(h_x), cudaMemcpyHostToDevice);
 
     // 3. 执行（自动选择最优内核）
@@ -139,7 +209,11 @@ int main() {
     // result.time_ms ≈ 0.05ms, result.error == SUCCESS
 
     // 4. 获取结果: y = [3, 7, 5]
+    cudaMemcpy(h_y, d_y.data(), sizeof(h_y), cudaMemcpyDeviceToHost);
+    printf("y = [%.0f, %.0f, %.0f]\n", h_y[0], h_y[1], h_y[2]);
+
     csr_destroy(csr);
+    return 0;
 }
 ```
 
@@ -236,23 +310,44 @@ ctest --preset default
 
 ```cpp
 #include <spmv/pagerank.h>
+#include <spmv/csr_matrix.h>
+#include <algorithm>
+#include <vector>
 
-// 构建图的邻接矩阵
-CSRMatrix* adj = build_graph_adjacency();
-csr_to_gpu(adj);
+using namespace spmv;
 
-// 运行 PageRank
-PageRankConfig config = {.damping = 0.85f, .tolerance = 1e-6f};
-PageRankResult result = pagerank(adj, &config);
-
-// 获取排名前 10 的节点
-auto top_10 = get_top_k(result, 10);
-for (const auto& node : top_10) {
-    printf("节点 %d: %.6f\n", node.id, node.rank);
+// 辅助函数：获取前 k 大值的索引
+std::vector<size_t> top_k_indices(const float* values, size_t n, size_t k) {
+    std::vector<size_t> idx(n);
+    std::iota(idx.begin(), idx.end(), 0);
+    std::partial_sort(idx.begin(), idx.begin() + k, idx.end(),
+        [&](size_t a, size_t b) { return values[a] > values[b]; });
+    idx.resize(k);
+    return idx;
 }
 
-pagerank_free(&result);
-csr_destroy(adj);
+int main() {
+    // 构建图的邻接矩阵（程序构建或从数据源加载）
+    int nrows = 1000, ncols = 1000, nnz = 5000;
+    CSRMatrix* adj = csr_create(nrows, ncols, nnz);
+    // ... 用图数据填充 adj ...
+    csr_to_gpu(adj);
+
+    // 运行 PageRank
+    PageRankConfig config;
+    config.damping_factor = 0.85f;
+    config.tolerance = 1e-6f;
+    PageRankResult result = pagerank(adj, &config);
+
+    // 获取排名前 10 的节点
+    auto top_10 = top_k_indices(result.ranks, adj->nrows, 10);
+    for (size_t node : top_10) {
+        printf("节点 %zu: %.6f\n", node, result.ranks[node]);
+    }
+
+    pagerank_free(&result);
+    csr_destroy(adj);
+}
 ```
 
 📊 **应用场景**：社交网络分析 · Web 搜索 · 推荐系统 · 欺诈检测
@@ -285,6 +380,19 @@ find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -na
 # 构建并测试
 cmake --preset default && cmake --build --preset default && ctest --preset default
 ```
+
+---
+
+## 🛠️ 常见问题
+
+| 问题 | 原因 | 解决方案 |
+|:-----|:-----|:---------|
+| `CUDA not found` | CUDA Toolkit 未安装或不在 PATH 中 | 安装 CUDA 11.0+ 并确保 `nvcc` 在 PATH 中 |
+| `No CUDA device found` | 在没有 NVIDIA GPU 的机器上运行 | 使用纯 CPU 构建：`-DSPMV_REQUIRE_CUDA=OFF` |
+| `Unsupported GPU architecture` | GPU 计算能力版本过低 | 检查最低要求：需要 CC 7.0+ |
+| CI 中测试失败 | 缺少 CUDA 设备 | 纯 CPU 测试会通过；GPU 测试会被跳过 |
+| `clang-format not found` | 格式化工具未安装 | `pip install clang-format` 或禁用格式化 |
+| 带宽利用率低 | 选择了错误的内核 | 检查矩阵模式；使用 `spmv_auto_config()` 自动选择最优内核 |
 
 ---
 
