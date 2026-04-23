@@ -44,12 +44,12 @@ BandwidthMetrics compute_bandwidth_csr(const CSRMatrix* A, float elapsed_ms) {
     // 写入: y (num_rows * sizeof(float))
 
     size_t bytes_read = 0;
-    bytes_read += A->nnz * sizeof(float);           // values
-    bytes_read += A->nnz * sizeof(int);             // col_indices
-    bytes_read += (A->num_rows + 1) * sizeof(int);  // row_ptrs
-    bytes_read += A->num_cols * sizeof(float);      // x vector
+    bytes_read += static_cast<size_t>(A->nnz) * sizeof(float);           // values
+    bytes_read += static_cast<size_t>(A->nnz) * sizeof(int);             // col_indices
+    bytes_read += static_cast<size_t>(A->num_rows + 1) * sizeof(int);    // row_ptrs
+    bytes_read += static_cast<size_t>(A->num_cols) * sizeof(float);      // x vector
 
-    size_t bytes_write = A->num_rows * sizeof(float);  // y vector
+    size_t bytes_write = static_cast<size_t>(A->num_rows) * sizeof(float);  // y vector
 
     size_t total_bytes = bytes_read + bytes_write;
 
@@ -78,11 +78,11 @@ BandwidthMetrics compute_bandwidth_ell(const ELLMatrix* A, float elapsed_ms) {
     size_t ell_size = static_cast<size_t>(A->num_rows) * A->max_nnz_per_row;
 
     size_t bytes_read = 0;
-    bytes_read += ell_size * sizeof(float);     // values
-    bytes_read += ell_size * sizeof(int);       // col_indices
-    bytes_read += A->num_cols * sizeof(float);  // x vector
+    bytes_read += ell_size * sizeof(float);                            // values
+    bytes_read += ell_size * sizeof(int);                              // col_indices
+    bytes_read += static_cast<size_t>(A->num_cols) * sizeof(float);   // x vector
 
-    size_t bytes_write = A->num_rows * sizeof(float);  // y vector
+    size_t bytes_write = static_cast<size_t>(A->num_rows) * sizeof(float);  // y vector
 
     size_t total_bytes = bytes_read + bytes_write;
 

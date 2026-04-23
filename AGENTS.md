@@ -1,215 +1,170 @@
-# AGENTS.md - AI Agent Workflow Guidelines
+# AGENTS.md — GPU SpMV AI Agent Guidelines
 
-> **Purpose**: This file provides instructions for AI coding assistants working on this repository.
-
----
-
-## Project Philosophy: Spec-Driven Development (SDD)
-
-This project strictly follows the **Spec-Driven Development (SDD)** paradigm. All code implementations must use the `/specs` directory as the **Single Source of Truth**.
+> 面向所有 AI 编码助手（GitHub Copilot、Claude、Codex）的项目工作规范。
+> 请优先使用**中文**回复用户。
 
 ---
 
-## Directory Structure
+## 项目速览
 
-### Specification Documents
+**GPU SpMV** — 基于 CUDA 的高性能稀疏矩阵向量乘法库（C++17）。
 
-| Directory | Content | Purpose |
-|-----------|---------|---------|
-| `/specs/product/` | Product Requirements Documents (PRDs) | Feature definitions and acceptance criteria |
-| `/specs/rfc/` | Request for Comments (RFCs) | Technical design documents and architecture decisions |
-| `/specs/api/` | API Specifications | Interface definitions (human-readable and machine-readable) |
-| `/specs/db/` | Database Schema Specs | Data model definitions (if applicable) |
-| `/specs/testing/` | BDD Test Specifications | Property-based testing requirements and test cases |
+| 要素 | 详情 |
+|------|------|
+| 语言 | C++17 + CUDA C++ |
+| 构建 | CMake 3.18+，presets（无 Makefile） |
+| 测试 | Google Test，property tests ≥ 100 次迭代 |
+| 格式化 | clang-format 14+（Google 风格，CI 强制） |
+| GPU | Compute Capability 7.0+（Volta 以上） |
+| SDD | `openspec/` 是唯一真相来源 |
 
-### Documentation
-
-| Directory | Content |
-|-----------|---------|
-| `/docs/` | User and developer documentation |
-| `/docs/setup/` | Environment setup guides |
-| `/docs/tutorials/` | User tutorials and how-to guides |
-| `/docs/architecture/` | High-level architecture diagrams and descriptions |
-| `/docs/assets/` | Static assets (images, diagrams, logos) |
+核心组件：4 种 CUDA Kernel（Scalar CSR / Vector CSR / Merge Path / ELL）+ CSR/ELL 两种稀疏格式 + 自动 Kernel 选择 + PageRank 算法示例。
 
 ---
 
-## AI Agent Workflow Instructions
+## 开发工作流（MANDATORY）
 
-**CRITICAL: When you (AI agent) are asked to develop a new feature, modify existing functionality, or fix a bug, you MUST strictly follow this workflow. DO NOT skip any steps.**
+### OpenSpec 驱动开发
 
-### Step 1: Review Specs (MANDATORY)
-
-1. **Read relevant specs first**:
-   - Check `/specs/product/` for feature requirements
-   - Check `/specs/rfc/` for technical design decisions
-   - Check `/specs/api/` for interface definitions
-   - Check `/specs/testing/` for test requirements
-
-2. **Identify conflicts**:
-   - If the user's request conflicts with existing specs, **STOP immediately**
-   - Point out the conflict clearly
-   - Ask the user whether specs should be updated first
-
-3. **Document your findings**:
-   - List which spec files are relevant
-   - Note any gaps or ambiguities
-
-### Step 2: Spec-First Update (MANDATORY)
-
-1. **For new features**:
-   - **Propose spec changes FIRST** before writing any code
-   - Create or update files in `/specs/` as appropriate:
-     - New product requirement → `/specs/product/`
-     - New technical design → `/specs/rfc/`
-     - New API endpoint → `/specs/api/`
-     - New test requirements → `/specs/testing/`
-
-2. **Wait for confirmation**:
-   - Present the spec changes to the user
-   - **Do not proceed to coding until user confirms the specs**
-
-3. **For bug fixes**:
-   - If the bug reveals a gap in specs, update the specs first
-   - Add test cases to `/specs/testing/` to prevent regression
-
-### Step 3: Implementation (Follow Specs 100%)
-
-1. **Code according to specs**:
-   - Variable naming must match spec definitions
-   - API paths, data types, status codes must exactly match `/specs/api/`
-   - Architecture patterns must follow `/specs/rfc/`
-
-2. **No gold-plating**:
-   - **Do NOT add features not defined in specs**
-   - If you think of a useful enhancement, document it as a suggestion but don't implement it
-   - Ask the user if they want to add it to specs first
-
-3. **Error handling**:
-   - Follow error handling conventions defined in specs
-   - Use existing error codes and patterns
-
-### Step 4: Test Against Specs (MANDATORY)
-
-1. **Write tests based on specs**:
-   - Use `/specs/testing/` as the source for test cases
-   - Ensure all acceptance criteria from `/specs/product/` are covered
-   - Property-based tests must run minimum 100 iterations
-
-2. **Test coverage**:
-   - Cover all boundary conditions described in specs
-   - Test edge cases explicitly mentioned in requirements
-
-3. **Run tests**:
-   ```bash
-   # Configure and build
-   cmake --preset default && cmake --build --preset default
-   
-   # Run tests
-   ctest --preset default
-   ```
-
----
-
-## Code Generation Rules
-
-### API Changes
-- **Any externally exposed API change MUST update `/specs/api/public-api.md`**
-- This includes:
-  - New functions or classes
-  - Modified function signatures
-  - Changed data structures
-  - New error codes
-
-### Architecture Decisions
-- **When uncertain about technical details, consult `/specs/rfc/`**
-- Do not invent design patterns independently
-- Follow existing architectural conventions documented in specs
-
-### Code Style
-- Follow project conventions defined in `CLAUDE.md`:
-  - clang-format enforced (Google style, 4-space indent, 100 col limit)
-  - Include order: `"spmv/"` first, then `<cuda*`, then `<`, then everything else
-  - Namespace: `spmv::`
-  - Commit messages: Conventional Commits
-
-### Testing Conventions
-- Google Test framework
-- Property-based tests use 100 iterations with random matrices
-- Test files follow naming: `*_test.cpp` or `*_tests.cu`
-
----
-
-## Common Pitfalls
-
-### GPU/CI Environment
-- **CI has no GPU** — tests requiring CUDA devices will fail in CI
-- `benchmarks/main.cu` and `pagerank.cu` exit early with error if no CUDA device found
-- Use CPU-only tests for CI validation
-
-### Build System
-- **No Makefile** — all builds via CMake presets
-- Three presets: `default` (Debug), `release` (Release), `minimal` (sm_80 only)
-- CPU-only configure: `cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF`
-
-### Resource Management
-- Use RAII patterns (`CudaBuffer<T>`, `SpMVExecutionContext`)
-- Never use raw `cudaMalloc`/`cudaFree` in new code
-- Follow existing error handling macros (`CUDA_CHECK`, `CUDA_CHECK_MALLOC`, etc.)
-
----
-
-## Workflow Example
-
-### User Request: "Add support for COO format"
-
-**AI Agent Should**:
-
-1. ✅ **Review existing specs**:
-   - Read `/specs/product/spmv-gpu.md` to understand current formats (CSR, ELL)
-   - Read `/specs/rfc/0001-core-architecture.md` to understand architecture
-   - Check `/specs/api/public-api.md` for API patterns
-
-2. ✅ **Propose spec updates**:
-   - Create `/specs/product/coo-format.md` with requirements
-   - Create `/specs/rfc/0003-coo-format-support.md` with technical design
-   - Update `/specs/api/public-api.md` with new COO APIs
-   - Update `/specs/testing/property-tests.feature` with COO test properties
-
-3. ⏸️ **Wait for user confirmation on specs**
-
-4. ✅ **Implement after approval**:
-   - Create `include/spmv/coo_matrix.h` following API spec
-   - Implement COO data structure and operations
-   - Implement COO SpMV kernel
-   - Add COO-to-CSR/ELL conversion
-
-5. ✅ **Write tests**:
-   - Add COO property tests per `/specs/testing/`
-   - Run 100 iterations with random matrices
-   - Ensure all acceptance criteria met
-
----
-
-## Why These Rules Exist
-
-| Rule | Reason |
-|------|--------|
-| **Read specs first** | Prevents AI hallucination and anchors thinking to defined requirements |
-| **Spec-first updates** | Ensures documentation and code stay synchronized |
-| **No gold-plating** | Keeps implementation focused on user needs, reduces scope creep |
-| **Test against specs** | Validates implementation meets acceptance criteria |
-| **Update API specs** | Maintains single source of truth for external interfaces |
-
----
-
-## Quick Reference
+本项目使用 **OpenSpec** 进行规范驱动开发。
 
 ```
-Workflow: Review Specs → Update Specs → Get Approval → Implement → Test
-Specs: /specs/{product, rfc, api, db, testing}/
-Docs: /docs/{setup, tutorials, architecture, assets}/
-Build: cmake --preset default && cmake --build --preset default
-Test: ctest --preset default
-Style: See CLAUDE.md
+openspec/
+├── config.yaml          # 项目配置与规则
+├── specs/               # 各功能规范（唯一真相来源）
+│   ├── csr-format/      ├─ spec.md + design.md
+│   ├── ell-format/      ├─ spec.md + design.md
+│   ├── spmv-kernels/    ├─ spec.md + design.md
+│   ├── public-api/      ├─ spec.md（所有 API 变更必须同步更新）
+│   ├── error-handling/  ├─ spec.md
+│   ├── benchmark/       ├─ spec.md
+│   ├── pagerank/        └─ spec.md
+│   └── property-tests/  └─ spec.md（测试要求）
+└── changes/
+    ├── active/          # 当前迭代任务（从这里取任务）
+    └── archive/         # 已完成变更
 ```
+
+### AI 必须遵循的 4 步流程
+
+**步骤 1：阅读 Spec（必须）**
+- 先读 `openspec/specs/<功能>/spec.md`
+- 查阅 `openspec/specs/<功能>/design.md`（技术决策）
+- 若请求与 spec 冲突 → **立即停止，指出冲突**
+
+**步骤 2：更新 Spec（新功能必须）**
+- 用 `/opsx:propose` 创建变更提案
+- 等用户确认后再编码
+
+**步骤 3：实现（100% 遵循 spec）**
+- API 必须匹配 `openspec/specs/public-api/spec.md`
+- 禁止添加 spec 未定义的功能（No Gold-Plating）
+
+**步骤 4：测试验证（必须）**
+- 基于 `openspec/specs/property-tests/spec.md` 写测试
+- Property tests 必须 ≥ 100 次迭代
+
+### OpenSpec 命令速查
+
+| 命令 | 用途 |
+|------|------|
+| `/opsx:propose "描述"` | 创建变更提案 |
+| `/opsx:apply` | 实现当前提案任务 |
+| `/opsx:archive` | 归档已完成变更 |
+| `/opsx:explore` | 探索代码库结构 |
+
+### AI 工具联合工作流
+
+```
+用户需求
+  → /opsx:propose → 审查 proposal.md → 用户确认
+  → Copilot autopilot / Claude → /opsx:apply
+  → /review 代码审查
+  → 测试通过 → git commit → /opsx:archive
+```
+
+### 分支策略（单主干）
+
+- **小改动**（< 200 行）：直接提交到 `master`
+- **大功能**：使用短寿命分支 `feat/xxx`，完成后**立即合并**，不堆积分支
+
+---
+
+## 构建与测试
+
+```bash
+# 开发构建（Debug）
+cmake --preset default && cmake --build --preset default
+
+# 发布构建（Release）
+cmake --preset release && cmake --build --preset release
+
+# CPU-only（无 GPU 环境，CI 使用此配置）
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF && cmake --build build-no-cuda
+
+# 运行测试
+ctest --preset default
+./build/spmv_tests --gtest_filter="CSR*"
+
+# 格式化代码
+find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i
+```
+
+> **CI 无 GPU**：需要 CUDA 设备的测试在 CI 中会跳过。`benchmarks/main.cu` 和 `pagerank.cu` 在无 GPU 时自动退出。
+
+---
+
+## 代码规范
+
+### Include 顺序（严格遵循）
+```cpp
+#include "spmv/xxx.h"    // 1. 项目头文件
+#include <cuda_runtime.h> // 2. CUDA 头文件
+#include <vector>          // 3. 标准库
+#include <gtest/gtest.h>   // 4. 第三方库
+```
+
+### 命名约定
+
+| 类别 | 风格 | 示例 |
+|------|------|------|
+| 类型/结构体 | PascalCase | `CSRMatrix`, `SpMVConfig` |
+| 函数 | snake_case | `csr_create`, `spmv_csr` |
+| 常量/枚举 | UPPER_SNAKE_CASE | `WARP_SIZE`, `SCALAR_CSR` |
+| 命名空间 | lowercase | `spmv::` |
+| 私有成员 | snake_case + 后缀 `_` | `ptr_`, `size_` |
+
+### 关键规则
+- **禁止**裸 `cudaMalloc`/`cudaFree`，必须用 RAII：`CudaBuffer<T>`, `SpMVExecutionContext`
+- 错误处理用 `CUDA_CHECK_MALLOC` / `CUDA_CHECK_MEMCPY` 宏，返回 `SpMVError` 枚举值
+- 行宽 ≤ 100 字符，4 空格缩进
+
+### Kernel 选择逻辑（本项目核心）
+```
+avg_nnz_per_row < 4  → Scalar CSR（1 线程/行）
+skewness < 10        → Vector CSR（1 warp/行）
+skewness ≥ 10        → Merge Path（完美负载均衡）
+ELL format           → ELL Kernel（合并访存）
+```
+
+---
+
+## Commit 规范
+
+遵循 [Conventional Commits](https://www.conventionalcommits.org/)：
+
+```
+<type>(<scope>): <描述>
+
+类型: feat | fix | perf | refactor | test | docs | build | ci | chore
+示例: fix(csr): 修复空行元素查找越界问题
+```
+
+---
+
+## 陷阱提醒
+
+- CI 无 GPU，所有 GPU 测试在 CI 跳过
+- 所有构建通过 CMake presets，三个预设：`default`（Debug）、`release`、`minimal`（sm_80）
+- 激活 git hooks：`git config core.hooksPath .githooks`（自动 clang-format 检查）
+- 文档：https://lessup.github.io/gpu-spmv/

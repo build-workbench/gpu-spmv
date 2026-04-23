@@ -1,79 +1,72 @@
-# CLAUDE.md
+# CLAUDE.md — Claude Code 专属配置
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> Claude Code (claude.ai/code) 在本仓库工作时的专项指南。
+> 通用项目规范见 `AGENTS.md`，本文件仅描述 Claude 特有行为。
 
-## Project Philosophy: Spec-Driven Development (SDD)
+## 语言要求
 
-This project strictly follows the **Spec-Driven Development (SDD)** paradigm. All code implementations must use the `/specs` directory as the Single Source of Truth.
-
-### Directory Context
-- `/specs/product/`: Product feature definitions and acceptance criteria (PRDs)
-- `/specs/rfc/`: Technical design documents (RFCs)
-- `/specs/api/`: API interface specifications (OpenAPI-style documentation)
-- `/specs/testing/`: BDD test specifications and property-based testing requirements
-
-### AI Agent Workflow Instructions
-
-**When you (AI) are asked to develop a new feature, modify existing functionality, or fix a bug, you MUST strictly follow this workflow without skipping any steps:**
-
-#### Step 1: Review Specs
-- First, read the relevant documentation in `/specs` (product requirements, RFCs, API definitions)
-- If the user's request conflicts with existing specs, STOP coding immediately and point out the conflict, asking whether specs should be updated first
-
-#### Step 2: Spec-First Update
-- For new features or changes affecting interfaces/data structures, **propose modifications to spec documents FIRST** (e.g., updating RFCs or API docs)
-- Wait for user confirmation on spec changes before entering the coding phase
-
-#### Step 3: Implementation
-- When writing code, **100% comply with spec definitions** (including variable naming, API paths, data types, status codes, etc.)
-- **Do not add features not defined in specs** (No Gold-Plating)
-
-#### Step 4: Test Against Specs
-- Write unit and integration tests based on acceptance criteria in `/specs`
-- Ensure test cases cover all boundary conditions described in specs
-
-### Code Generation Rules
-- Any externally exposed API changes must simultaneously modify `/specs/api/public-api.md`
-- When uncertain about technical details, consult `/specs/rfc/` for architectural conventions—do not invent design patterns independently
+**始终使用中文回复用户**，代码注释保持英文。
 
 ---
 
-## Project
+## 规范驱动开发（SDD）
 
-GPU-accelerated Sparse Matrix-Vector Multiplication (SpMV) library in C++/CUDA. Supports CSR and ELL formats with multiple kernel strategies and auto-selection. Includes PageRank and benchmarking.
+本项目使用 **OpenSpec**，`openspec/` 目录为唯一真相来源。
 
-## Build & Test
+- Spec 路径：`openspec/specs/<功能>/spec.md`（需求）+ `design.md`（技术决策）
+- 变更提案：`openspec/changes/active/`（当前任务）
+- 归档：`openspec/changes/archive/`
+
+**OpenSpec 命令**：`/opsx:propose` → `/opsx:apply` → `/opsx:archive`
+
+**强制工作流**：阅读 spec → 更新 spec（必要时）→ 用户确认 → 实现 → 测试
+
+---
+
+## 构建与测试命令
 
 ```bash
-# Configure + build
-cmake --preset default && cmake --build --preset default   # Debug
-cmake --preset release && cmake --build --preset release   # Release
+# Debug 构建
+cmake --preset default && cmake --build --preset default
 
-# CPU-only configure (no CUDA device needed)
-cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+# CPU-only（无 GPU 时）
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF && cmake --build build-no-cuda
 
-# Test
+# 测试
 ctest --preset default
-./build/spmv_tests              # direct
+
+# 格式化
+find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i
 ```
 
-No Makefile — all via CMake presets. Three presets: `default` (Debug), `release` (Release), `minimal` (sm_80 only).
+---
 
-## Code Style
+## 代码风格关键点
 
-- clang-format enforced in CI (`.clang-format` based on Google style, 4-space indent, 100 col limit)
-- Include order: `"spmv/"` first, then `<cuda*`, then `<`, then everything else
-- Namespace: `spmv::`
-- Error handling: `SpMVError` enum, `CUDA_CHECK`/`CUDA_CHECK_MALLOC`/`CUDA_CHECK_MEMCPY` macros, RAII via `CudaBuffer<T>`
+- Include 顺序：`"spmv/"` → `<cuda*>` → `<standard>` → `<third-party>`
+- 禁止裸 `cudaMalloc`/`cudaFree`，用 `CudaBuffer<T>`
+- 错误：`CUDA_CHECK_MALLOC` / `CUDA_CHECK_MEMCPY` 宏 + `SpMVError` 枚举
+- 格式：4 空格缩进，100 字符行宽，clang-format Google 风格
+- 所有 API 变更必须同步更新 `openspec/specs/public-api/spec.md`
 
-## Conventions
+---
 
-- Commit messages: Conventional Commits (`feat:`, `fix:`, `perf:`, `build:`, `refactor:`, etc.)
-- Tests: Google Test, property-based tests use 100 iterations with random matrices
-- Design specs live in `/specs/` directory (requirements, rfc, api, testing)
+## CI 特殊说明
 
-## Key Gotchas
+- CI 无 GPU：`benchmarks/main.cu`、`src/pagerank.cu` 无 GPU 时自动退出
+- CI 使用 clang-format-18 检查格式
+- CPU-only 构建：`cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF`
 
-- CI has no GPU — tests requiring CUDA devices will fail in CI
-- `benchmarks/main.cu` and `pagerank.cu` exit early with error if no CUDA device found
-- The `minimal` preset hardcodes sm_80; other presets let CMake auto-detect architectures
+---
+
+## Commit 规范
+
+```
+feat(scope): 描述      # 新功能
+fix(scope): 描述       # Bug 修复
+perf(scope): 描述      # 性能优化
+refactor(scope): 描述  # 重构
+docs(scope): 描述      # 文档
+test(scope): 描述      # 测试
+ci(scope): 描述        # CI/CD
+```

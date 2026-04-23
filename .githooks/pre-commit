@@ -1,0 +1,37 @@
+#!/bin/bash
+# pre-commit hook: enforce clang-format on staged C++/CUDA files
+# Activate with: git config core.hooksPath .githooks
+
+set -e
+
+# Find staged C++/CUDA files
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cpp|cu|cuh|h|hpp)$' || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+# Prefer clang-format-18 (matches CI), fall back to clang-format
+CLANG_FORMAT=$(command -v clang-format-18 || command -v clang-format || true)
+if [ -z "$CLANG_FORMAT" ]; then
+  echo "⚠️  clang-format not found, skipping format check"
+  exit 0
+fi
+
+FAILED=0
+for FILE in $STAGED; do
+  if ! "$CLANG_FORMAT" --dry-run --Werror "$FILE" 2>/dev/null; then
+    echo "❌ Format error: $FILE"
+    echo "   Run: $CLANG_FORMAT -i $FILE"
+    FAILED=1
+  fi
+done
+
+if [ $FAILED -ne 0 ]; then
+  echo ""
+  echo "Fix formatting then re-stage:"
+  echo "  find src include tests benchmarks -type f \\( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \\) | xargs $CLANG_FORMAT -i"
+  exit 1
+fi
+
+echo "✅ Format check passed"

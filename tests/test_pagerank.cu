@@ -11,7 +11,7 @@ using namespace spmv::test;
 class PageRankPropertyTest : public ::testing::Test {
    protected:
     RandomGenerator rng{42};
-    static constexpr int NUM_ITERATIONS = 50;
+    static constexpr int NUM_ITERATIONS = 100;
 };
 
 // **Feature: spmv-gpu, Property 15: PageRank Score Invariants**

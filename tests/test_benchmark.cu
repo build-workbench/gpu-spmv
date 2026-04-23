@@ -10,7 +10,7 @@ using namespace spmv::test;
 class BenchmarkPropertyTest : public ::testing::Test {
    protected:
     RandomGenerator rng{42};
-    static constexpr int NUM_ITERATIONS = 50;  // 减少迭代次数以加快测试
+    static constexpr int NUM_ITERATIONS = 100;
 };
 
 // **Feature: spmv-gpu, Property 13: Benchmark Metrics Completeness**

@@ -1,13 +1,54 @@
 name: gpu-spmv
-description: GPU-accelerated Sparse Matrix-Vector Multiplication library
+description: GPU-accelerated Sparse Matrix-Vector Multiplication library (C++17/CUDA)
+homepage: https://lessup.github.io/gpu-spmv/
+repository: https://github.com/LessUp/gpu-spmv
+
 tech_stack:
   language: C++17, CUDA C++
-  build: CMake
-  test: Google Test
-  formatter: clang-format
+  cuda_min: "11.0"
+  cmake_min: "3.18"
+  compute_capability_min: "7.0"
+  build: CMake presets (default/release/minimal)
+  test: Google Test (fetched by CMake)
+  formatter: clang-format 14+ (Google style)
+  ci: GitHub Actions (no GPU in CI)
+  docs: Jekyll + Just the Docs (GitHub Pages)
+
+specs:
+  - csr-format       # CSR 稀疏矩阵格式规范
+  - ell-format       # ELL 稀疏矩阵格式规范
+  - spmv-kernels     # 4 种 CUDA Kernel 规范（含 Kernel 选择逻辑）
+  - public-api       # 公共 API 接口规范（所有 API 变更必须同步更新）
+  - error-handling   # 错误处理与 RAII 资源管理规范
+  - benchmark        # 性能基准测试规范
+  - pagerank         # PageRank 算法规范
+  - property-tests   # 属性测试规范（≥ 100 次迭代）
+
 rules:
-  - Specs 应该明确描述实现细节
-  - 所有公共 API 变更必须更新 public-api spec
-  - 遵循 Conventional Commits 规范
-  - Property tests 必须运行至少 100 次迭代
-  - 使用 CMake presets 进行构建
+  - 所有公共 API 变更必须同步更新 openspec/specs/public-api/spec.md
+  - 遵循 Conventional Commits 规范（feat/fix/perf/refactor/test/docs/ci/chore）
+  - Property tests 必须运行至少 100 次迭代（随机矩阵生成）
+  - 使用 CMake presets 进行构建，禁止手写 Makefile
+  - 禁止裸 cudaMalloc/cudaFree，必须使用 RAII（CudaBuffer<T>）
+  - Include 顺序：项目头文件 → CUDA → 标准库 → 第三方
+
+workflow:
+  branching: 单主干策略（master），小改动直接提交，大功能用短寿命 feat/* 分支
+  sdd_cycle:
+    - /opsx:propose "描述"   # 1. 创建变更提案
+    - 审查并确认 proposal.md # 2. 用户确认
+    - /opsx:apply            # 3. AI 实现（autopilot 模式）
+    - /review                # 4. 代码审查
+    - git commit + push      # 5. 提交
+    - /opsx:archive          # 6. 归档
+  ai_tools:
+    copilot: .github/copilot-instructions.md（项目级指令）
+    claude: CLAUDE.md（Claude 专属配置）
+    all_agents: AGENTS.md（通用规范）
+
+build_commands:
+  debug: cmake --preset default && cmake --build --preset default
+  release: cmake --preset release && cmake --build --preset release
+  cpu_only: cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF && cmake --build build-no-cuda
+  test: ctest --preset default
+  format: find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i
