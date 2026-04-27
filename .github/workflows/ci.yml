@@ -1,58 +1,55 @@
-name: CI
+name : CI
 
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+           on : push : branches : [ main, master ] pull_request : branches
+    : [ main, master ] workflow_dispatch :
 
-permissions:
-  contents: read
+    permissions : contents : read
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+                                 concurrency : group : ci -
+                                                       $ {
+    { github.ref }
+}
+cancel - in -
+        progress : true
 
-jobs:
-  format-check:
-    name: Format Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+                   jobs
+    : format -
+      check : name : Format Check runs - on : ubuntu - latest steps : -uses : actions / checkout @v4
 
-      - name: Install clang-format-18
-        run: sudo apt-get update && sudo apt-get install -y clang-format-18
+                                              -
+                                              name
+    : Install clang -
+      format - 18 run : sudo apt - get update&& sudo apt - get install - y clang - format - 18
 
-      - name: Check formatting
-        run: |
-          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
-            | xargs clang-format-18 --dry-run --Werror
+                        -
+                        name : Check formatting run
+    : |
+      find src include tests benchmarks -
+          type f \(-name '*.cpp' - o - name '*.h' - o - name '*.cu' \) |
+      xargs clang - format - 18 --dry -
+          run-- Werror
 
-  build-verify:
-    name: Build & Static Analysis (CPU-only)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+          build
+          - verify : name : Build& Static Analysis(CPU - only) runs -
+                            on : ubuntu - latest steps : -uses : actions / checkout @v4
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ ninja-build clang-tidy
+                                 -
+                                 name : Install dependencies run
+    : sudo apt
+      -
+      get update&& sudo apt - get install - y cmake g++ ninja - build clang - tidy
 
-      - name: Configure (CUDA disabled, export compile commands)
-        run: |
-          cmake -S . -B build \
-            -DSPMV_REQUIRE_CUDA=OFF \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -G Ninja
+      -
+      name : Configure(CUDA disabled, export compile commands) run
+    : |
+      cmake - S.- B build - DSPMV_REQUIRE_CUDA =
+    OFF - DCMAKE_BUILD_TYPE = Debug - DCMAKE_EXPORT_COMPILE_COMMANDS = ON - G Ninja
 
-      - name: Build
-        run: cmake --build build --parallel
+                                                                           - name : Build run
+    : cmake-- build build-- parallel
 
-      - name: Static analysis (C++ files only, no CUDA)
-        run: |
-          CPU_FILES=$(find src include -name '*.cpp' -o -name '*.h')
-          if [ -n "$CPU_FILES" ]; then
-            echo "$CPU_FILES" | xargs clang-tidy -p build --quiet 2>&1 \
-              || echo "Static analysis completed with warnings"
-          fi
+      -
+      name : Static analysis(C++ files only, no CUDA) run
+    : |
+      CPU_FILES = $(find src include - name '*.cpp' - o - name '*.h') if[-n "$CPU_FILES"];
+then echo "$CPU_FILES" | xargs clang - tidy - p build-- quiet 2 > &1 fi

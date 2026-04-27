@@ -1,4 +1,4 @@
-# CSR Format Storage
+#CSR Format Storage
 
 > **Version**: v1.0.0
 > **Status**: ✅ Implemented
@@ -34,13 +34,13 @@
 
 ```cpp
 struct CSRMatrix {
-    int num_rows;           // Number of rows
-    int num_cols;           // Number of columns
-    int nnz;                // Total non-zero elements
+    int num_rows;  // Number of rows
+    int num_cols;  // Number of columns
+    int nnz;       // Total non-zero elements
 
-    float* values;          // Non-zero values array [nnz]
-    int* col_indices;       // Column indices array [nnz]
-    int* row_ptrs;          // Row pointers array [num_rows + 1]
+    float* values;     // Non-zero values array [nnz]
+    int* col_indices;  // Column indices array [nnz]
+    int* row_ptrs;     // Row pointers array [num_rows + 1]
 
     // GPU device pointers
     float* d_values;
@@ -70,4 +70,4 @@ struct CSRMatrix {
 ## See Also
 
 - [Public API](../public-api/spec.md) - API functions for CSR operations
-- [RFC 0001](/tmp/specs-backup/rfc/0001-core-architecture.md) - Original architecture design
+- [ELL Format](../ell-format/spec.md) - ELL format comparison
