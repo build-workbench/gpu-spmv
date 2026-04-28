@@ -35,3 +35,6 @@ build / build - * / build - no - cuda / build - release / cmake - build -
 
 #OMC runtime state(not to be committed)
             .omc /
+
+#Git worktrees
+.worktrees/
