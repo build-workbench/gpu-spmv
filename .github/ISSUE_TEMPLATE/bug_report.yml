@@ -1,0 +1,113 @@
+name: Bug Report
+description: Report a bug to help us improve GPU SpMV
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this bug! Please fill out the sections below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is
+      placeholder: "When I run spmv_csr with..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Create matrix with `csr_create(...)`
+        2. Call `spmv_csr(...)`
+        3. Observe error
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Minimal Reproducible Example
+      description: Please provide a minimal code example that demonstrates the issue
+      render: cpp
+      placeholder: |
+#include <spmv/spmv.h>
+        int main() {
+            // Your code here
+        }
+
+  - type: markdown
+    attributes:
+      value: "## Environment"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "Ubuntu 22.04"
+    validations:
+      required: true
+
+  - type: input
+    id: cuda
+    attributes:
+      label: CUDA Version
+      placeholder: "12.0"
+    validations:
+      required: true
+
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU Model
+      placeholder: "NVIDIA RTX 3090"
+    validations:
+      required: true
+
+  - type: input
+    id: cmake
+    attributes:
+      label: CMake Version
+      placeholder: "3.25"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Messages / Logs
+      description: Please paste any relevant error messages or logs
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have checked that this bug has not been reported before
+          required: true
+        - label: I have read the documentation at https://lessup.github.io/gpu-spmv/
+          required: false

@@ -1,4 +1,4 @@
-# Contributing to GPU SpMV
+#Contributing to GPU SpMV
 
 Thank you for your interest in contributing to GPU SpMV! This guide will help you get started.
 
@@ -60,27 +60,35 @@ Unsure where to start? Look for issues labeled:
 
 ### What is SDD?
 
-In SDD, specification documents in `/specs` are the **Single Source of Truth**. Code implementation follows specs, not the other way around.
+In SDD, specification documents in `openspec/specs/` are the **Single Source of Truth**. Code implementation follows specs, not the other way around.
 
 ### Spec Directory Structure
 
 ```
-specs/
-├── product/          # Product requirements (PRDs)
-├── rfc/              # Technical design documents (RFCs)
-├── api/              # API specifications
-├── db/               # Database schema specs (if applicable)
-└── testing/          # BDD test specifications
+openspec/
+├── config.yaml              # Project configuration
+├── specs/                   # Feature specifications (single source of truth)
+│   ├── csr-format/          # CSR format spec + design
+│   ├── ell-format/          # ELL format spec + design
+│   ├── spmv-kernels/        # Kernel implementations
+│   ├── public-api/          # Public API specification (update on any API change)
+│   ├── error-handling/      # Error handling spec
+│   ├── benchmark/           # Benchmark spec
+│   ├── pagerank/            # PageRank algorithm spec
+│   └── property-tests/      # Test requirements
+└── changes/
+    ├── active/              # Current iteration tasks
+    └── archive/             # Completed changes
 ```
 
 ### Contributing to Specs
 
 #### When to Update Specs
 
-1. **New features**: Create new requirement documents
-2. **API changes**: Update `/specs/api/` before code changes
-3. **Architecture changes**: Create new RFC in `/specs/rfc/`
-4. **Test coverage gaps**: Add missing test specs to `/specs/testing/`
+1. **New features**: Create new spec in `openspec/specs/`
+2. **API changes**: Update `openspec/specs/public-api/spec.md` before code changes
+3. **Architecture changes**: Create design document in `openspec/specs/<feature>/design.md`
+4. **Test coverage gaps**: Update `openspec/specs/property-tests/spec.md`
 
 #### Spec Update Process
 
@@ -92,10 +100,10 @@ specs/
 
 #### Spec File Naming
 
-- **Product specs**: `feature-name.md` (e.g., `spmv-gpu.md`, `coo-format.md`)
-- **RFCs**: `NNNN-short-description.md` (e.g., `0001-core-architecture.md`)
-- **API specs**: `api-name.md` (e.g., `public-api.md`, `openapi.yaml`)
-- **Testing specs**: `test-type.feature` (e.g., `property-tests.feature`)
+- **Feature specs**: `openspec/specs/<feature>/spec.md` (e.g., `openspec/specs/csr-format/spec.md`)
+- **Design docs**: `openspec/specs/<feature>/design.md` (technical decisions)
+- **API spec**: `openspec/specs/public-api/spec.md` (all public API)
+- **Test spec**: `openspec/specs/property-tests/spec.md`
 
 ### AI Agent Workflow
 
@@ -125,39 +133,39 @@ See `AGENTS.md` for detailed AI workflow instructions.
 ### Quick Start
 
 ```bash
-# Clone repository
+#Clone repository
 git clone https://github.com/LessUp/gpu-spmv.git
 cd gpu-spmv
 
-# Build (Debug mode for development)
+#Build(Debug mode for development)
 cmake --preset default
 cmake --build --preset default
 
-# Run tests
+#Run tests
 ctest --preset default
 ```
 
 ### Build Commands
 
 ```bash
-# Debug build (with symbols, no optimization)
+#Debug build(with symbols, no optimization)
 cmake --preset default && cmake --build --preset default
 
-# Release build (optimized)
+#Release build(optimized)
 cmake --preset release && cmake --build --preset release
 
-# CPU-only build (no CUDA device required)
+#CPU - only build(no CUDA device required)
 cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
 cmake --build build-no-cuda
 
-# Run specific tests
+#Run specific tests
 ./build/spmv_tests --gtest_filter="CSR*"
 ```
 
 ### Code Formatting
 
 ```bash
-# Format all source files
+#Format all source files
 find src tests include -name "*.cpp" -o -name "*.h" -o -name "*.cu" | xargs clang-format -i
 ```
 
@@ -182,10 +190,10 @@ When creating a PR, include:
 Brief description of changes
 
 ## Spec Updates
-- [ ] Updated `/specs/product/...`
-- [ ] Updated `/specs/rfc/...`
-- [ ] Updated `/specs/api/...`
-- [ ] Updated `/specs/testing/...`
+
+- [ ] Updated `openspec/specs/<feature>/spec.md`
+- [ ] Updated `openspec/specs/public-api/spec.md` (if API changed)
+- [ ] Created proposal in `openspec/changes/active/` (for new features)
 
 ## Type of Change
 - [ ] Bug fix
@@ -294,10 +302,10 @@ TEST(SpMVPropertyTest, MyNewProperty) {
         // Generate random test data
         auto matrix = generate_random_sparse_matrix();
         auto x = generate_random_vector(matrix->num_cols);
-        
+
         // Execute and validate
         auto result = spmv_csr(matrix, d_x, d_y);
-        
+
         // Assert property holds
         EXPECT_TRUE(property_valid(result));
     }
@@ -319,12 +327,12 @@ Target **>80% coverage** for core functionality. Validate:
 
 ### Spec Documentation
 
-Keep `/specs` directory synchronized with code:
+Keep `openspec/specs/` directory synchronized with code:
 
-- **Product specs**: Update when requirements change
-- **RFCs**: Create for major architectural decisions
-- **API specs**: Update with every API change
-- **Testing specs**: Document all property tests
+- **Feature specs**: Update when requirements change
+- **Design docs**: Document major architectural decisions
+- **API spec**: Update with every API change
+- **Test spec**: Document all property tests
 
 ### User Documentation
 

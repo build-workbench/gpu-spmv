@@ -1,26 +1,18 @@
----
-layout: default
-title: Architecture
-nav_order: 6
-permalink: /architecture.en
-lang: en
----
+-- -layout : default title : Architecture nav_order : 6 permalink : / architecture.en lang : en-- -
 
-<p align="right">
-  <a href="architecture">🇨🇳 简体中文</a>
-</p>
+    <p align = "right"><a href = "architecture">🇨🇳 简体中文</ a></ p>
+#Architecture
+    { :.no_toc}
 
-# Architecture
-{: .no_toc }
+    System architecture,
+    core algorithms, and design decisions.{: .fs-6 .fw-300
+}
 
-System architecture, core algorithms, and design decisions.
-{: .fs-6 .fw-300 }
+##Table of Contents {: .no_toc .text-delta
+}
 
-## Table of Contents
-{: .no_toc .text-delta }
-
-1. TOC
-{:toc}
+1. TOC {:toc
+}
 
 ---
 
@@ -120,38 +112,38 @@ Input: CSR Matrix
 ```cpp
 // Automatic lifecycle management, prevents memory leaks
 class CudaBuffer {
-public:
+   public:
     explicit CudaBuffer(size_t n) { cudaMalloc(&ptr_, n * sizeof(T)); }
     ~CudaBuffer() { cudaFree(ptr_); }
     // Disable copy, enable move
 };
 ```
 
-### 2. Execution Context
+    ## #2. Execution Context
 
 ```cpp
-// Cache texture objects to avoid recreation
-SpMVExecutionContext ctx;
+        // Cache texture objects to avoid recreation
+        SpMVExecutionContext ctx;
 for (int i = 0; i < n_iter; i++) {
     spmv_csr(csr, d_x, d_y, &config, n, &ctx);
     // Texture objects are reused
 }
 ```
 
-### 3. Error Handling
+    ## #3. Error Handling
 
 ```cpp
-// Semantic error codes
-enum class SpMVError {
-    SUCCESS = 0,
-    INVALID_DIMENSION = -1,
-    CUDA_MALLOC = -2,
-    // ...
-};
+    // Semantic error codes
+    enum class SpMVError {
+        SUCCESS = 0,
+        INVALID_DIMENSION = -1,
+        CUDA_MALLOC = -2,
+        // ...
+    };
 ```
 
----
+    -- -
 
-<div class="text-center text-small" style="margin-top: 3rem;">
-  <p>More details in <a href="https://github.com/LessUp/gpu-spmv/tree/main/specs">specs/</a> directory</p>
-</div>
+    <div class = "text-center text-small" style = "margin-top: 3rem;">
+    <p> More details in<a href = "https://github.com/LessUp/gpu-spmv/tree/master/openspec/specs">
+        openspec / specs / </ a> directory</ p></ div>

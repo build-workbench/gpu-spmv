@@ -185,10 +185,10 @@ gpu-spmv/
 ├── src/                   # 实现文件（7 个）
 ├── tests/                 # Google Test 套件（8 个）
 ├── benchmarks/            # 性能基准测试
-└── specs/                 # SDD 规范文档
+└── openspec/             # SDD 规范文档
 ```
 
-🔧 **规范驱动开发**：所有功能在 [`/specs/`](specs/) 中定义后实现
+🔧 **规范驱动开发**：所有功能在 [`openspec/specs/`](openspec/specs/) 中定义后实现
 
 ---
 
@@ -266,7 +266,7 @@ csr_destroy(adj);
 ### 快速贡献指南
 
 1. 🍴 **Fork** 本仓库
-2. 📖 **查阅规范** - 在 `/specs/` 中查看你想实现的功能
+2. 📖 **查阅规范** - 在 `openspec/specs/` 中查看你想实现的功能
 3. 🌿 **创建分支** (`git checkout -b feature/your-feature`)
 4. 📝 **先更新规范**（如果修改行为）
 5. 💻 **按规范实现代码**
