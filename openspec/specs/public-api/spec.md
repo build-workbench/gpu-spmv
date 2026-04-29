@@ -1,4 +1,4 @@
-#Public API Specification
+# Public API Specification
 
 > **Version**: v1.0.0
 > **Status**: ✅ Stable
@@ -71,13 +71,14 @@ CSRMatrix* csr_create(int num_rows, int num_cols, int nnz);
 void csr_destroy(CSRMatrix* matrix);
 
 // Convert dense matrix to CSR format
-int csr_from_dense(CSRMatrix* csr, const float* dense, int num_rows, int num_cols);
+int csr_from_dense(CSRMatrix* csr, const float* dense,
+                   int num_rows, int num_cols);
 
 // Transfer CSR to GPU memory
 int csr_to_gpu(CSRMatrix* csr);
 
 // Transfer CSR from GPU to host memory
-int csr_from_gpu(CSRMatrix* csr);
+int csr_from_gpu(const CSRMatrix* csr);
 
 // Get element at position (row, col)
 float csr_get_element(const CSRMatrix* csr, int row, int col);
@@ -85,28 +86,25 @@ float csr_get_element(const CSRMatrix* csr, int row, int col);
 // Serialize CSR to binary file
 int csr_serialize(const CSRMatrix* csr, const char* filename);
 
-// Deserialize CSR from binary file (matrix must be pre-allocated or nullptr)
-int csr_deserialize(CSRMatrix* mat, const char* filename);
+// Deserialize CSR from binary file
+CSRMatrix* csr_deserialize(const char* filename);
 
 // Compute CSR statistics
 CSRStats csr_compute_stats(const CSRMatrix* csr);
-
-// Validate CSR matrix structure integrity
-bool csr_validate(const CSRMatrix* csr);
 ```
 
-    ## #ELL Matrix Operations
+### ELL Matrix Operations
 
 ```cpp
-    // Create empty ELL matrix
-    ELLMatrix*
-    ell_create(int num_rows, int num_cols, int max_nnz_per_row);
+// Create empty ELL matrix
+ELLMatrix* ell_create(int num_rows, int num_cols, int max_nnz_per_row);
 
 // Destroy ELL matrix and free memory
 void ell_destroy(ELLMatrix* matrix);
 
 // Convert dense matrix to ELL format
-int ell_from_dense(ELLMatrix* ell, const float* dense, int num_rows, int num_cols);
+int ell_from_dense(ELLMatrix* ell, const float* dense,
+                   int num_rows, int num_cols);
 
 // Convert CSR to ELL format
 int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr);
@@ -115,78 +113,75 @@ int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr);
 int ell_to_gpu(ELLMatrix* ell);
 
 // Transfer ELL from GPU to host memory
-int ell_from_gpu(ELLMatrix* ell);
+int ell_from_gpu(const ELLMatrix* ell);
 
 // Serialize ELL to binary file
 int ell_serialize(const ELLMatrix* ell, const char* filename);
 
-// Deserialize ELL from binary file (matrix must be pre-allocated or nullptr)
-int ell_deserialize(ELLMatrix* mat, const char* filename);
-
-// Validate ELL matrix structure integrity
-bool ell_validate(const ELLMatrix* mat);
+// Deserialize ELL from binary file
+ELLMatrix* ell_deserialize(const char* filename);
 ```
 
-    ## #SpMV Computation
+### SpMV Computation
 
 ```cpp
-    // Kernel selection thresholds (tunable for different GPU architectures)
-    struct SpMVThresholds {
-    float avg_nnz_threshold;     // Below this: use scalar kernel (default: 4.0)
-    float skewness_threshold;    // Below this: use vector kernel (default: 10.0)
-    int texture_cols_threshold;  // Above this: use texture cache (default: 10000)
-};
-
-// Get current kernel selection thresholds
-SpMVThresholds spmv_get_thresholds();
-
-// Set kernel selection thresholds
-void spmv_set_thresholds(const SpMVThresholds& thresholds);
-
 // Automatically select optimal kernel based on matrix characteristics
 SpMVConfig spmv_auto_config(const CSRMatrix* A);
 
 // Execute SpMV on CSR format
-SpMVResult spmv_csr(const CSRMatrix* A,                      // Input matrix
-                    const float* d_x,                        // Input vector (GPU)
-                    float* d_y,                              // Output vector (GPU)
-                    const SpMVConfig* config,                // Kernel configuration (optional)
-                    int vec_size = -1,                       // Vector size (-1 for auto-detect)
-                    SpMVExecutionContext* context = nullptr  // Execution context for resource reuse
+SpMVResult spmv_csr(
+    const CSRMatrix* A,           // Input matrix
+    const float* d_x,             // Input vector (GPU)
+    float* d_y,                   // Output vector (GPU)
+    const SpMVConfig* config,     // Kernel configuration (optional)
+    int vec_size,                 // Vector size (-1 for auto-detect)
+    SpMVExecutionContext* context // Execution context for resource reuse
 );
 
 // Execute SpMV on ELL format
-SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMVConfig* config,
-                    int vec_size = -1, SpMVExecutionContext* context = nullptr);
+SpMVResult spmv_ell(
+    const ELLMatrix* A,
+    const float* d_x,
+    float* d_y,
+    const SpMVConfig* config,
+    int vec_size,
+    SpMVExecutionContext* context
+);
 
 // CPU reference implementation for validation
 void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
 void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
 ```
 
-    ## #PageRank Algorithm
+### PageRank Algorithm
 
 ```cpp
-        // Compute PageRank scores using iterative SpMV
-        PageRankResult
-        pagerank(const CSRMatrix* adj_matrix,  // Column-normalized adjacency matrix
-                 const PageRankConfig* config  // PageRank configuration
-        );
+// Compute PageRank scores using iterative SpMV
+PageRankResult pagerank(
+    const CSRMatrix* adj_matrix,  // Column-normalized adjacency matrix
+    const PageRankConfig* config  // PageRank configuration
+);
 
 // Get top-K nodes by PageRank score
-int pagerank_top_k(const PageRankResult* result, int num_nodes, int k, TopKNode* top_k);
+int pagerank_top_k(const PageRankResult* result,
+                   int num_nodes,
+                   int k,
+                   TopKNode* top_k);
 
 // Free PageRank result memory
 void pagerank_free(PageRankResult* result);
 ```
 
-    ## #Benchmarking Framework
+### Benchmarking Framework
 
 ```cpp
-        // Run CSR SpMV benchmark
-        BenchmarkResult
-        benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
-                      const BenchmarkConfig* bench);
+// Run CSR SpMV benchmark
+BenchmarkResult benchmark_csr(
+    const CSRMatrix* A,
+    const float* x,
+    const SpMVConfig* config,
+    const BenchmarkConfig* bench
+);
 
 // Export benchmark results to JSON
 int benchmark_to_json(const BenchmarkResult* result, const char* filename);

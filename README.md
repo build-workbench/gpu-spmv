@@ -120,8 +120,6 @@ ctest --preset default  # All tests should pass ✅
 
 ```cpp
 #include <spmv/spmv.h>
-#include <cuda_runtime.h>
-#include <stdio.h>
 
 int main() {
     // 1. Create 3×3 sparse matrix: [1 0 2; 0 3 4; 0 0 5]
@@ -133,7 +131,6 @@ int main() {
     // 2. Prepare vectors
     CudaBuffer<float> d_x(3), d_y(3);
     float h_x[] = {1, 1, 1};
-    float h_y[3];
     cudaMemcpy(d_x.data(), h_x, sizeof(h_x), cudaMemcpyHostToDevice);
 
     // 3. Execute (auto-selects optimal kernel)
@@ -142,78 +139,11 @@ int main() {
     // result.time_ms ≈ 0.05ms, result.error == SUCCESS
 
     // 4. Get result: y = [3, 7, 5]
-    cudaMemcpy(h_y, d_y.data(), sizeof(h_y), cudaMemcpyDeviceToHost);
-    printf("y = [%.0f, %.0f, %.0f]\n", h_y[0], h_y[1], h_y[2]);
-
     csr_destroy(csr);
-    return 0;
 }
 ```
 
----
-
-## 📦 Dependencies & Integration
-
-### Dependencies
-
-| Dependency | Required | Notes |
-|:-----------|:--------:|:------|
-| CUDA Toolkit 11.0+ | Yes | For GPU kernels and device support |
-| CMake 3.18+ | Yes | Build system |
-| Google Test | Build-only | Fetched automatically by CMake |
-| clang-format 14+ | Dev-only | Code formatting (`pip install clang-format`) |
-
-### CPU-Only Build (No GPU Required)
-
-For CI environments or machines without CUDA:
-
-```bash
-cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
-cmake --build build-no-cuda
-ctest --test-dir build-no-cuda
-```
-
-> **Note**: CPU-only build disables GPU kernels. Only format validation and CPU tests run.
-
-### Integration
-
-#### Option 1: CMake FetchContent (Recommended)
-
-```cmake
-include(FetchContent)
-FetchContent_Declare(
-    gpu_spmv
-    GIT_REPOSITORY https://github.com/LessUp/gpu-spmv.git
-    GIT_TAG        v0.2.0  # Use a specific release
-)
-FetchContent_MakeAvailable(gpu_spmv)
-
-target_link_libraries(your_target PRIVATE spmv)
-```
-
-#### Option 2: Git Submodule
-
-```bash
-git submodule add https://github.com/LessUp/gpu-spmv.git third_party/gpu-spmv
-```
-
-```cmake
-add_subdirectory(third_party/gpu-spmv)
-target_link_libraries(your_target PRIVATE spmv)
-```
-
-#### Option 3: System Install
-
-```bash
-cmake --preset release
-cmake --build --preset release
-cmake --install build-release --prefix /usr/local
-```
-
-```cmake
-find_package(gpu_spmv REQUIRED)
-target_link_libraries(your_target PRIVATE gpu_spmv::spmv)
-```
+📚 **More examples**: [Documentation Site](https://lessup.github.io/gpu-spmv/examples)
 
 ---
 
@@ -255,10 +185,10 @@ gpu-spmv/
 ├── src/                   # Implementations (7 files)
 ├── tests/                 # Google Test suite (8 files)
 ├── benchmarks/            # Performance benchmarks
-└── openspec/              # OpenSpec SDD specifications
+└── specs/                 # SDD specifications
 ```
 
-🔧 **Spec-Driven Development**: All features defined in [`openspec/specs/`](openspec/specs/) before implementation
+🔧 **Spec-Driven Development**: All features defined in [`/specs/`](specs/) before implementation
 
 ---
 
@@ -306,45 +236,23 @@ ctest --preset default
 
 ```cpp
 #include <spmv/pagerank.h>
-#include <spmv/csr_matrix.h>
-#include <algorithm>
-#include <vector>
 
-using namespace spmv;
+// Build adjacency matrix for graph
+CSRMatrix* adj = build_graph_adjacency();
+csr_to_gpu(adj);
 
-// Helper: get indices of top-k largest values
-std::vector<size_t> top_k_indices(const float* values, size_t n, size_t k) {
-    std::vector<size_t> idx(n);
-    std::iota(idx.begin(), idx.end(), 0);
-    std::partial_sort(idx.begin(), idx.begin() + k, idx.end(),
-        [&](size_t a, size_t b) { return values[a] > values[b]; });
-    idx.resize(k);
-    return idx;
+// Run PageRank
+PageRankConfig config = {.damping = 0.85f, .tolerance = 1e-6f};
+PageRankResult result = pagerank(adj, &config);
+
+// Get top-10 ranked nodes
+auto top_10 = get_top_k(result, 10);
+for (const auto& node : top_10) {
+    printf("Node %d: %.6f\n", node.id, node.rank);
 }
 
-int main() {
-    // Build adjacency matrix for your graph
-    // (construct programmatically or load from your data source)
-    int nrows = 1000, ncols = 1000, nnz = 5000;
-    CSRMatrix* adj = csr_create(nrows, ncols, nnz);
-    // ... populate adj with your graph data ...
-    csr_to_gpu(adj);
-
-    // Run PageRank
-    PageRankConfig config;
-    config.damping_factor = 0.85f;
-    config.tolerance = 1e-6f;
-    PageRankResult result = pagerank(adj, &config);
-
-    // Get top-10 ranked nodes
-    auto top_10 = top_k_indices(result.ranks, adj->nrows, 10);
-    for (size_t node : top_10) {
-        printf("Node %zu: %.6f\n", node, result.ranks[node]);
-    }
-
-    pagerank_free(&result);
-    csr_destroy(adj);
-}
+pagerank_free(&result);
+csr_destroy(adj);
 ```
 
 📊 **Use cases**: Social network analysis · Web search · Recommendation systems · Fraud detection
@@ -358,7 +266,7 @@ We welcome contributions! GPU SpMV follows **Spec-Driven Development** - specs a
 ### Quick Contributing Guide
 
 1. 🍴 **Fork** the repository
-2. 📖 **Read specs** in `openspec/specs/` for the feature you want
+2. 📖 **Read specs** in `/specs/` for the feature you want
 3. 🌿 **Create branch** (`git checkout -b feature/your-feature`)
 4. 📝 **Update specs first** (if modifying behavior)
 5. 💻 **Implement code** following spec
@@ -377,19 +285,6 @@ find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -na
 # Build & test
 cmake --preset default && cmake --build --preset default && ctest --preset default
 ```
-
----
-
-## 🛠️ Troubleshooting
-
-| Issue | Cause | Solution |
-|:------|:------|:---------|
-| `CUDA not found` | CUDA Toolkit not installed or not in PATH | Install CUDA 11.0+ and ensure `nvcc` is in PATH |
-| `No CUDA device found` | Running on machine without NVIDIA GPU | Use CPU-only build: `-DSPMV_REQUIRE_CUDA=OFF` |
-| `Unsupported GPU architecture` | GPU compute capability too old | Check minimum requirements: CC 7.0+ required |
-| Tests fail in CI | Missing CUDA device | CPU-only tests will pass; GPU tests are skipped |
-| `clang-format not found` | Formatter not installed | `pip install clang-format` or disable formatting |
-| Low bandwidth utilization | Wrong kernel selected | Check matrix pattern; use `spmv_auto_config()` for optimal selection |
 
 ---
 
