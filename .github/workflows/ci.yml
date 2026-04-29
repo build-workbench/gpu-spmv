@@ -1,7 +1,6 @@
 name : CI
 
-           on : push : branches : [ main, master ] pull_request : branches
-    : [ main, master ] workflow_dispatch :
+           on : push : branches : [master] pull_request : branches : [master] workflow_dispatch :
 
     permissions : contents : read
 
@@ -52,4 +51,4 @@ cancel - in -
       name : Static analysis(C++ files only, no CUDA) run
     : |
       CPU_FILES = $(find src include - name '*.cpp' - o - name '*.h') if[-n "$CPU_FILES"];
-then echo "$CPU_FILES" | xargs clang - tidy - p build-- quiet 2 > &1 fi
+then echo "$CPU_FILES" | xargs clang - tidy - p build-- warnings - as - errors = '*' fi

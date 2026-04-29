@@ -1,54 +1,36 @@
----
-layout: default
-title: Home
-nav_order: 1
-permalink: /index.en
-lang: en
----
+-- -layout : default title : Home nav_order : 1 permalink : / index.en lang : en-- -
 
-<!-- ═══════════════════════════════════════════════════════════════
-     GPU SpMV - Product Showcase Homepage (English)
+        <!-- ═══════════════════════════════════════════════════════════════ GPU SpMV -
+         Product Showcase Homepage(English)
      ═══════════════════════════════════════════════════════════════ -->
 
-<!-- Hero Section -->
-<div class="hero-section">
-  <div class="hero-content">
-    <h1 class="hero-title">GPU SpMV</h1>
-    <p class="hero-subtitle">High-Performance CUDA Sparse Matrix-Vector Multiplication</p>
-    <p class="hero-tagline">Intelligent Kernel Selection · 70%+ Bandwidth · Production Ready</p>
-    
-    <!-- Badges -->
-    <div class="hero-badges">
-      <span class="badge badge-primary">70%+ Bandwidth</span>
-      <span class="badge badge-secondary">CUDA 11.0+</span>
-      <span class="badge badge-success">MIT License</span>
-      <span class="badge badge-info">C++17</span>
-    </div>
-    
-    <!-- CTA Buttons -->
-    <div class="hero-buttons">
-      <a href="quickstart.en" class="btn btn-primary btn-lg">
-        <span>🚀</span> Quick Start
-      </a>
-      <a href="https://github.com/LessUp/gpu-spmv" class="btn btn-secondary btn-lg" target="_blank">
-        <span>📦</span> GitHub
-      </a>
-      <a href="performance.en" class="btn btn-tertiary btn-lg">
-        <span>📊</span> Benchmarks
-      </a>
-    </div>
-  </div>
-  
-  <!-- Quick Code Preview -->
-  <div class="hero-code">
-    <div class="code-window">
-      <div class="code-header">
-        <span class="dot red"></span>
-        <span class="dot yellow"></span>
-        <span class="dot green"></span>
-        <span class="code-title">example.cpp</span>
-      </div>
-{% highlight cpp %}
+        <!--Hero Section--><div class = "hero-section"><div class = "hero-content">
+        <h1 class = "hero-title"> GPU SpMV</ h1>
+        <p class = "hero-subtitle"> High - Performance CUDA Sparse Matrix -
+        Vector Multiplication</ p><p class = "hero-tagline"> Intelligent Kernel Selection · 70 %
+            +Bandwidth · Production Ready</ p>
+
+            <!--Badges--><div class = "hero-badges"> <
+    span class
+    = "badge badge-primary" >
+      70 % +Bandwidth</ span><span class = "badge badge-secondary"> CUDA 11.0 + </ span>
+          <span class = "badge badge-success"> MIT License</ span>
+          <span class = "badge badge-info"> C++ 17 <
+      / span >
+      </ div>
+
+      <!--CTA Buttons--><div class = "hero-buttons">
+      <a href = "quickstart.en" class = "btn btn-primary btn-lg"><span>🚀</ span> Quick Start</ a>
+      <a href = "https://github.com/LessUp/gpu-spmv" class = "btn btn-secondary btn-lg" target =
+           "_blank">
+      <span>📦</ span> GitHub</ a><a href = "performance.en" class = "btn btn-tertiary btn-lg">
+      <span>📊</ span> Benchmarks</ a></ div></ div>
+
+      <!--Quick Code Preview--><div class = "hero-code"><div class = "code-window">
+      <div class = "code-header"><span class = "dot red"></ span><span class = "dot yellow"></ span>
+      <span class = "dot green"></ span><span class = "code-title"> example.cpp</ span></ div> {
+    % highlight cpp %
+}
 #include <spmv/spmv.h>
 
 int main() {
@@ -56,14 +38,13 @@ int main() {
     CSRMatrix* csr = csr_create(10000, 10000, 500000);
     csr_from_dense(csr, data, 10000, 10000);
     csr_to_gpu(csr);
-    
+
     // Auto-select optimal kernel and execute
     SpMVConfig config = spmv_auto_config(csr);
     SpMVResult result = spmv_csr(csr, d_x, d_y, &config, n);
-    
+
     // 70%+ bandwidth utilization
-    printf("Bandwidth: %.1f%%\n", 
-           result.bandwidth_utilization * 100);
+    printf("Bandwidth: %.1f%%\n", result.bandwidth_utilization * 100);
 }
 {% endhighlight %}
     </div>
@@ -198,78 +179,67 @@ cmake --preset release && cmake --build --preset release</code></pre>
 
 <!-- Architecture Preview -->
 ## Architecture
-{: .section-title }
+{: .section-title
+}
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Application Layer                     │
-│   PageRank  │ Iterative  │ Graph NNs  │ Scientific     │
+│ Application Layer                     │
+│ PageRank  │ Iterative  │ Graph NNs  │ Scientific     │
 ├─────────────────────────────────────────────────────────┤
-│                       API Layer                          │
-│   spmv_csr  │  spmv_ell │ benchmark │   pagerank      │
+│ API Layer                          │
+│ spmv_csr  │ spmv_ell │ benchmark │ pagerank      │
 ├─────────────────────────────────────────────────────────┤
-│                      Kernel Layer                        │
-│  Scalar CSR │ Vector CSR │ Merge Path │  ELL Kernel    │
+│ Kernel Layer                        │
+│ Scalar CSR │ Vector CSR │ Merge Path │ ELL Kernel    │
 ├─────────────────────────────────────────────────────────┤
-│                     Storage Layer                        │
-│              CSR Matrix      │      ELL Matrix         │
+│ Storage Layer                        │
+│ CSR Matrix      │ ELL Matrix         │
 └─────────────────────────────────────────────────────────┘
 ```
 
-<p align="center"><a href="architecture.en" class="btn">View Architecture →</a></p>
+    <p align = "center">
+    <a href = "architecture.en" class = "btn"> View Architecture →</ a></ p>
 
----
+    -- -
 
-<!-- Use Cases -->
-## Use Cases
-{: .section-title }
+    <!--Use Cases-->##Use Cases{ :.section - title}
 
-<div class="usecase-grid">
-  <div class="usecase-item">
-    <strong>🕸️ Graph Algorithms</strong>
-    <span>PageRank, shortest path, community detection</span>
-  </div>
-  <div class="usecase-item">
-    <strong>🔬 Scientific Computing</strong>
-    <span>Finite element analysis, CFD</span>
-  </div>
-  <div class="usecase-item">
-    <strong>🤖 Machine Learning</strong>
-    <span>Sparse neural networks, recommendations</span>
-  </div>
-  <div class="usecase-item">
-    <strong>📊 Data Analytics</strong>
-    <span>Matrix factorization, eigenvalue computation</span>
-  </div>
-</div>
+    < div class
+    = "usecase-grid" > <div class = "usecase-item"><strong>🕸️ Graph Algorithms</ strong>
+      <span> PageRank,
+    shortest path,
+    community detection</ span></ div><div class = "usecase-item">
+    <strong>🔬 Scientific Computing</ strong><span> Finite element analysis,
+    CFD</ span></ div><div class = "usecase-item"><strong>🤖 Machine Learning</ strong>
+    <span> Sparse neural networks,
+    recommendations</ span></ div><div class = "usecase-item"><strong>📊 Data Analytics</ strong>
+    <span> Matrix factorization,
+    eigenvalue computation</ span></ div></ div>
 
----
+    -- -
 
-<!-- Footer CTA -->
-<div class="footer-cta">
-  <h2>Get Started with GPU SpMV</h2>
-  <p>Join thousands of developers accelerating sparse matrix computations</p>
-  <div class="footer-buttons">
-    <a href="quickstart.en" class="btn btn-primary btn-lg">Quick Start →</a>
-    <a href="https://github.com/LessUp/gpu-spmv" class="btn btn-secondary btn-lg" target="_blank">
-      <span>⭐</span> Star on GitHub
-    </a>
-  </div>
-</div>
+    <!--Footer CTA--><div class = "footer-cta">
+    <h2> Get Started with GPU SpMV</ h2>
+    <p> Join thousands of developers accelerating sparse matrix computations</ p>
+    <div class = "footer-buttons">
+    <a href = "quickstart.en" class = "btn btn-primary btn-lg"> Quick Start →</ a>
+    <a href = "https://github.com/LessUp/gpu-spmv" class = "btn btn-secondary btn-lg" target =
+         "_blank">
+    <span>⭐</ span> Star on GitHub</ a></ div></ div>
 
----
+    -- -
 
-<div class="text-center text-small text-grey-dk-300" style="margin-top: 3rem;">
-  <p><a href="/">🇨🇳 查看中文版</a></p>
-  <p>GPU SpMV &copy; 2024-2026 LessUp | <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">MIT License</a></p>
-</div>
+    <div class = "text-center text-small text-grey-dk-300" style = "margin-top: 3rem;"><p>
+    <a href = "/">🇨🇳 查看中文版</ a></ p><p> GPU SpMV &copy;
+2024 - 2026 LessUp |
+    <a href = "https://github.com/LessUp/gpu-spmv/blob/master/LICENSE"> MIT License</ a></ p></ div>
 
-<script>
-function copyToClipboard(btn) {
-  const code = btn.previousElementSibling.innerText;
-  navigator.clipboard.writeText(code).then(() => {
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy', 2000);
-  });
+    <script> function copyToClipboard(btn) {
+    const code = btn.previousElementSibling.innerText;
+    navigator.clipboard.writeText(code).then(() = > {
+        btn.textContent = 'Copied!';
+        setTimeout(() = > btn.textContent = 'Copy', 2000);
+    });
 }
 </script>

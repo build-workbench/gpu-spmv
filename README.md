@@ -255,10 +255,10 @@ gpu-spmv/
 ├── src/                   # Implementations (7 files)
 ├── tests/                 # Google Test suite (8 files)
 ├── benchmarks/            # Performance benchmarks
-└── specs/                 # SDD specifications
+└── openspec/              # OpenSpec SDD specifications
 ```
 
-🔧 **Spec-Driven Development**: All features defined in [`/specs/`](specs/) before implementation
+🔧 **Spec-Driven Development**: All features defined in [`openspec/specs/`](openspec/specs/) before implementation
 
 ---
 
@@ -358,7 +358,7 @@ We welcome contributions! GPU SpMV follows **Spec-Driven Development** - specs a
 ### Quick Contributing Guide
 
 1. 🍴 **Fork** the repository
-2. 📖 **Read specs** in `/specs/` for the feature you want
+2. 📖 **Read specs** in `openspec/specs/` for the feature you want
 3. 🌿 **Create branch** (`git checkout -b feature/your-feature`)
 4. 📝 **Update specs first** (if modifying behavior)
 5. 💻 **Implement code** following spec
