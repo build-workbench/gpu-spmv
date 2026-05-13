@@ -1,8 +1,0 @@
-<!-- 语言切换组件 -->
-<div class="language-switcher" style="text-align: right; margin-bottom: 1rem;">
-  {% if page.lang == 'zh' %}
-    <a href="{{ page.url | replace: '.md', '' }}.en" class="btn btn-sm">🇺🇸 English</a>
-  {% else %}
-    <a href="{{ page.url | replace: '.en', '' }}" class="btn btn-sm">🇨🇳 简体中文</a>
-  {% endif %}
-</div>

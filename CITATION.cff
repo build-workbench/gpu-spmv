@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "GPU SpMV"
+version: "1.0.0"
+date-released: "2026-04-01"
+url: "https://github.com/LessUp/gpu-spmv"
+license:
+  - spdx-id: "MIT"
+    expression: "MIT"
+authors:
+  - given-names: "LessUp"
+    name-particle: ""
+repository-code: "https://github.com/LessUp/gpu-spmv"
+keywords:
+  - "cuda"
+  - "gpu"
+  - "sparse-matrix"
+  - "spmv"
+  - "high-performance"
+  - "scientific-computing"
+abstract: |
+  A high-performance CUDA library for sparse matrix-vector multiplication (SpMV).
+  Features 4 optimized kernels with automatic selection, 70%+ bandwidth utilization,
+  CSR and ELL matrix formats, and RAII memory management.
