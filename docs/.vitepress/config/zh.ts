@@ -6,17 +6,26 @@ export const zh = defineConfig({
 
   themeConfig: {
     nav: [
+      { text: '技术白皮书', link: '/zh/whitepaper/' },
       { text: '快速开始', link: '/zh/quickstart' },
-      { text: 'API 参考', link: '/zh/api/spmv' },
       { text: '架构设计', link: '/zh/architecture/overview' },
-      { text: '性能', link: '/zh/performance/benchmarks' },
-      { text: '学术参考', link: '/zh/references' }
+      { text: 'API 参考', link: '/zh/api/spmv' },
+      { text: '性能测试', link: '/zh/performance/benchmarks' }
     ],
 
     sidebar: {
       '/zh/': [
         {
-          text: '开始',
+          text: '📄 技术白皮书',
+          collapsed: false,
+          items: [
+            { text: '执行摘要', link: '/zh/whitepaper/' },
+            { text: '设计哲学', link: '/zh/whitepaper/philosophy' },
+            { text: '性能分析', link: '/zh/whitepaper/performance' }
+          ]
+        },
+        {
+          text: '🚀 快速开始',
           items: [
             { text: '介绍', link: '/zh/' },
             { text: '快速开始', link: '/zh/quickstart' },
@@ -24,17 +33,7 @@ export const zh = defineConfig({
           ]
         },
         {
-          text: 'API 参考',
-          collapsed: false,
-          items: [
-            { text: 'SpMV 计算', link: '/zh/api/spmv' },
-            { text: 'CSR 矩阵', link: '/zh/api/csr-matrix' },
-            { text: 'ELL 矩阵', link: '/zh/api/ell-matrix' },
-            { text: 'PageRank', link: '/zh/api/pagerank' }
-          ]
-        },
-        {
-          text: '架构设计',
+          text: '🏗️ 架构设计',
           collapsed: false,
           items: [
             { text: '系统概览', link: '/zh/architecture/overview' },
@@ -44,7 +43,7 @@ export const zh = defineConfig({
           ]
         },
         {
-          text: '性能优化',
+          text: '⚡ 性能优化',
           collapsed: false,
           items: [
             { text: '基准测试', link: '/zh/performance/benchmarks' },
@@ -52,9 +51,20 @@ export const zh = defineConfig({
           ]
         },
         {
-          text: '社区',
+          text: '📚 API 参考',
+          collapsed: true,
+          items: [
+            { text: 'SpMV 计算', link: '/zh/api/spmv' },
+            { text: 'CSR 矩阵', link: '/zh/api/csr-matrix' },
+            { text: 'ELL 矩阵', link: '/zh/api/ell-matrix' },
+            { text: 'PageRank', link: '/zh/api/pagerank' }
+          ]
+        },
+        {
+          text: '🎓 学术',
           items: [
             { text: '学术参考', link: '/zh/references' },
+            { text: '引用格式', link: '/zh/citation' },
             { text: '贡献指南', link: '/zh/contributing' },
             { text: '更新日志', link: '/zh/changelog' }
           ]

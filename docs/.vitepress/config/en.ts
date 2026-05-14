@@ -6,17 +6,26 @@ export const en = defineConfig({
 
   themeConfig: {
     nav: [
+      { text: 'Whitepaper', link: '/en/whitepaper/' },
       { text: 'Getting Started', link: '/en/quickstart' },
-      { text: 'API Reference', link: '/en/api/spmv' },
       { text: 'Architecture', link: '/en/architecture/overview' },
-      { text: 'Performance', link: '/en/performance/benchmarks' },
-      { text: 'References', link: '/en/references' }
+      { text: 'API Reference', link: '/en/api/spmv' },
+      { text: 'Benchmarks', link: '/en/performance/benchmarks' }
     ],
 
     sidebar: {
       '/en/': [
         {
-          text: 'Getting Started',
+          text: '📄 Technical Whitepaper',
+          collapsed: false,
+          items: [
+            { text: 'Executive Summary', link: '/en/whitepaper/' },
+            { text: 'Design Philosophy', link: '/en/whitepaper/philosophy' },
+            { text: 'Performance Analysis', link: '/en/whitepaper/performance' }
+          ]
+        },
+        {
+          text: '🚀 Getting Started',
           items: [
             { text: 'Introduction', link: '/en/' },
             { text: 'Quick Start', link: '/en/quickstart' },
@@ -24,17 +33,7 @@ export const en = defineConfig({
           ]
         },
         {
-          text: 'API Reference',
-          collapsed: false,
-          items: [
-            { text: 'SpMV Computation', link: '/en/api/spmv' },
-            { text: 'CSR Matrix', link: '/en/api/csr-matrix' },
-            { text: 'ELL Matrix', link: '/en/api/ell-matrix' },
-            { text: 'PageRank', link: '/en/api/pagerank' }
-          ]
-        },
-        {
-          text: 'Architecture',
+          text: '🏗️ Architecture',
           collapsed: false,
           items: [
             { text: 'System Overview', link: '/en/architecture/overview' },
@@ -44,7 +43,7 @@ export const en = defineConfig({
           ]
         },
         {
-          text: 'Performance',
+          text: '⚡ Performance',
           collapsed: false,
           items: [
             { text: 'Benchmarks', link: '/en/performance/benchmarks' },
@@ -52,9 +51,20 @@ export const en = defineConfig({
           ]
         },
         {
-          text: 'Community',
+          text: '📚 API Reference',
+          collapsed: true,
           items: [
-            { text: 'Academic References', link: '/en/references' },
+            { text: 'SpMV Computation', link: '/en/api/spmv' },
+            { text: 'CSR Matrix', link: '/en/api/csr-matrix' },
+            { text: 'ELL Matrix', link: '/en/api/ell-matrix' },
+            { text: 'PageRank', link: '/en/api/pagerank' }
+          ]
+        },
+        {
+          text: '🎓 Academic',
+          items: [
+            { text: 'References', link: '/en/references' },
+            { text: 'Citation', link: '/en/citation' },
             { text: 'Contributing', link: '/en/contributing' },
             { text: 'Changelog', link: '/en/changelog' }
           ]

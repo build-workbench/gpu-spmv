@@ -1,53 +1,57 @@
-name : CI
+name: CI
 
-           on : push : branches : [ main, master ] pull_request : branches
-    : [ main, master ] workflow_dispatch :
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
 
-    permissions : contents : read
+permissions:
+  contents: read
 
-                                 concurrency : group : ci -
-                                                       ${{github.workflow}} - $ {
-    { github.ref }
-}
-cancel - in -
-        progress : true
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-                   jobs : format -
-                          check : name
-    : Format Check runs -
-      on : ubuntu - latest steps : -name : Checkout uses : actions / checkout @v4
+jobs:
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-           -
-           name : Install clang -
-                  format run : |
-                               sudo apt - get update sudo apt - get install - y clang - format - 18
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
 
-                                   - name : Check formatting run
-    : |
-      find src include tests benchmarks -
-          type f \(-name '*.cpp' - o - name '*.h' - o - name '*.cu' \) |
-      xargs clang - format - 18 --dry -
-          run-- Werror
+      - name: Check formatting
+        run: |
+          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
+            | xargs clang-format-18 --dry-run --Werror
 
-          build
-          - cpu : name : Build CPU - only runs -
-                         on : ubuntu - latest steps : -name : Checkout uses : actions / checkout @v4
+  build-cpu:
+    name: Build CPU-only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-                              -
-                              name : Install dependencies run
-    : |
-      sudo apt - get update sudo apt - get install - y cmake g++ ninja - build
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ ninja-build
 
-          - name : Configure run : cmake - S.- B build - DSPMV_REQUIRE_CUDA =
-    OFF - DCMAKE_BUILD_TYPE =
-        Debug - G Ninja
+      - name: Configure
+        run: cmake -S . -B build -DSPMV_REQUIRE_CUDA=OFF -DCMAKE_BUILD_TYPE=Debug -G Ninja
 
-                - name : Build run : cmake-- build build-- parallel
+      - name: Build
+        run: cmake --build build --parallel
 
-                                     -
-                                     name : Verify build artifacts run : |
-#When CUDA is disabled, no spmv_tests or spmv_benchmark should exist
-                                                                         test !-e build / spmv_tests
-        || echo "Warning: spmv_tests found in no-CUDA build" test !-e build / spmv_benchmark ||
-        echo "Warning: spmv_benchmark found in no-CUDA build" echo
-             "CPU-only build completed successfully"
+      - name: Verify build artifacts
+        run: |
+          test ! -e build/spmv_tests || echo "Warning: spmv_tests found in no-CUDA build"
+          test ! -e build/spmv_benchmark || echo "Warning: spmv_benchmark found in no-CUDA build"
+          echo "CPU-only build completed successfully"

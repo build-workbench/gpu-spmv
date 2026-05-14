@@ -18,8 +18,12 @@ export const shared = defineConfig({
     ],
     [
       'meta',
-      { property: 'og:image', content: '/images/og-image.png' }
+      { property: 'og:image', content: '/images/og-image.svg' }
     ],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:title', content: 'GPU SpMV' }],
+    ['meta', { name: 'twitter:description', content: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library' }],
+    ['meta', { name: 'twitter:image', content: '/images/og-image.svg' }],
     [
       'link',
       { rel: 'icon', href: '/images/favicon.svg', type: 'image/svg+xml' }

@@ -6,6 +6,7 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
+      - 'CHANGELOG.md'
   workflow_dispatch:
 
 permissions:
@@ -30,11 +31,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache-dependency-path: docs/package-lock.json
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: docs/node_modules
+          key: ${{ runner.os }}-docs-node-modules-${{ hashFiles('docs/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-node-modules-
 
       - name: Install dependencies
         working-directory: docs
         run: npm ci
+
+      - name: Sync changelog
+        working-directory: docs
+        run: npm run sync
 
       - name: Build VitePress
         working-directory: docs
@@ -42,6 +54,9 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Add .nojekyll
+        run: touch docs/.vitepress/dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
