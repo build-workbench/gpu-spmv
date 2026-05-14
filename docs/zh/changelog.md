@@ -1,76 +1,148 @@
 # 更新日志
 
-GPU SpMV 的所有重要变更记录于此。
+GPU SpMV 的所有重要变更都记录在此文件中。
 
-## [1.0.0] - 2026-04-01
+# Changelog
 
-### 新增
-- 完整的 SpMV 实现，包含 4 种优化 Kernel
-- CSR 和 ELL 稀疏矩阵格式
-- 基于矩阵统计的自动 Kernel 选择
-- PageRank 算法实现
-- 完整的基准测试套件
-- RAII 内存管理 (CudaBuffer)
-- 语义化错误码 (SpMVError)
-- OpenSpec 规范驱动开发
+All notable changes to this project will be documented in this file.
 
-### 性能
-- RTX 3090 上 70%+ 内存带宽利用率
-- Merge Path Kernel 实现负载均衡
-- ELL Kernel 实现合并访存
-- 大向量纹理缓存支持
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### 文档
-- 双语文档（中文/英文）
-- 完整 API 参考
-- 架构设计文档
-- 学术参考
+## [1.0.0] - 2025-04-16
 
-## [0.9.0] - 2025-03-10
+### 🎉 First Stable Release
 
-### 新增
-- PageRank 应用层
-- Top-K 节点提取工具
+This is the first stable release of GPU SpMV, featuring complete CSR and ELL format support, four optimized CUDA kernels with automatic selection, and production-ready engineering quality.
 
-## [0.8.0] - 2025-03-05
+### ✨ Added
 
-### 新增
-- 带统计的基准测试框架
-- JSON 导出基准测试结果
+#### Core Features
+- **CSR (Compressed Sparse Row)** sparse matrix format with full operations
+- **ELL (ELLPACK)** sparse matrix format with column-major GPU-optimized storage
+- **Four CUDA Kernels**: Scalar CSR, Vector CSR, Merge Path, ELL Kernel
+- **Automatic kernel selection** based on matrix statistics (avg_nnz, skewness)
+- **Texture cache support** with `SpMVExecutionContext` for object reuse
+- **RAII resource management**: `CudaBuffer<T>`, `CudaTimer`, `ScopedTexture`
+- **Semantic error codes**: `SpMVError` enum with descriptive error messages
 
-## [0.7.0] - 2025-03-01
+#### Performance & Benchmarking
+- Bandwidth metrics calculation with GPU peak bandwidth detection
+- Comprehensive benchmarking framework with warmup runs and statistical analysis
+- GPU vs CPU performance comparison with speedup metrics
+- JSON export for benchmark results
 
-### 新增
-- 自动 Kernel 选择 (`spmv_auto_config`)
-- 可配置的选择阈值
+#### Applications
+- **PageRank algorithm** with GPU-accelerated iterative computation
+- Configurable damping factor and convergence tolerance
+- Top-K node ranking extraction
 
-## [0.6.0] - 2025-02-20
+#### Engineering Quality
+- CMake Presets for easy Debug/Release builds
+- CPU-only configuration option for development environments
+- Cross-platform support (Windows/Linux)
+- Complete Google Test test suite with property-based testing
+- GitHub Actions CI/CD with format checking
+- Doxygen-compatible documentation
 
-### 新增
-- 面向倾斜矩阵的 Merge Path Kernel
-- 矩阵统计计算
+#### Documentation
+- Full documentation site at https://lessup.github.io/gpu-spmv/
+- Bilingual README (English and Chinese)
+- API reference, performance guide, and code examples
+- Architecture documentation and design decision records
 
-### 性能
-- 改进不规则矩阵的负载均衡
+### 🔒 Security
+- Integer overflow protection in size calculations
+- Memory bounds checking in matrix operations
 
-## [0.5.0] - 2025-02-10
+### 🚀 Performance
+- ELL Column-major storage for fully coalesced memory access
+- Warp-level shuffle reduction avoiding shared memory bank conflicts
+- Merge Path algorithm for perfect load balancing on irregular matrices
+- Automatic texture cache for large input vectors (>10000 elements)
 
-### 新增
-- ELL 矩阵格式
-- 面向均匀矩阵的 ELL Kernel
-- CSR 到 ELL 转换
+## [0.1.0] - 2025-03-01
 
-## [0.4.0] - 2025-01-15
+### 🚀 Initial Release
 
-### 新增
-- CSR 矩阵格式
-- Scalar CSR Kernel
-- Vector CSR Kernel
-- 基础 SpMV 计算
+- Basic project structure
+- Initial CSR matrix implementation
+- Simple SpMV GPU kernel
+- CMake build configuration
 
-## [0.1.0] - 2024-12-01
+---
 
-### 新增
-- 初始项目结构
-- CMake 构建系统
-- Google Test 集成
+## Version History
+
+| Version | Date | Status | Highlights |
+|:-------:|:----:|:------:|:-----------|
+| [1.0.0] | 2025-04-16 | Stable | First stable release with complete feature set |
+| [0.1.0] | 2025-03-01 | Archived | Initial prototype |
+
+---
+
+## Migration Guide
+
+### Upgrading to 1.0.0
+
+No breaking changes from pre-release versions. The API is now stable.
+
+#### Recommended Updates
+
+1. **Use named constants** instead of magic numbers:
+   ```cpp
+   // Before
+   config.block_size = 256;
+   config.use_texture = (cols > 10000);
+
+   // After (recommended)
+   config.block_size = spmv::DEFAULT_BLOCK_SIZE;
+   config.use_texture = (cols > spmv::TEXTURE_CACHE_THRESHOLD_COLS);
+   ```
+
+2. **Use `SpMVExecutionContext`** for texture object reuse:
+   ```cpp
+   // Before: Texture created/destroyed each call
+   for (int i = 0; i < iterations; i++) {
+       spmv_csr(csr, d_x, d_y, &config, cols);
+   }
+
+   // After: Reuse texture across calls
+   SpMVExecutionContext context;
+   for (int i = 0; i < iterations; i++) {
+       spmv_csr(csr, d_x, d_y, &config, cols, &context);
+   }
+   ```
+
+3. **Check error codes** consistently:
+   ```cpp
+   SpMVResult result = spmv_csr(csr, d_x, d_y, &config, cols);
+   if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
+       std::cerr << "Error: " << spmv_error_string(
+           static_cast<SpMVError>(result.error_code)) << std::endl;
+   }
+   ```
+
+---
+
+## Future Roadmap
+
+### Planned for 1.1.0
+
+- [ ] COO (Coordinate) format support
+- [ ] Hybrid CSR/ELL format
+- [ ] Multi-GPU support
+- [ ] Batched SpMV operations
+- [ ] Double precision support
+
+### Under Consideration
+
+- [ ] BFloat16 precision support
+- [ ] Automatic format selection tuning
+- [ ] Integration with cuSPARSE for comparison
+- [ ] Python bindings
+
+---
+
+[1.0.0]: https://github.com/LessUp/gpu-spmv/releases/tag/v1.0.0
+[0.1.0]: https://github.com/LessUp/gpu-spmv/tree/7d6dd0c

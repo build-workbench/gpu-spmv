@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useData } from 'vitepress'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,7 +18,13 @@ const props = defineProps<{
   title?: string
 }>()
 
-// Performance data for different kernels
+const { isDark } = useData()
+
+const colors = computed(() => isDark.value
+  ? { text: '#c9d1d9', subtext: '#8b949e', grid: 'rgba(48, 54, 61, 0.5)' }
+  : { text: '#24292f', subtext: '#57606a', grid: 'rgba(208, 215, 222, 0.5)' }
+)
+
 const chartData = ref({
   labels: ['Diagonal', 'Uniform', 'Power-Law', 'Band'],
   datasets: [
@@ -52,66 +59,51 @@ const chartData = ref({
   ]
 })
 
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       position: 'bottom' as const,
       labels: {
-        color: '#c9d1d9',
+        color: colors.value.text,
         padding: 20,
-        font: {
-          size: 12
-        }
+        font: { size: 12 }
       }
     },
     title: {
       display: !!props.title,
       text: props.title || '',
-      color: '#c9d1d9',
-      font: {
-        size: 16,
-        weight: 'bold' as const
-      }
+      color: colors.value.text,
+      font: { size: 16, weight: 'bold' as const }
     },
     tooltip: {
       callbacks: {
-        label: function(context: any) {
-          return `${context.dataset.label}: ${context.raw}%`
-        }
+        label: (context: any) => `${context.dataset.label}: ${context.raw}%`
       }
     }
   },
   scales: {
     x: {
-      ticks: {
-        color: '#8b949e'
-      },
-      grid: {
-        color: 'rgba(48, 54, 61, 0.5)'
-      }
+      ticks: { color: colors.value.subtext },
+      grid: { color: colors.value.grid }
     },
     y: {
       beginAtZero: true,
       max: 100,
       ticks: {
-        color: '#8b949e',
-        callback: function(value: any) {
-          return value + '%'
-        }
+        color: colors.value.subtext,
+        callback: (value: any) => value + '%'
       },
-      grid: {
-        color: 'rgba(48, 54, 61, 0.5)'
-      },
+      grid: { color: colors.value.grid },
       title: {
         display: true,
         text: 'Bandwidth Utilization (%)',
-        color: '#8b949e'
+        color: colors.value.subtext
       }
     }
   }
-}
+}))
 </script>
 
 <template>

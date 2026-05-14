@@ -1,19 +1,30 @@
 ---
-layout: page
+layout: home
+hero:
+  name: GPU SpMV
+  text: ' '
+  actions:
+    - theme: brand
+      text: 简体中文
+      link: /zh/
+    - theme: alt
+      text: English
+      link: /en/
 ---
 
-<div class="language-selector">
-  <h1>GPU SpMV</h1>
-  <p>High-Performance CUDA Sparse Matrix-Vector Multiplication</p>
+<script setup>
+import { onMounted } from 'vue'
+import { useRouter, useData } from 'vitepress'
 
-  <div class="language-cards">
-    <a href="/zh/" class="language-card">
-      <h2>简体中文</h2>
-      <p>查看中文文档</p>
-    </a>
-    <a href="/en/" class="language-card">
-      <h2>English</h2>
-      <p>View English Documentation</p>
-    </a>
-  </div>
-</div>
+onMounted(() => {
+  const router = useRouter()
+  const { site } = useData()
+  const base = site.value.base
+  const lang = navigator.language || navigator.userLanguage
+  if (lang.startsWith('zh')) {
+    router.go(`${base}zh/`)
+  } else {
+    router.go(`${base}en/`)
+  }
+})
+</script>

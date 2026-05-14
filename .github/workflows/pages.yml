@@ -48,12 +48,18 @@ jobs:
         working-directory: docs
         run: npm run sync
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Set VitePress base
+        run: echo "VITEPRESS_BASE=${{ steps.pages.outputs.base_path }}" >> "$GITHUB_ENV"
+
       - name: Build VitePress
         working-directory: docs
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Clean dist markdown leaks
+        run: rm -f docs/.vitepress/dist/*.md
 
       - name: Add .nojekyll
         run: touch docs/.vitepress/dist/.nojekyll

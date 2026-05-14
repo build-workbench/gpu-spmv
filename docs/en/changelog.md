@@ -2,75 +2,147 @@
 
 All notable changes to GPU SpMV are documented here.
 
-## [1.0.0] - 2026-04-01
+# Changelog
 
-### Added
-- Complete SpMV implementation with 4 optimized kernels
-- CSR and ELL sparse matrix formats
-- Automatic kernel selection based on matrix statistics
-- PageRank algorithm implementation
-- Comprehensive benchmark suite
-- RAII memory management with CudaBuffer
-- Semantic error codes (SpMVError)
-- OpenSpec specification-driven development
+All notable changes to this project will be documented in this file.
 
-### Performance
-- 70%+ memory bandwidth utilization on RTX 3090
-- Merge Path kernel for load-balanced computation
-- ELL kernel for coalesced memory access
-- Texture cache support for large vectors
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Documentation
-- Bilingual documentation (Chinese/English)
-- Complete API reference
-- Architecture design documentation
-- Academic references
+## [1.0.0] - 2025-04-16
 
-## [0.9.0] - 2025-03-10
+### 🎉 First Stable Release
 
-### Added
-- PageRank application layer
-- Top-K node extraction utility
+This is the first stable release of GPU SpMV, featuring complete CSR and ELL format support, four optimized CUDA kernels with automatic selection, and production-ready engineering quality.
 
-## [0.8.0] - 2025-03-05
+### ✨ Added
 
-### Added
-- Benchmark framework with statistics
+#### Core Features
+- **CSR (Compressed Sparse Row)** sparse matrix format with full operations
+- **ELL (ELLPACK)** sparse matrix format with column-major GPU-optimized storage
+- **Four CUDA Kernels**: Scalar CSR, Vector CSR, Merge Path, ELL Kernel
+- **Automatic kernel selection** based on matrix statistics (avg_nnz, skewness)
+- **Texture cache support** with `SpMVExecutionContext` for object reuse
+- **RAII resource management**: `CudaBuffer<T>`, `CudaTimer`, `ScopedTexture`
+- **Semantic error codes**: `SpMVError` enum with descriptive error messages
+
+#### Performance & Benchmarking
+- Bandwidth metrics calculation with GPU peak bandwidth detection
+- Comprehensive benchmarking framework with warmup runs and statistical analysis
+- GPU vs CPU performance comparison with speedup metrics
 - JSON export for benchmark results
 
-## [0.7.0] - 2025-03-01
+#### Applications
+- **PageRank algorithm** with GPU-accelerated iterative computation
+- Configurable damping factor and convergence tolerance
+- Top-K node ranking extraction
 
-### Added
-- Automatic kernel selection (`spmv_auto_config`)
-- Configurable selection thresholds
+#### Engineering Quality
+- CMake Presets for easy Debug/Release builds
+- CPU-only configuration option for development environments
+- Cross-platform support (Windows/Linux)
+- Complete Google Test test suite with property-based testing
+- GitHub Actions CI/CD with format checking
+- Doxygen-compatible documentation
 
-## [0.6.0] - 2025-02-20
+#### Documentation
+- Full documentation site at https://lessup.github.io/gpu-spmv/
+- Bilingual README (English and Chinese)
+- API reference, performance guide, and code examples
+- Architecture documentation and design decision records
 
-### Added
-- Merge Path kernel for skewed matrices
-- Matrix statistics computation
+### 🔒 Security
+- Integer overflow protection in size calculations
+- Memory bounds checking in matrix operations
 
-### Performance
-- Improved load balancing for irregular matrices
+### 🚀 Performance
+- ELL Column-major storage for fully coalesced memory access
+- Warp-level shuffle reduction avoiding shared memory bank conflicts
+- Merge Path algorithm for perfect load balancing on irregular matrices
+- Automatic texture cache for large input vectors (>10000 elements)
 
-## [0.5.0] - 2025-02-10
+## [0.1.0] - 2025-03-01
 
-### Added
-- ELL matrix format
-- ELL kernel for uniform matrices
-- CSR to ELL conversion
+### 🚀 Initial Release
 
-## [0.4.0] - 2025-01-15
+- Basic project structure
+- Initial CSR matrix implementation
+- Simple SpMV GPU kernel
+- CMake build configuration
 
-### Added
-- CSR matrix format
-- Scalar CSR kernel
-- Vector CSR kernel
-- Basic SpMV computation
+---
 
-## [0.1.0] - 2024-12-01
+## Version History
 
-### Added
-- Initial project structure
-- CMake build system
-- Google Test integration
+| Version | Date | Status | Highlights |
+|:-------:|:----:|:------:|:-----------|
+| [1.0.0] | 2025-04-16 | Stable | First stable release with complete feature set |
+| [0.1.0] | 2025-03-01 | Archived | Initial prototype |
+
+---
+
+## Migration Guide
+
+### Upgrading to 1.0.0
+
+No breaking changes from pre-release versions. The API is now stable.
+
+#### Recommended Updates
+
+1. **Use named constants** instead of magic numbers:
+   ```cpp
+   // Before
+   config.block_size = 256;
+   config.use_texture = (cols > 10000);
+
+   // After (recommended)
+   config.block_size = spmv::DEFAULT_BLOCK_SIZE;
+   config.use_texture = (cols > spmv::TEXTURE_CACHE_THRESHOLD_COLS);
+   ```
+
+2. **Use `SpMVExecutionContext`** for texture object reuse:
+   ```cpp
+   // Before: Texture created/destroyed each call
+   for (int i = 0; i < iterations; i++) {
+       spmv_csr(csr, d_x, d_y, &config, cols);
+   }
+
+   // After: Reuse texture across calls
+   SpMVExecutionContext context;
+   for (int i = 0; i < iterations; i++) {
+       spmv_csr(csr, d_x, d_y, &config, cols, &context);
+   }
+   ```
+
+3. **Check error codes** consistently:
+   ```cpp
+   SpMVResult result = spmv_csr(csr, d_x, d_y, &config, cols);
+   if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
+       std::cerr << "Error: " << spmv_error_string(
+           static_cast<SpMVError>(result.error_code)) << std::endl;
+   }
+   ```
+
+---
+
+## Future Roadmap
+
+### Planned for 1.1.0
+
+- [ ] COO (Coordinate) format support
+- [ ] Hybrid CSR/ELL format
+- [ ] Multi-GPU support
+- [ ] Batched SpMV operations
+- [ ] Double precision support
+
+### Under Consideration
+
+- [ ] BFloat16 precision support
+- [ ] Automatic format selection tuning
+- [ ] Integration with cuSPARSE for comparison
+- [ ] Python bindings
+
+---
+
+[1.0.0]: https://github.com/LessUp/gpu-spmv/releases/tag/v1.0.0
+[0.1.0]: https://github.com/LessUp/gpu-spmv/tree/7d6dd0c
