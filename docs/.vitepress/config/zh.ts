@@ -6,11 +6,11 @@ export const zh = defineConfig({
 
   themeConfig: {
     nav: [
-      { text: '技术白皮书', link: '/zh/whitepaper/' },
-      { text: '快速开始', link: '/zh/quickstart' },
-      { text: '架构设计', link: '/zh/architecture/overview' },
-      { text: 'API 参考', link: '/zh/api/spmv' },
-      { text: '性能测试', link: '/zh/performance/benchmarks' }
+      { text: '技术白皮书', link: '/zh/whitepaper/', activeMatch: '/zh/whitepaper/' },
+      { text: '快速开始', link: '/zh/quickstart', activeMatch: '/zh/(quickstart|examples)/' },
+      { text: '架构设计', link: '/zh/architecture/overview', activeMatch: '/zh/architecture/' },
+      { text: 'API 参考', link: '/zh/api/spmv', activeMatch: '/zh/api/' },
+      { text: '性能测试', link: '/zh/performance/benchmarks', activeMatch: '/zh/performance/' }
     ],
 
     sidebar: {
@@ -65,6 +65,7 @@ export const zh = defineConfig({
           items: [
             { text: '学术参考', link: '/zh/references' },
             { text: '引用格式', link: '/zh/citation' },
+            { text: '常见问题', link: '/zh/faq' },
             { text: '贡献指南', link: '/zh/contributing' },
             { text: '更新日志', link: '/zh/changelog' }
           ]

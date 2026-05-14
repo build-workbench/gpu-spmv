@@ -1,189 +1,112 @@
 ---
 layout: home
-
-hero:
-  name: GPU SpMV
-  text: High-Performance Sparse Matrix-Vector Multiplication
-  tagline: 4 Optimized Kernels · 70%+ Bandwidth · Production Ready · Spec-Driven
-  actions:
-    - theme: brand
-      text: Quick Start
-      link: /en/quickstart
-    - theme: alt
-      text: GitHub
-      link: https://github.com/LessUp/gpu-spmv
-    - theme: alt
-      text: Benchmarks
-      link: /en/performance/benchmarks
-
-features:
-  - icon: 🚀
-    title: Extreme Performance
-    details: |
-      <ul>
-        <li>4 optimized kernels with intelligent selection</li>
-        <li>Up to <strong>70%+</strong> theoretical bandwidth</li>
-        <li>Merge Path for perfect load balancing</li>
-        <li>ELL format with coalesced memory access</li>
-      </ul>
-  - icon: 📊
-    title: Multi-Format Support
-    details: |
-      <ul>
-        <li><strong>CSR</strong> — General sparse matrices</li>
-        <li><strong>ELL</strong> — High-performance uniform matrices</li>
-        <li>Automatic format conversion</li>
-        <li>Seamless GPU/CPU switching</li>
-      </ul>
-  - icon: 🎯
-    title: Production Quality
-    details: |
-      <ul>
-        <li>RAII resource management (CudaBuffer)</li>
-        <li>Semantic error codes (SpMVError)</li>
-        <li>Cross-platform (Linux/Windows)</li>
-        <li>100+ test cases coverage</li>
-      </ul>
-  - icon: 📐
-    title: Spec-Driven Development
-    details: |
-      <ul>
-        <li>OpenSpec specification-driven</li>
-        <li>Traceable design decisions</li>
-        <li>Automated change management</li>
-        <li>Documentation as code</li>
-      </ul>
 ---
 
-<div class="sp-home-extra">
+<div class="home-header">
+  <div class="home-header-left">
+    <div class="home-logo">GPU</div>
+    <div>
+      <span class="home-title">GPU SpMV</span>
+      <span class="home-subtitle">High-Performance Sparse Matrix-Vector Multiplication</span>
+    </div>
+  </div>
+  <div class="home-nav">
+    <a href="./whitepaper/">Whitepaper</a>
+    <a href="https://github.com/LessUp/gpu-spmv">GitHub</a>
+    <a href="../zh/">中文</a>
+  </div>
+</div>
 
-## Code Preview
+<div class="home-intro-row">
+  <div class="home-intro">
+    GPU SpMV is a production-grade CUDA library for high-performance sparse matrix-vector multiplication (SpMV). With 4 optimized kernels and intelligent selection algorithms, it achieves 70%+ theoretical bandwidth utilization on modern NVIDIA GPUs. Supports CSR and ELL formats with comprehensive API and 100+ test case coverage.
+  </div>
+  <div class="home-stats">
+    <span><strong>70%+</strong> Bandwidth</span>
+    <span><strong>4</strong> Kernels</span>
+    <span><strong>100+</strong> Tests</span>
+  </div>
+</div>
 
-<div class="sp-code-window">
-  <div class="sp-code-header">
-    <span class="sp-dot sp-dot-red"></span>
-    <span class="sp-dot sp-dot-yellow"></span>
-    <span class="sp-dot sp-dot-green"></span>
-    <span class="sp-code-title">example.cpp</span>
+## Core Features
+
+<div class="feature-map">
+  <div class="feature-card">
+    <div class="feature-card-title">🚀 Extreme Performance</div>
+    <div class="feature-card-desc">
+      Merge Path for perfect load balancing, ELL for fully coalesced access, auto kernel selection for optimal performance.
+    </div>
+    <div class="feature-tags">
+      <a href="./whitepaper/performance" class="feature-tag">Performance</a>
+      <a href="./performance/benchmarks" class="feature-tag">Benchmarks</a>
+    </div>
   </div>
 
-```cpp
-#include <spmv/spmv.h>
+  <div class="feature-card">
+    <div class="feature-card-title">📊 Multiple Formats</div>
+    <div class="feature-card-desc">
+      CSR for general sparse matrices, ELL for GPU-friendly layout, automatic format conversion, seamless GPU/CPU switching.
+    </div>
+    <div class="feature-tags">
+      <a href="./api/csr-matrix" class="feature-tag">CSR API</a>
+      <a href="./api/ell-matrix" class="feature-tag">ELL API</a>
+    </div>
+  </div>
 
-int main() {
-    // Create sparse matrix
-    CSRMatrix* csr = csr_create(10000, 10000, 500000);
-    csr_from_dense(csr, data, 10000, 10000);
-    csr_to_gpu(csr);
+  <div class="feature-card">
+    <div class="feature-card-title">🎯 Production Quality</div>
+    <div class="feature-card-desc">
+      RAII resource management, semantic error codes, cross-platform support, comprehensive test coverage.
+    </div>
+    <div class="feature-tags">
+      <a href="./architecture/overview" class="feature-tag">Architecture</a>
+      <a href="./api/spmv" class="feature-tag">API Reference</a>
+    </div>
+  </div>
 
-    // Auto-select optimal kernel and execute
-    SpMVConfig config = spmv_auto_config(csr);
-    SpMVResult result = spmv_csr(csr, d_x, d_y, &config, n);
+  <div class="feature-card">
+    <div class="feature-card-title">📐 Spec-Driven Development</div>
+    <div class="feature-card-desc">
+      OpenSpec specification-driven, traceable design decisions, automated change management, documentation as code.
+    </div>
+    <div class="feature-tags">
+      <a href="./architecture/spec-driven" class="feature-tag">Workflow</a>
+      <a href="./whitepaper/philosophy" class="feature-tag">Philosophy</a>
+    </div>
+  </div>
 
-    // 70%+ bandwidth utilization
-    printf("Bandwidth: %.1f%%\n",
-           result.bandwidth_utilization * 100);
-}
-```
+  <div class="feature-card">
+    <div class="feature-card-title">🔬 Academic Rigor</div>
+    <div class="feature-card-desc">
+      Complete academic citation support, BibTeX format, related paper references, reproducible benchmarks.
+    </div>
+    <div class="feature-tags">
+      <a href="./references" class="feature-tag">References</a>
+      <a href="./citation" class="feature-tag">Citation</a>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <div class="feature-card-title">📚 Complete Documentation</div>
+    <div class="feature-card-desc">
+      Technical whitepaper, API reference, architecture design, performance guide, bilingual support.
+    </div>
+    <div class="feature-tags">
+      <a href="./whitepaper/" class="feature-tag">Whitepaper</a>
+      <a href="./api/spmv" class="feature-tag">API</a>
+    </div>
+  </div>
 </div>
 
-## Performance
-
-| Matrix Size | Non-zeros | Kernel | Bandwidth |
-|:-----------:|:---------:|:-------|:---------:|
-| 10K × 10K | 500K | Vector CSR | **70.2%** |
-| 100K × 100K | 5M | Merge Path | **71.5%** |
-| 1M × 1M | 50M | Merge Path | **70.8%** |
-
-<p class="sp-perf-note">Benchmarks: NVIDIA RTX 3090 (Ampere, 936 GB/s)</p>
-
-## Architecture
-
-```mermaid
-graph TB
-    subgraph Application["Application"]
-        PR[PageRank]
-        IS[Iterative Solver]
-        GNN[Graph NN]
-        SC[Scientific]
-    end
-
-    subgraph API["API"]
-        spmv_csr[spmv_csr]
-        spmv_ell[spmv_ell]
-        benchmark[benchmark]
-        pagerank[pagerank]
-    end
-
-    subgraph Kernel["Kernel"]
-        Scalar["Scalar CSR"]
-        Vector["Vector CSR"]
-        Merge["Merge Path"]
-        ELL["ELL Kernel"]
-    end
-
-    subgraph Storage["Storage"]
-        CSR_M["CSR Matrix"]
-        ELL_M["ELL Matrix"]
-    end
-
-    Application --> API
-    API --> Kernel
-    Kernel --> Storage
-```
-
-## Use Cases
-
-- 🕸️ **Graph Algorithms** — PageRank, shortest path, community detection
-- 🔬 **Scientific Computing** — Finite element analysis, CFD
-- 🤖 **Machine Learning** — Sparse neural networks, recommendations
-- 📊 **Data Analytics** — Matrix factorization, eigenvalue computation
-
+<div class="quick-start">
+  <div class="quick-start-title">Quick Start</div>
+  <div class="quick-start-content">
+    <div class="command-block">
+      <code>git clone https://github.com/LessUp/gpu-spmv.git</code>
+    </div>
+    <div class="command-block">
+      <code>cmake -S . -B build && cmake --build build</code>
+    </div>
+    See the <a href="./quickstart">Quick Start Guide</a> for more details.
+  </div>
 </div>
-
-<style>
-.sp-home-extra {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-lg);
-}
-
-.sp-code-window {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--vp-c-border);
-  margin: var(--spacing-lg) 0;
-}
-
-.sp-code-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--vp-code-block-bg);
-  border-bottom: 1px solid var(--vp-code-block-border);
-}
-
-.sp-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.sp-dot-red { background: #FF5F57; }
-.sp-dot-yellow { background: #FEBC2E; }
-.sp-dot-green { background: #28C840; }
-
-.sp-code-title {
-  margin-left: auto;
-  font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  color: var(--vp-c-text-3);
-}
-
-.sp-perf-note {
-  text-align: center;
-  font-size: 13px;
-  color: var(--vp-c-text-3);
-}
-</style>

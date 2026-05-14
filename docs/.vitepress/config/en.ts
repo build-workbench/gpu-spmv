@@ -6,11 +6,11 @@ export const en = defineConfig({
 
   themeConfig: {
     nav: [
-      { text: 'Whitepaper', link: '/en/whitepaper/' },
-      { text: 'Getting Started', link: '/en/quickstart' },
-      { text: 'Architecture', link: '/en/architecture/overview' },
-      { text: 'API Reference', link: '/en/api/spmv' },
-      { text: 'Benchmarks', link: '/en/performance/benchmarks' }
+      { text: 'Whitepaper', link: '/en/whitepaper/', activeMatch: '/en/whitepaper/' },
+      { text: 'Getting Started', link: '/en/quickstart', activeMatch: '/en/(quickstart|examples)/' },
+      { text: 'Architecture', link: '/en/architecture/overview', activeMatch: '/en/architecture/' },
+      { text: 'API Reference', link: '/en/api/spmv', activeMatch: '/en/api/' },
+      { text: 'Benchmarks', link: '/en/performance/benchmarks', activeMatch: '/en/performance/' }
     ],
 
     sidebar: {
@@ -65,6 +65,7 @@ export const en = defineConfig({
           items: [
             { text: 'References', link: '/en/references' },
             { text: 'Citation', link: '/en/citation' },
+            { text: 'FAQ', link: '/en/faq' },
             { text: 'Contributing', link: '/en/contributing' },
             { text: 'Changelog', link: '/en/changelog' }
           ]

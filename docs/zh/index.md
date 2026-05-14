@@ -1,189 +1,112 @@
 ---
 layout: home
-
-hero:
-  name: GPU SpMV
-  text: 高性能稀疏矩阵向量乘法
-  tagline: 4 优化内核 · 70%+ 带宽利用率 · 生产级可靠 · Spec-Driven
-  actions:
-    - theme: brand
-      text: 快速开始
-      link: /zh/quickstart
-    - theme: alt
-      text: GitHub
-      link: https://github.com/LessUp/gpu-spmv
-    - theme: alt
-      text: 性能对比
-      link: /zh/performance/benchmarks
-
-features:
-  - icon: 🚀
-    title: 极致性能
-    details: |
-      <ul>
-        <li>4 种优化 Kernel 智能调度</li>
-        <li>高达 <strong>70%+</strong> 理论带宽利用</li>
-        <li>Merge Path 完美负载均衡</li>
-        <li>ELL 格式完全合并访存</li>
-      </ul>
-  - icon: 📊
-    title: 多格式支持
-    details: |
-      <ul>
-        <li><strong>CSR</strong> — 通用稀疏矩阵</li>
-        <li><strong>ELL</strong> — 高性能均匀矩阵</li>
-        <li>格式间自动转换</li>
-        <li>GPU/CPU 无缝切换</li>
-      </ul>
-  - icon: 🎯
-    title: 生产级质量
-    details: |
-      <ul>
-        <li>RAII 资源管理 (CudaBuffer)</li>
-        <li>语义化错误码 (SpMVError)</li>
-        <li>跨平台支持 (Linux/Windows)</li>
-        <li>100+ 测试用例覆盖</li>
-      </ul>
-  - icon: 📐
-    title: Spec-Driven 开发
-    details: |
-      <ul>
-        <li>OpenSpec 规范驱动</li>
-        <li>可追溯设计决策</li>
-        <li>自动变更管理</li>
-        <li>文档即代码</li>
-      </ul>
 ---
 
-<div class="sp-home-extra">
+<div class="home-header">
+  <div class="home-header-left">
+    <div class="home-logo">GPU</div>
+    <div>
+      <span class="home-title">GPU SpMV</span>
+      <span class="home-subtitle">高性能稀疏矩阵向量乘法</span>
+    </div>
+  </div>
+  <div class="home-nav">
+    <a href="./whitepaper/">技术白皮书</a>
+    <a href="https://github.com/LessUp/gpu-spmv">GitHub</a>
+    <a href="../en/">English</a>
+  </div>
+</div>
 
-## 代码预览
+<div class="home-intro-row">
+  <div class="home-intro">
+    GPU SpMV 是一个生产级 CUDA 库，实现了高性能稀疏矩阵向量乘法（SpMV）。通过 4 种优化内核和智能选择算法，在现代 NVIDIA GPU 上达到 70%+ 理论带宽利用率。支持 CSR 和 ELL 格式，提供完整的 API 和 100+ 测试用例覆盖。
+  </div>
+  <div class="home-stats">
+    <span><strong>70%+</strong> 带宽利用</span>
+    <span><strong>4</strong> 种内核</span>
+    <span><strong>100+</strong> 测试用例</span>
+  </div>
+</div>
 
-<div class="sp-code-window">
-  <div class="sp-code-header">
-    <span class="sp-dot sp-dot-red"></span>
-    <span class="sp-dot sp-dot-yellow"></span>
-    <span class="sp-dot sp-dot-green"></span>
-    <span class="sp-code-title">example.cpp</span>
+## 核心特性
+
+<div class="feature-map">
+  <div class="feature-card">
+    <div class="feature-card-title">🚀 极致性能</div>
+    <div class="feature-card-desc">
+      Merge Path 完美负载均衡，ELL 完全合并访存，自动内核选择确保最优性能。
+    </div>
+    <div class="feature-tags">
+      <a href="./whitepaper/performance" class="feature-tag">性能分析</a>
+      <a href="./performance/benchmarks" class="feature-tag">基准测试</a>
+    </div>
   </div>
 
-```cpp
-#include <spmv/spmv.h>
+  <div class="feature-card">
+    <div class="feature-card-title">📊 多格式支持</div>
+    <div class="feature-card-desc">
+      CSR 通用稀疏矩阵，ELL GPU 友好格式，格式间自动转换，GPU/CPU 无缝切换。
+    </div>
+    <div class="feature-tags">
+      <a href="./api/csr-matrix" class="feature-tag">CSR API</a>
+      <a href="./api/ell-matrix" class="feature-tag">ELL API</a>
+    </div>
+  </div>
 
-int main() {
-    // Create sparse matrix
-    CSRMatrix* csr = csr_create(10000, 10000, 500000);
-    csr_from_dense(csr, data, 10000, 10000);
-    csr_to_gpu(csr);
+  <div class="feature-card">
+    <div class="feature-card-title">🎯 生产级质量</div>
+    <div class="feature-card-desc">
+      RAII 资源管理，语义化错误码，跨平台支持，完善的测试覆盖。
+    </div>
+    <div class="feature-tags">
+      <a href="./architecture/overview" class="feature-tag">架构设计</a>
+      <a href="./api/spmv" class="feature-tag">API 参考</a>
+    </div>
+  </div>
 
-    // Auto-select optimal kernel and execute
-    SpMVConfig config = spmv_auto_config(csr);
-    SpMVResult result = spmv_csr(csr, d_x, d_y, &config, n);
+  <div class="feature-card">
+    <div class="feature-card-title">📐 Spec-Driven 开发</div>
+    <div class="feature-card-desc">
+      OpenSpec 规范驱动，可追溯设计决策，自动变更管理，文档即代码。
+    </div>
+    <div class="feature-tags">
+      <a href="./architecture/spec-driven" class="feature-tag">开发流程</a>
+      <a href="./whitepaper/philosophy" class="feature-tag">设计哲学</a>
+    </div>
+  </div>
 
-    // 70%+ bandwidth utilization
-    printf("Bandwidth: %.1f%%\n",
-           result.bandwidth_utilization * 100);
-}
-```
+  <div class="feature-card">
+    <div class="feature-card-title">🔬 学术严谨</div>
+    <div class="feature-card-desc">
+      完整的学术引用支持，BibTeX 格式，相关论文参考，可复现基准测试。
+    </div>
+    <div class="feature-tags">
+      <a href="./references" class="feature-tag">学术参考</a>
+      <a href="./citation" class="feature-tag">引用格式</a>
+    </div>
+  </div>
+
+  <div class="feature-card">
+    <div class="feature-card-title">📚 完整文档</div>
+    <div class="feature-card-desc">
+      技术白皮书、API 参考、架构设计、性能指南，中英文双语支持。
+    </div>
+    <div class="feature-tags">
+      <a href="./whitepaper/" class="feature-tag">白皮书</a>
+      <a href="./api/spmv" class="feature-tag">API</a>
+    </div>
+  </div>
 </div>
 
-## 性能表现
-
-| 矩阵规模 | 非零元素 | Kernel | 带宽利用率 |
-|:--------:|:--------:|:-------|:----------:|
-| 10K × 10K | 500K | Vector CSR | **70.2%** |
-| 100K × 100K | 5M | Merge Path | **71.5%** |
-| 1M × 1M | 50M | Merge Path | **70.8%** |
-
-<p class="sp-perf-note">测试环境：NVIDIA RTX 3090 (Ampere, 936 GB/s)</p>
-
-## 架构设计
-
-```mermaid
-graph TB
-    subgraph Application["应用层"]
-        PR[PageRank]
-        IS[迭代求解器]
-        GNN[图神经网络]
-        SC[科学计算]
-    end
-
-    subgraph API["API 层"]
-        spmv_csr[spmv_csr]
-        spmv_ell[spmv_ell]
-        benchmark[benchmark]
-        pagerank[pagerank]
-    end
-
-    subgraph Kernel["Kernel 层"]
-        Scalar["Scalar CSR"]
-        Vector["Vector CSR"]
-        Merge["Merge Path"]
-        ELL["ELL Kernel"]
-    end
-
-    subgraph Storage["存储层"]
-        CSR_M["CSR Matrix"]
-        ELL_M["ELL Matrix"]
-    end
-
-    Application --> API
-    API --> Kernel
-    Kernel --> Storage
-```
-
-## 应用场景
-
-- 🕸️ **图算法** — PageRank、最短路径、社区发现
-- 🔬 **科学计算** — 有限元分析、计算流体力学
-- 🤖 **机器学习** — 稀疏神经网络、推荐系统
-- 📊 **数据分析** — 矩阵分解、特征值计算
-
+<div class="quick-start">
+  <div class="quick-start-title">快速开始</div>
+  <div class="quick-start-content">
+    <div class="command-block">
+      <code>git clone https://github.com/LessUp/gpu-spmv.git</code>
+    </div>
+    <div class="command-block">
+      <code>cmake -S . -B build && cmake --build build</code>
+    </div>
+    查看 <a href="./quickstart">快速开始指南</a> 了解更多。
+  </div>
 </div>
-
-<style>
-.sp-home-extra {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-lg);
-}
-
-.sp-code-window {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--vp-c-border);
-  margin: var(--spacing-lg) 0;
-}
-
-.sp-code-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--vp-code-block-bg);
-  border-bottom: 1px solid var(--vp-code-block-border);
-}
-
-.sp-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.sp-dot-red { background: #FF5F57; }
-.sp-dot-yellow { background: #FEBC2E; }
-.sp-dot-green { background: #28C840; }
-
-.sp-code-title {
-  margin-left: auto;
-  font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  color: var(--vp-c-text-3);
-}
-
-.sp-perf-note {
-  text-align: center;
-  font-size: 13px;
-  color: var(--vp-c-text-3);
-}
-</style>

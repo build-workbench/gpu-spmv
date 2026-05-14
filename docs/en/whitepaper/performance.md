@@ -34,6 +34,8 @@
 
 ### By Matrix Pattern
 
+<PerformanceChart title="Kernel Performance by Matrix Pattern" />
+
 | Pattern | Size | NNZ | Scalar | Vector | Merge | ELL |
 |:--------|:-----|:----|:------:|:------:|:-----:|:---:|
 | Diagonal | 100K | 100K | 37.2% | 69.1% | 72.4% | 74.8% |
@@ -48,6 +50,8 @@
 3. **Scalar CSR is only viable for very sparse matrices**
 
 ### By Matrix Size
+
+<TrendChart title="Performance Trend by Matrix Size" />
 
 | Size | NNZ | Scalar | Vector | Merge | ELL |
 |:-----|:----|:------:|:------:|:-----:|:---:|
@@ -67,6 +71,8 @@
 ## Kernel Selection Accuracy
 
 The auto-selection algorithm achieves optimal or near-optimal selection in **95%+ of cases**:
+
+<KernelSelector />
 
 ```mermaid
 flowchart TB
@@ -120,6 +126,8 @@ flowchart TB
 ## Comparison with Reference Implementations
 
 ### vs. cuSPARSE
+
+<ComparisonTable lang="en" />
 
 | Matrix | GPU SpMV | cuSPARSE | Speedup |
 |:-------|:--------:|:--------:|:-------:|
