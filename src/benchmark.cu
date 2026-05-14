@@ -1,3 +1,5 @@
+#include "internal/csr_device.h"
+#include "internal/ell_device.h"
 #include "spmv/benchmark.h"
 #include "spmv/cuda_buffer.h"
 
@@ -45,7 +47,7 @@ static int validate_csr_device_benchmark_input(const CSRMatrix* A, const float* 
     if (A->num_cols > 0 && !x) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
-    if (!A->d_row_ptrs || (A->nnz > 0 && (!A->d_values || !A->d_col_indices))) {
+    if (!csr_d_row_ptrs(A) || (A->nnz > 0 && (!csr_d_values(A) || !csr_d_col_indices(A)))) {
         return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
     return static_cast<int>(SpMVError::SUCCESS);
@@ -60,7 +62,7 @@ static int validate_ell_device_benchmark_input(const ELLMatrix* A, const float* 
     }
     size_t storage_size =
         static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
-    if (storage_size > 0 && (!A->d_values || !A->d_col_indices)) {
+    if (storage_size > 0 && (!ell_d_values(A) || !ell_d_col_indices(A))) {
         return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
     return static_cast<int>(SpMVError::SUCCESS);
@@ -79,37 +81,32 @@ static int validate_csr_host_benchmark_input(const CSRMatrix* A, const float* x)
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
-                              const BenchmarkConfig* bench_config) {
-    BenchmarkResult result;
-    result.name = "CSR SpMV";
+// ---------- Deepened benchmark core ----------
+// Extracts the repeated trial loop so benchmark_csr and benchmark_ell
+// no longer duplicate warmup/timing/statistics logic.
 
-    BenchmarkConfig default_config;
-    if (!bench_config) {
-        bench_config = &default_config;
-    }
+template <typename SpMVFn>
+static BenchmarkResult run_benchmark_trials(const char* name, int num_rows, int num_cols,
+                                            const float* x,
+                                            const BenchmarkConfig* bench_config, SpMVFn spmv_fn) {
+    BenchmarkResult result;
+    result.name = name;
 
     result.error_code = validate_benchmark_config(bench_config);
     if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
         return result;
     }
 
-    result.error_code = validate_csr_device_benchmark_input(A, x);
-    if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-        return result;
-    }
-
     try {
-        CudaBuffer<float> d_x(A->num_cols);
-        CudaBuffer<float> d_y(A->num_rows);
-        if (A->num_cols > 0) {
-            d_x.copyFromHost(x, A->num_cols);
+        CudaBuffer<float> d_x(num_cols);
+        CudaBuffer<float> d_y(num_rows);
+        if (num_cols > 0) {
+            d_x.copyFromHost(x, num_cols);
         }
 
         SpMVExecutionContext context;
         for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-            SpMVResult warmup_result =
-                spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
+            SpMVResult warmup_result = spmv_fn(d_x.get(), d_y.get(), &context);
             if (warmup_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = warmup_result.error_code;
                 return result;
@@ -120,8 +117,7 @@ BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConf
         times.reserve(bench_config->num_runs);
 
         for (int i = 0; i < bench_config->num_runs; i++) {
-            SpMVResult spmv_result =
-                spmv_csr(A, d_x.get(), d_y.get(), config, A->num_cols, &context);
+            SpMVResult spmv_result = spmv_fn(d_x.get(), d_y.get(), &context);
             if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
                 result.num_runs = static_cast<int>(times.size());
                 result.error_code = spmv_result.error_code;
@@ -155,80 +151,44 @@ BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConf
     }
 }
 
+BenchmarkResult benchmark_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,
+                              const BenchmarkConfig* bench_config) {
+    BenchmarkConfig default_config;
+    if (!bench_config)
+        bench_config = &default_config;
+
+    BenchmarkResult precheck;
+    precheck.error_code = validate_benchmark_config(bench_config);
+    if (precheck.error_code != static_cast<int>(SpMVError::SUCCESS))
+        return precheck;
+    precheck.error_code = validate_csr_device_benchmark_input(A, x);
+    if (precheck.error_code != static_cast<int>(SpMVError::SUCCESS))
+        return precheck;
+
+    auto spmv_fn = [&](const float* d_x_ptr, float* d_y_ptr, SpMVExecutionContext* ctx) {
+        return spmv_csr(A, d_x_ptr, d_y_ptr, config, A->num_cols, ctx);
+    };
+    return run_benchmark_trials("CSR SpMV", A->num_rows, A->num_cols, x, bench_config, spmv_fn);
+}
+
 BenchmarkResult benchmark_ell(const ELLMatrix* A, const float* x,
                               const BenchmarkConfig* bench_config) {
-    BenchmarkResult result;
-    result.name = "ELL SpMV";
-
     BenchmarkConfig default_config;
-    if (!bench_config) {
+    if (!bench_config)
         bench_config = &default_config;
-    }
 
-    result.error_code = validate_benchmark_config(bench_config);
-    if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-        return result;
-    }
+    BenchmarkResult precheck;
+    precheck.error_code = validate_benchmark_config(bench_config);
+    if (precheck.error_code != static_cast<int>(SpMVError::SUCCESS))
+        return precheck;
+    precheck.error_code = validate_ell_device_benchmark_input(A, x);
+    if (precheck.error_code != static_cast<int>(SpMVError::SUCCESS))
+        return precheck;
 
-    result.error_code = validate_ell_device_benchmark_input(A, x);
-    if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-        return result;
-    }
-
-    try {
-        CudaBuffer<float> d_x(A->num_cols);
-        CudaBuffer<float> d_y(A->num_rows);
-        if (A->num_cols > 0) {
-            d_x.copyFromHost(x, A->num_cols);
-        }
-
-        SpMVExecutionContext context;
-        for (int i = 0; i < bench_config->num_warmup_runs; i++) {
-            SpMVResult warmup_result =
-                spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
-            if (warmup_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-                result.error_code = warmup_result.error_code;
-                return result;
-            }
-        }
-
-        std::vector<float> times;
-        times.reserve(bench_config->num_runs);
-
-        for (int i = 0; i < bench_config->num_runs; i++) {
-            SpMVResult spmv_result =
-                spmv_ell(A, d_x.get(), d_y.get(), nullptr, A->num_cols, &context);
-            if (spmv_result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-                result.num_runs = static_cast<int>(times.size());
-                result.error_code = spmv_result.error_code;
-                return result;
-            }
-
-            times.push_back(spmv_result.elapsed_ms);
-            result.gflops = spmv_result.gflops;
-            result.bandwidth_gb_s = spmv_result.bandwidth_gb_s;
-        }
-
-        result.num_runs = static_cast<int>(times.size());
-        result.min_time_ms = *std::min_element(times.begin(), times.end());
-        result.max_time_ms = *std::max_element(times.begin(), times.end());
-
-        float sum = 0.0f;
-        for (float t : times)
-            sum += t;
-        result.avg_time_ms = sum / times.size();
-        result.execution_time_ms = result.avg_time_ms;
-        result.stddev_time_ms = compute_stddev(times, result.avg_time_ms);
-        result.error_code = static_cast<int>(SpMVError::SUCCESS);
-
-        return result;
-    } catch (const CudaException& e) {
-        result.error_code = map_cuda_exception_to_spmv_error(e);
-        return result;
-    } catch (const std::bad_alloc&) {
-        result.error_code = static_cast<int>(SpMVError::OUT_OF_MEMORY);
-        return result;
-    }
+    auto spmv_fn = [&](const float* d_x_ptr, float* d_y_ptr, SpMVExecutionContext* ctx) {
+        return spmv_ell(A, d_x_ptr, d_y_ptr, nullptr, A->num_cols, ctx);
+    };
+    return run_benchmark_trials("ELL SpMV", A->num_rows, A->num_cols, x, bench_config, spmv_fn);
 }
 
 ComparisonResult compare_gpu_cpu_csr(const CSRMatrix* A, const float* x, const SpMVConfig* config,

@@ -33,6 +33,7 @@ set(SPMV_SOURCES
     src/csr_matrix.cpp
     src/ell_matrix.cpp
     src/spmv_cpu.cpp
+    src/internal/kernel_selector.cpp
     src/spmv_kernels.cu
     src/bandwidth.cpp
     src/benchmark.cu

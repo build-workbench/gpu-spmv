@@ -72,27 +72,19 @@ __global__ void spmv_csr_vector(int num_rows, const int* row_ptrs,
 
 ### D2: Kernel Selection Heuristic
 
+Selection logic is extracted into a pure function `select_kernel(CSRStats, int, SpMVThresholds)` in the internal `kernel_selector` module, making it independently testable and free of global state.
+
 ```cpp
 SpMVConfig spmv_auto_config(const CSRMatrix* A) {
-    SpMVConfig config;
-    config.block_size = 256;
-    config.use_texture = (A->num_cols > TEXTURE_CACHE_THRESHOLD_COLS);
-
-    CSRStats stats = csr_compute_stats(A);
-
-    if (stats.avg_nnz_per_row < 4) {
-        config.kernel_type = SpMVConfig::SCALAR_CSR;
-    } else if (stats.skewness < 10) {
-        config.kernel_type = SpMVConfig::VECTOR_CSR;
-    } else {
-        config.kernel_type = SpMVConfig::MERGE_PATH;
+    if (!A || A->num_rows < 0) {
+        return SpMVConfig(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE, false);
     }
-
-    return config;
+    CSRStats stats = csr_compute_stats(A);
+    return select_kernel(stats, A->num_cols, spmv_get_thresholds());
 }
 ```
 
-**Rationale**: Simple heuristic based on empirical performance analysis.
+**Rationale**: Simple heuristic based on empirical performance analysis. Pure-function extraction improves testability and eliminates hidden global dependencies.
 
 ### D3: Texture Cache for Input Vector
 
@@ -106,7 +98,9 @@ for (int i = 0; i < iterations; i++) {
 }
 ```
 
-**Rationale**: Texture cache provides cached access to input vector x, beneficial when x is accessed multiple times (irregular pattern) or when matrix fits in L2 cache.
+`SpMVExecutionContext` is implemented as a class with encapsulated CUDA texture state (not a public struct). Clients interact only through `reset()` and `is_texture_bound()`.
+
+**Rationale**: Texture cache provides cached access to input vector x, beneficial when x is accessed multiple times (irregular pattern) or when matrix fits in L2 cache. Hiding CUDA primitives prevents accidental direct manipulation of texture objects.
 
 ### D4: Warp-Level Reduction
 

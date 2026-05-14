@@ -172,9 +172,7 @@ TEST(CSRUnitTest, GPUTransfer) {
     // 传输到 GPU
     result = csr_to_gpu(csr);
     ASSERT_EQ(result, static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_NE(csr->d_values, nullptr);
-    EXPECT_NE(csr->d_col_indices, nullptr);
-    EXPECT_NE(csr->d_row_ptrs, nullptr);
+    EXPECT_TRUE(csr_has_device_data(csr));
 
     // 修改主机数据
     for (int i = 0; i < csr->nnz; i++) {
@@ -203,13 +201,10 @@ TEST(CSRUnitTest, HostMutationInvalidatesDeviceMirror) {
     CSRMatrix* csr = csr_create(0, 0, 0);
     ASSERT_EQ(csr_from_dense(csr, dense_a.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
     ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
-    ASSERT_NE(csr->d_row_ptrs, nullptr);
+    EXPECT_TRUE(csr_has_device_data(csr));
 
     ASSERT_EQ(csr_from_dense(csr, dense_b.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_EQ(csr->d_values, nullptr);
-    EXPECT_EQ(csr->d_col_indices, nullptr);
-    EXPECT_EQ(csr->d_row_ptrs, nullptr);
-    EXPECT_FALSE(csr->owns_device_memory);
+    EXPECT_FALSE(csr_has_device_data(csr));
 
     csr_destroy(csr);
 }

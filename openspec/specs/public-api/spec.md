@@ -73,11 +73,11 @@ void csr_destroy(CSRMatrix* matrix);
 // Convert dense matrix to CSR format
 int csr_from_dense(CSRMatrix* csr, const float* dense, int num_rows, int num_cols);
 
-// Transfer CSR to GPU memory
+// Transfer CSR to GPU memory (device memory managed internally)
 int csr_to_gpu(CSRMatrix* csr);
 
 // Transfer CSR from GPU to host memory
-int csr_from_gpu(const CSRMatrix* csr);
+int csr_from_gpu(CSRMatrix* csr);
 
 // Get element at position (row, col)
 float csr_get_element(const CSRMatrix* csr, int row, int col);
@@ -108,11 +108,11 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int num_rows, int num_col
 // Convert CSR to ELL format
 int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr);
 
-// Transfer ELL to GPU memory
+// Transfer ELL to GPU memory (device memory managed internally)
 int ell_to_gpu(ELLMatrix* ell);
 
 // Transfer ELL from GPU to host memory
-int ell_from_gpu(const ELLMatrix* ell);
+int ell_from_gpu(ELLMatrix* ell);
 
 // Serialize ELL to binary file
 int ell_serialize(const ELLMatrix* ell, const char* filename);

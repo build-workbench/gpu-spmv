@@ -81,64 +81,68 @@ struct SpMVConfig {
         : kernel_type(kernel_type_), block_size(block_size_), use_texture(use_texture_) {}
 };
 
-/**
- * @brief Reusable execution context for SpMV operations.
- *
- * Caches texture objects to avoid repeated creation/destruction.
- * Move-only; not copyable.
- */
-struct SpMVExecutionContext {
-    cudaTextureObject_t tex_x;  ///< Texture object for x vector
-    const float* cached_x;      ///< Cached x pointer
-    size_t cached_x_length;     ///< Cached x length
-    bool texture_enabled;       ///< Whether texture is enabled
-
-    SpMVExecutionContext()
-        : tex_x(0), cached_x(nullptr), cached_x_length(0), texture_enabled(false) {}
-
+class SpMVExecutionContext {
+   public:
+    SpMVExecutionContext() = default;
     ~SpMVExecutionContext() { reset(); }
 
     SpMVExecutionContext(const SpMVExecutionContext&) = delete;
     SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
 
     SpMVExecutionContext(SpMVExecutionContext&& other) noexcept
-        : tex_x(other.tex_x),
-          cached_x(other.cached_x),
-          cached_x_length(other.cached_x_length),
-          texture_enabled(other.texture_enabled) {
-        other.tex_x = 0;
-        other.cached_x = nullptr;
-        other.cached_x_length = 0;
-        other.texture_enabled = false;
+        : tex_x_(other.tex_x_),
+          cached_x_(other.cached_x_),
+          cached_x_length_(other.cached_x_length_),
+          texture_enabled_(other.texture_enabled_) {
+        other.tex_x_ = 0;
+        other.cached_x_ = nullptr;
+        other.cached_x_length_ = 0;
+        other.texture_enabled_ = false;
     }
 
     SpMVExecutionContext& operator=(SpMVExecutionContext&& other) noexcept {
         if (this != &other) {
             reset();
-            tex_x = other.tex_x;
-            cached_x = other.cached_x;
-            cached_x_length = other.cached_x_length;
-            texture_enabled = other.texture_enabled;
-            other.tex_x = 0;
-            other.cached_x = nullptr;
-            other.cached_x_length = 0;
-            other.texture_enabled = false;
+            tex_x_ = other.tex_x_;
+            cached_x_ = other.cached_x_;
+            cached_x_length_ = other.cached_x_length_;
+            texture_enabled_ = other.texture_enabled_;
+            other.tex_x_ = 0;
+            other.cached_x_ = nullptr;
+            other.cached_x_length_ = 0;
+            other.texture_enabled_ = false;
         }
         return *this;
     }
 
-    /**
-     * @brief Reset context, freeing texture object.
-     */
+    /** @brief Reset context, freeing texture object. */
     void reset() {
-        if (tex_x != 0) {
-            cudaDestroyTextureObject(tex_x);
-            tex_x = 0;
+        if (tex_x_ != 0) {
+            cudaDestroyTextureObject(tex_x_);
+            tex_x_ = 0;
         }
-        cached_x = nullptr;
-        cached_x_length = 0;
-        texture_enabled = false;
+        cached_x_ = nullptr;
+        cached_x_length_ = 0;
+        texture_enabled_ = false;
     }
+
+    /** @brief Query whether a texture object is currently bound. */
+    bool is_texture_bound() const { return tex_x_ != 0; }
+
+    /**
+     * @brief Prepare texture object for input vector x.
+     * @return 0 on success, negative error code on failure.
+     *
+     * Internal API; defined in spmv_kernels.cu.
+     */
+    int prepare_texture(const float* d_x, size_t x_length, bool requested,
+                        cudaTextureObject_t* tex_out, bool* use_texture_out);
+
+   private:
+    cudaTextureObject_t tex_x_ = 0;
+    const float* cached_x_ = nullptr;
+    size_t cached_x_length_ = 0;
+    bool texture_enabled_ = false;
 };
 
 /**

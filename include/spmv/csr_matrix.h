@@ -35,14 +35,7 @@ struct CSRMatrix {
     int* col_indices;  ///< Column indices array [nnz]
     int* row_ptrs;     ///< Row pointers array [num_rows + 1]
 
-    // GPU device pointers
-    float* d_values;     ///< Device memory for values
-    int* d_col_indices;  ///< Device memory for column indices
-    int* d_row_ptrs;     ///< Device memory for row pointers
-
-    // Memory ownership flags
-    bool owns_host_memory;    ///< True if host memory should be freed on destroy
-    bool owns_device_memory;  ///< True if device memory should be freed on destroy
+    void* internal;  ///< Opaque internal state (device memory management)
 };
 
 /**
@@ -114,13 +107,6 @@ int csr_to_gpu(CSRMatrix* mat);
 int csr_from_gpu(CSRMatrix* mat);
 
 /**
- * @brief Free GPU memory associated with the matrix.
- *
- * @param mat Matrix whose device memory should be freed.
- */
-void csr_free_gpu(CSRMatrix* mat);
-
-/**
  * @brief Serialize matrix to binary file.
  *
  * File format includes magic number, version, and checksum for integrity.
@@ -174,6 +160,11 @@ CSRStats csr_compute_stats(const CSRMatrix* mat);
  * @return true if structure is valid, false otherwise.
  */
 bool csr_validate(const CSRMatrix* mat);
+
+/**
+ * @brief Check whether the matrix has active device data (uploaded via csr_to_gpu).
+ */
+bool csr_has_device_data(const CSRMatrix* mat);
 
 }  // namespace spmv
 

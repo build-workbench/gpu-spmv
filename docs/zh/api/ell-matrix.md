@@ -15,13 +15,7 @@ struct ELLMatrix {
     float* values;     // 值数组 [num_rows * max_nnz_per_row]
     int* col_indices;  // 列索引数组，-1 表示填充
 
-    // GPU 设备指针
-    float* d_values;
-    int* d_col_indices;
-
-    // 内存所有权标志
-    bool owns_host_memory;
-    bool owns_device_memory;
+    void* internal;    // 不透明内部状态（设备内存管理）
 };
 ```
 
@@ -47,7 +41,6 @@ int ell_to_dense(const ELLMatrix* ell, float* dense);
 ```cpp
 int ell_to_gpu(ELLMatrix* mat);
 int ell_from_gpu(ELLMatrix* mat);
-void ell_free_gpu(ELLMatrix* mat);
 ```
 
 ### 元素访问

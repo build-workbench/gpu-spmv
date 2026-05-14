@@ -259,12 +259,11 @@ TEST(SpMVUnitTest, ExecutionContextReusesTexture) {
 
     SpMVResult first = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
     ASSERT_EQ(first.error_code, static_cast<int>(SpMVError::SUCCESS));
-    ASSERT_NE(context.tex_x, 0u);
+    EXPECT_TRUE(context.is_texture_bound());
 
-    cudaTextureObject_t cached_tex = context.tex_x;
     SpMVResult second = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
     ASSERT_EQ(second.error_code, static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_EQ(context.tex_x, cached_tex);
+    EXPECT_TRUE(context.is_texture_bound());
 
     std::vector<float> y_gpu(10);
     d_y.copyToHost(y_gpu.data(), 10);

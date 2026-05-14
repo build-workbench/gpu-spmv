@@ -121,7 +121,7 @@ class CSRMatrixWrapper {
      * @brief Check if matrix has device data.
      * @return true if device memory is allocated.
      */
-    bool has_device_data() const { return mat_ && mat_->owns_device_memory; }
+    bool has_device_data() const { return mat_ && csr_has_device_data(mat_); }
 
     /**
      * @brief Convert from dense matrix.
@@ -336,7 +336,7 @@ class ELLMatrixWrapper {
      * @brief Check if matrix has device data.
      * @return true if device memory is allocated.
      */
-    bool has_device_data() const { return mat_ && mat_->owns_device_memory; }
+    bool has_device_data() const { return mat_ && ell_has_device_data(mat_); }
 
     /**
      * @brief Convert from dense matrix.

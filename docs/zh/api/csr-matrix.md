@@ -14,14 +14,7 @@ struct CSRMatrix {
     int* col_indices;  // 列索引数组 [nnz]
     int* row_ptrs;     // 行指针数组 [num_rows + 1]
 
-    // GPU 设备指针
-    float* d_values;
-    int* d_col_indices;
-    int* d_row_ptrs;
-
-    // 内存所有权标志
-    bool owns_host_memory;
-    bool owns_device_memory;
+    void* internal;    // 不透明内部状态（设备内存管理）
 };
 ```
 
@@ -46,7 +39,6 @@ int csr_to_dense(const CSRMatrix* csr, float* dense);
 ```cpp
 int csr_to_gpu(CSRMatrix* mat);
 int csr_from_gpu(CSRMatrix* mat);
-void csr_free_gpu(CSRMatrix* mat);
 ```
 
 ### 元素访问

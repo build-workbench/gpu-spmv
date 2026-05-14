@@ -47,6 +47,12 @@ if (col_index >= 0) {
 
 **Rationale**: Using -1 as sentinel value allows efficient padding detection without additional storage.
 
+### D2: Memory Management
+
+Host memory is always owned by the `ELLMatrix` and freed on `ell_destroy()`. Device memory is managed internally via `ell_to_gpu()` / `ell_from_gpu()`.
+
+**Rationale**: Simplifies the public interface by removing ownership flags and device pointers from the public struct.
+
 ### D3: Memory Trade-off
 
 | Matrix Pattern | Memory Efficiency |

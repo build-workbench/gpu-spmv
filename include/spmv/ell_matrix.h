@@ -35,13 +35,7 @@ struct ELLMatrix {
     int* col_indices;  ///< Column indices [num_rows * max_nnz_per_row], -1 =
                        ///< padding
 
-    // GPU device pointers
-    float* d_values;     ///< Device memory for values
-    int* d_col_indices;  ///< Device memory for column indices
-
-    // Memory ownership flags
-    bool owns_host_memory;    ///< True if host memory should be freed on destroy
-    bool owns_device_memory;  ///< True if device memory should be freed on destroy
+    void* internal;  ///< Opaque internal state (device memory management)
 };
 
 /**
@@ -117,13 +111,6 @@ int ell_to_gpu(ELLMatrix* mat);
 int ell_from_gpu(ELLMatrix* mat);
 
 /**
- * @brief Free GPU memory associated with the matrix.
- *
- * @param mat Matrix whose device memory should be freed.
- */
-void ell_free_gpu(ELLMatrix* mat);
-
-/**
  * @brief Serialize matrix to binary file.
  *
  * @param mat Matrix to serialize.
@@ -163,6 +150,11 @@ inline int ell_index(int row, int k, int num_rows) {
  * @return true if structure is valid, false otherwise.
  */
 bool ell_validate(const ELLMatrix* mat);
+
+/**
+ * @brief Check whether the matrix has active device data (uploaded via ell_to_gpu).
+ */
+bool ell_has_device_data(const ELLMatrix* mat);
 
 }  // namespace spmv
 

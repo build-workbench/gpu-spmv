@@ -1,3 +1,4 @@
+#include "internal/csr_device.h"
 #include "spmv/cuda_buffer.h"
 #include "spmv/pagerank.h"
 #include "spmv/spmv.h"
@@ -86,9 +87,9 @@ PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* confi
         return result;
     }
 
-    if (!adj_matrix->row_ptrs || !adj_matrix->d_row_ptrs ||
+    if (!adj_matrix->row_ptrs || !csr_d_row_ptrs(adj_matrix) ||
         (adj_matrix->nnz > 0 && (!adj_matrix->values || !adj_matrix->col_indices ||
-                                 !adj_matrix->d_values || !adj_matrix->d_col_indices))) {
+                                 !csr_d_values(adj_matrix) || !csr_d_col_indices(adj_matrix)))) {
         result.error_code = static_cast<int>(SpMVError::INVALID_FORMAT);
         return result;
     }

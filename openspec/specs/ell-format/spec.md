@@ -42,14 +42,10 @@ struct ELLMatrix {
     // Column-major storage for coalesced access
     float* values;          // Values array [num_rows * max_nnz_per_row]
     int* col_indices;       // Column indices [-1 indicates padding]
-
-    float* d_values;        // GPU device pointers
-    int* d_col_indices;
-
-    bool owns_host_memory;
-    bool owns_device_memory;
 };
 ```
+
+> **Note**: GPU device memory (`d_values`, `d_col_indices`) and ownership flags are managed internally. Callers use `ell_to_gpu()` / `ell_from_gpu()` for transfer and `ell_destroy()` for cleanup.
 
 ## Column-Major Storage Explanation
 

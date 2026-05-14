@@ -41,16 +41,10 @@ struct CSRMatrix {
     float* values;          // Non-zero values array [nnz]
     int* col_indices;       // Column indices array [nnz]
     int* row_ptrs;          // Row pointers array [num_rows + 1]
-
-    // GPU device pointers
-    float* d_values;
-    int* d_col_indices;
-    int* d_row_ptrs;
-
-    bool owns_host_memory;
-    bool owns_device_memory;
 };
 ```
+
+> **Note**: GPU device memory (`d_values`, `d_col_indices`, `d_row_ptrs`) and ownership flags are managed internally. Callers use `csr_to_gpu()` / `csr_from_gpu()` for transfer and `csr_destroy()` for cleanup.
 
 ## Invariants
 

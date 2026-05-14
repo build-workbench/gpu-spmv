@@ -101,20 +101,20 @@ public:
 
 ## Memory Ownership
 
-All matrix structures track memory ownership:
+Host memory is always owned by the matrix structure and freed on `*_destroy()`. Device memory is managed internally via the opaque `internal` pointer and is automatically cleaned up on `*_destroy()` or when host data is modified.
 
 ```cpp
 struct CSRMatrix {
     // ... data pointers ...
-    bool owns_host_memory;     // Free host memory on destroy?
-    bool owns_device_memory;   // Free device memory on destroy?
+    void* internal;  // Opaque internal state (device memory management)
 };
 ```
 
 **Guidelines:**
-- Use `*_create()` and `*_destroy()` for lifecycle management
+- Use `*_create()` and `*_destroy()` for lifecycle management (both host and device memory are freed automatically)
 - Use `CudaBuffer<T>` for automatic GPU memory management
 - Never use raw `cudaMalloc`/`cudaFree` in new code
+- Do not access `internal` directly; it is not part of the public API
 
 ## Test Coverage
 

@@ -206,12 +206,10 @@ TEST(ELLUnitTest, HostMutationInvalidatesDeviceMirror) {
     ELLMatrix* ell = ell_create(0, 0, 0);
     ASSERT_EQ(ell_from_dense(ell, dense_a.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
     ASSERT_EQ(ell_to_gpu(ell), static_cast<int>(SpMVError::SUCCESS));
-    ASSERT_NE(ell->d_values, nullptr);
+    EXPECT_TRUE(ell_has_device_data(ell));
 
     ASSERT_EQ(ell_from_dense(ell, dense_b.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_EQ(ell->d_values, nullptr);
-    EXPECT_EQ(ell->d_col_indices, nullptr);
-    EXPECT_FALSE(ell->owns_device_memory);
+    EXPECT_FALSE(ell_has_device_data(ell));
 
     ell_destroy(ell);
 }

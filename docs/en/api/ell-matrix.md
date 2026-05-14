@@ -15,13 +15,7 @@ struct ELLMatrix {
     float* values;     // Values [num_rows * max_nnz_per_row]
     int* col_indices;  // Column indices, -1 indicates padding
 
-    // GPU device pointers
-    float* d_values;
-    int* d_col_indices;
-
-    // Memory ownership flags
-    bool owns_host_memory;
-    bool owns_device_memory;
+    void* internal;    // Opaque internal state (device memory management)
 };
 ```
 
@@ -47,7 +41,6 @@ int ell_to_dense(const ELLMatrix* ell, float* dense);
 ```cpp
 int ell_to_gpu(ELLMatrix* mat);
 int ell_from_gpu(ELLMatrix* mat);
-void ell_free_gpu(ELLMatrix* mat);
 ```
 
 ### Element Access

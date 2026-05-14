@@ -9,6 +9,81 @@
 
 namespace spmv {
 
+// Internal device state -------------------------------------------------------
+struct CSRMatrixInternal {
+    float* d_values = nullptr;
+    int* d_col_indices = nullptr;
+    int* d_row_ptrs = nullptr;
+};
+
+// Helpers --------------------------------------------------------------------
+static CSRMatrixInternal* get_internal(CSRMatrix* mat) {
+    return mat ? static_cast<CSRMatrixInternal*>(mat->internal) : nullptr;
+}
+
+static const CSRMatrixInternal* get_internal(const CSRMatrix* mat) {
+    return mat ? static_cast<const CSRMatrixInternal*>(mat->internal) : nullptr;
+}
+
+static void free_device(CSRMatrixInternal* internal) {
+    if (!internal)
+        return;
+    if (internal->d_values) {
+        cudaFree(internal->d_values);
+        internal->d_values = nullptr;
+    }
+    if (internal->d_col_indices) {
+        cudaFree(internal->d_col_indices);
+        internal->d_col_indices = nullptr;
+    }
+    if (internal->d_row_ptrs) {
+        cudaFree(internal->d_row_ptrs);
+        internal->d_row_ptrs = nullptr;
+    }
+}
+
+// Internal API (used by src/ only) -------------------------------------------
+float* csr_d_values(CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_values : nullptr;
+}
+
+const float* csr_d_values(const CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_values : nullptr;
+}
+
+int* csr_d_col_indices(CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_col_indices : nullptr;
+}
+
+const int* csr_d_col_indices(const CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_col_indices : nullptr;
+}
+
+int* csr_d_row_ptrs(CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_row_ptrs : nullptr;
+}
+
+const int* csr_d_row_ptrs(const CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal ? internal->d_row_ptrs : nullptr;
+}
+
+bool csr_has_device_data(const CSRMatrix* mat) {
+    auto* internal = get_internal(mat);
+    return internal && internal->d_row_ptrs != nullptr;
+}
+
+void csr_free_device_data(CSRMatrix* mat) {
+    free_device(get_internal(mat));
+}
+
+// Public API -----------------------------------------------------------------
+
 CSRMatrix* csr_create(int rows, int cols, int nnz) {
     if (rows < 0 || cols < 0 || nnz < 0) {
         return nullptr;
@@ -22,13 +97,7 @@ CSRMatrix* csr_create(int rows, int cols, int nnz) {
     mat->values = (nnz > 0) ? new float[nnz]() : nullptr;
     mat->col_indices = (nnz > 0) ? new int[nnz]() : nullptr;
     mat->row_ptrs = new int[rows + 1]();
-
-    mat->d_values = nullptr;
-    mat->d_col_indices = nullptr;
-    mat->d_row_ptrs = nullptr;
-
-    mat->owns_host_memory = true;
-    mat->owns_device_memory = false;
+    mat->internal = new CSRMatrixInternal();
 
     return mat;
 }
@@ -37,14 +106,14 @@ void csr_destroy(CSRMatrix* mat) {
     if (!mat)
         return;
 
-    if (mat->owns_host_memory) {
-        delete[] mat->values;
-        delete[] mat->col_indices;
-        delete[] mat->row_ptrs;
-    }
+    delete[] mat->values;
+    delete[] mat->col_indices;
+    delete[] mat->row_ptrs;
 
-    if (mat->owns_device_memory) {
-        csr_free_gpu(mat);
+    auto* internal = get_internal(mat);
+    if (internal) {
+        free_device(internal);
+        delete internal;
     }
 
     delete mat;
@@ -55,15 +124,13 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    // Check for potential overflow in size calculation
     if (rows > INT_MAX / cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    // 主机端内容变化后，旧的 GPU 镜像立即失效
-    csr_free_gpu(csr);
+    // Host-side mutation invalidates the device mirror immediately.
+    free_device(get_internal(csr));
 
-    // 首先计算非零元素数量
     int nnz = 0;
     for (int i = 0; i < rows * cols; i++) {
         if (dense[i] != 0.0f) {
@@ -71,23 +138,17 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
         }
     }
 
-    // 释放旧内存
-    if (csr->owns_host_memory) {
-        delete[] csr->values;
-        delete[] csr->col_indices;
-        delete[] csr->row_ptrs;
-    }
+    delete[] csr->values;
+    delete[] csr->col_indices;
+    delete[] csr->row_ptrs;
 
-    // 分配新内存
     csr->num_rows = rows;
     csr->num_cols = cols;
     csr->nnz = nnz;
     csr->values = (nnz > 0) ? new float[nnz] : nullptr;
     csr->col_indices = (nnz > 0) ? new int[nnz] : nullptr;
     csr->row_ptrs = new int[rows + 1];
-    csr->owns_host_memory = true;
 
-    // 填充 CSR 数据
     int idx = 0;
     for (int i = 0; i < rows; i++) {
         csr->row_ptrs[i] = idx;
@@ -110,16 +171,13 @@ int csr_to_dense(const CSRMatrix* csr, float* dense) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    // Check for potential overflow in size calculation
     size_t total_size = static_cast<size_t>(csr->num_rows) * static_cast<size_t>(csr->num_cols);
     if (total_size > static_cast<size_t>(INT_MAX)) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    // 初始化为零
     std::memset(dense, 0, csr->num_rows * csr->num_cols * sizeof(float));
 
-    // 填充非零元素
     for (int i = 0; i < csr->num_rows; i++) {
         for (int j = csr->row_ptrs[i]; j < csr->row_ptrs[i + 1]; j++) {
             int col = csr->col_indices[j];
@@ -135,7 +193,6 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
         return 0.0f;
     }
 
-    // 在该行中线性扫描列索引（列索引有序，可提前终止）
     int start = mat->row_ptrs[row];
     int end = mat->row_ptrs[row + 1];
 
@@ -144,7 +201,7 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
             return mat->values[i];
         }
         if (mat->col_indices[i] > col) {
-            break;  // 列索引是有序的
+            break;
         }
     }
 
@@ -160,36 +217,38 @@ int csr_to_gpu(CSRMatrix* mat) {
         return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
 
+    auto* internal = get_internal(mat);
+    if (!internal) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    // Free any existing device data before allocating new buffers.
+    free_device(internal);
+
     float* new_d_values = nullptr;
     int* new_d_col_indices = nullptr;
     int* new_d_row_ptrs = nullptr;
 
-    auto cleanup_partial_allocations = [&]() {
-        if (new_d_values) {
+    auto cleanup = [&]() {
+        if (new_d_values)
             cudaFree(new_d_values);
-            new_d_values = nullptr;
-        }
-        if (new_d_col_indices) {
+        if (new_d_col_indices)
             cudaFree(new_d_col_indices);
-            new_d_col_indices = nullptr;
-        }
-        if (new_d_row_ptrs) {
+        if (new_d_row_ptrs)
             cudaFree(new_d_row_ptrs);
-            new_d_row_ptrs = nullptr;
-        }
     };
 
     if (mat->nnz > 0) {
         cudaError_t err =
             cudaMalloc(reinterpret_cast<void**>(&new_d_values), mat->nnz * sizeof(float));
         if (err != cudaSuccess) {
-            cleanup_partial_allocations();
+            cleanup();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
 
         err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices), mat->nnz * sizeof(int));
         if (err != cudaSuccess) {
-            cleanup_partial_allocations();
+            cleanup();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
         }
     }
@@ -197,7 +256,7 @@ int csr_to_gpu(CSRMatrix* mat) {
     cudaError_t err =
         cudaMalloc(reinterpret_cast<void**>(&new_d_row_ptrs), (mat->num_rows + 1) * sizeof(int));
     if (err != cudaSuccess) {
-        cleanup_partial_allocations();
+        cleanup();
         return static_cast<int>(SpMVError::CUDA_MALLOC);
     }
 
@@ -205,14 +264,14 @@ int csr_to_gpu(CSRMatrix* mat) {
         err =
             cudaMemcpy(new_d_values, mat->values, mat->nnz * sizeof(float), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
-            cleanup_partial_allocations();
+            cleanup();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
         }
 
         err = cudaMemcpy(new_d_col_indices, mat->col_indices, mat->nnz * sizeof(int),
                          cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
-            cleanup_partial_allocations();
+            cleanup();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);
         }
     }
@@ -220,21 +279,24 @@ int csr_to_gpu(CSRMatrix* mat) {
     err = cudaMemcpy(new_d_row_ptrs, mat->row_ptrs, (mat->num_rows + 1) * sizeof(int),
                      cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
-        cleanup_partial_allocations();
+        cleanup();
         return static_cast<int>(SpMVError::CUDA_MEMCPY);
     }
 
-    csr_free_gpu(mat);
-    mat->d_values = new_d_values;
-    mat->d_col_indices = new_d_col_indices;
-    mat->d_row_ptrs = new_d_row_ptrs;
-    mat->owns_device_memory = true;
+    internal->d_values = new_d_values;
+    internal->d_col_indices = new_d_col_indices;
+    internal->d_row_ptrs = new_d_row_ptrs;
 
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
 int csr_from_gpu(CSRMatrix* mat) {
-    if (!mat || !mat->d_row_ptrs) {
+    if (!mat) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+
+    auto* internal = get_internal(mat);
+    if (!internal || !internal->d_row_ptrs) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
@@ -242,51 +304,19 @@ int csr_from_gpu(CSRMatrix* mat) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    if (mat->nnz > 0 && mat->d_values && mat->d_col_indices) {
+    if (mat->nnz > 0 && internal->d_values && internal->d_col_indices) {
         if (!mat->values || !mat->col_indices) {
             return static_cast<int>(SpMVError::INVALID_ARGUMENT);
         }
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, mat->d_values, mat->nnz * sizeof(float),
-                                     cudaMemcpyDeviceToHost));
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, mat->d_col_indices, mat->nnz * sizeof(int),
-                                     cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, internal->d_values, mat->nnz * sizeof(float),
+                                       cudaMemcpyDeviceToHost));
+        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, internal->d_col_indices,
+                                     mat->nnz * sizeof(int), cudaMemcpyDeviceToHost));
     }
-    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->row_ptrs, mat->d_row_ptrs, (mat->num_rows + 1) * sizeof(int),
-                                 cudaMemcpyDeviceToHost));
+    CUDA_CHECK_MEMCPY(cudaMemcpy(mat->row_ptrs, internal->d_row_ptrs,
+                                 (mat->num_rows + 1) * sizeof(int), cudaMemcpyDeviceToHost));
 
     return static_cast<int>(SpMVError::SUCCESS);
-}
-
-void csr_free_gpu(CSRMatrix* mat) {
-    if (!mat)
-        return;
-
-    cudaError_t err;
-    if (mat->d_values) {
-        err = cudaFree(mat->d_values);
-        if (err != cudaSuccess) {
-            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
-                    cudaGetErrorString(err));
-        }
-        mat->d_values = nullptr;
-    }
-    if (mat->d_col_indices) {
-        err = cudaFree(mat->d_col_indices);
-        if (err != cudaSuccess) {
-            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
-                    cudaGetErrorString(err));
-        }
-        mat->d_col_indices = nullptr;
-    }
-    if (mat->d_row_ptrs) {
-        err = cudaFree(mat->d_row_ptrs);
-        if (err != cudaSuccess) {
-            fprintf(stderr, "CUDA free error at %s:%d: %s\n", __FILE__, __LINE__,
-                    cudaGetErrorString(err));
-        }
-        mat->d_row_ptrs = nullptr;
-    }
-    mat->owns_device_memory = false;
 }
 
 int csr_serialize(const CSRMatrix* mat, const char* filename) {
@@ -299,25 +329,21 @@ int csr_serialize(const CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    // 写入版本头和魔数
     const uint32_t magic = 0x52534353;  // "SCSR" in little-endian
     const uint32_t version = 1;
     file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
     file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
-    // 写入头部信息
     file.write(reinterpret_cast<const char*>(&mat->num_rows), sizeof(int));
     file.write(reinterpret_cast<const char*>(&mat->num_cols), sizeof(int));
     file.write(reinterpret_cast<const char*>(&mat->nnz), sizeof(int));
 
-    // 写入数据
     if (mat->nnz > 0) {
         file.write(reinterpret_cast<const char*>(mat->values), mat->nnz * sizeof(float));
         file.write(reinterpret_cast<const char*>(mat->col_indices), mat->nnz * sizeof(int));
     }
     file.write(reinterpret_cast<const char*>(mat->row_ptrs), (mat->num_rows + 1) * sizeof(int));
 
-    // 计算并写入简单校验和（数据字节和）
     uint64_t checksum = 0;
     checksum += static_cast<uint64_t>(mat->num_rows);
     checksum += static_cast<uint64_t>(mat->num_cols);
@@ -347,7 +373,6 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    // 读取版本头和魔数
     uint32_t magic, version;
     file.read(reinterpret_cast<char*>(&magic), sizeof(uint32_t));
     file.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
@@ -361,7 +386,6 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
                 version);
     }
 
-    // 读取头部信息
     int rows, cols, nnz;
     file.read(reinterpret_cast<char*>(&rows), sizeof(int));
     file.read(reinterpret_cast<char*>(&cols), sizeof(int));
@@ -371,24 +395,19 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    // 主机端内容变化后，旧的 GPU 镜像立即失效
-    csr_free_gpu(mat);
+    // Host-side mutation invalidates device mirror.
+    free_device(get_internal(mat));
 
-    // 释放旧内存
-    if (mat->owns_host_memory) {
-        delete[] mat->values;
-        delete[] mat->col_indices;
-        delete[] mat->row_ptrs;
-    }
+    delete[] mat->values;
+    delete[] mat->col_indices;
+    delete[] mat->row_ptrs;
 
-    // 分配新内存
     mat->num_rows = rows;
     mat->num_cols = cols;
     mat->nnz = nnz;
     mat->values = (nnz > 0) ? new (std::nothrow) float[nnz] : nullptr;
     mat->col_indices = (nnz > 0) ? new (std::nothrow) int[nnz] : nullptr;
     mat->row_ptrs = new (std::nothrow) int[rows + 1];
-    mat->owns_host_memory = true;
 
     if ((nnz > 0 && (!mat->values || !mat->col_indices)) || !mat->row_ptrs) {
         delete[] mat->values;
@@ -400,14 +419,12 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::OUT_OF_MEMORY);
     }
 
-    // 读取数据
     if (nnz > 0) {
         file.read(reinterpret_cast<char*>(mat->values), nnz * sizeof(float));
         file.read(reinterpret_cast<char*>(mat->col_indices), nnz * sizeof(int));
     }
     file.read(reinterpret_cast<char*>(mat->row_ptrs), (rows + 1) * sizeof(int));
 
-    // 读取并验证校验和
     uint64_t stored_checksum;
     file.read(reinterpret_cast<char*>(&stored_checksum), sizeof(uint64_t));
 
@@ -415,7 +432,6 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    // 计算校验和
     uint64_t computed_checksum = 0;
     computed_checksum += static_cast<uint64_t>(rows);
     computed_checksum += static_cast<uint64_t>(cols);
@@ -462,39 +478,32 @@ bool csr_validate(const CSRMatrix* mat) {
         return false;
     }
 
-    // Check dimensions
     if (mat->num_rows < 0 || mat->num_cols < 0 || mat->nnz < 0) {
         return false;
     }
 
-    // Check required pointers
     if (!mat->row_ptrs) {
         return false;
     }
 
-    // If nnz > 0, values and col_indices must be non-null
     if (mat->nnz > 0 && (!mat->values || !mat->col_indices)) {
         return false;
     }
 
-    // Check row_ptrs[0] == 0
     if (mat->row_ptrs[0] != 0) {
         return false;
     }
 
-    // Check row_ptrs[num_rows] == nnz
     if (mat->row_ptrs[mat->num_rows] != mat->nnz) {
         return false;
     }
 
-    // Check row_ptrs is monotonically increasing
     for (int i = 0; i < mat->num_rows; i++) {
         if (mat->row_ptrs[i + 1] < mat->row_ptrs[i]) {
             return false;
         }
     }
 
-    // Check col_indices are within valid range [0, num_cols)
     for (int i = 0; i < mat->nnz; i++) {
         if (mat->col_indices[i] < 0 || mat->col_indices[i] >= mat->num_cols) {
             return false;

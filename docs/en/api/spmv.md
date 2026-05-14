@@ -42,20 +42,19 @@ struct SpMVThresholds {
 Optional context for texture cache reuse across iterations:
 
 ```cpp
-struct SpMVExecutionContext {
-    cudaTextureObject_t tex_x;  // Texture object
-    const float* cached_x;      // Cached x pointer
-    size_t cached_x_length;     // Cached x length
-    bool texture_enabled;       // Whether texture is enabled
-
+class SpMVExecutionContext {
+   public:
     SpMVExecutionContext();
     ~SpMVExecutionContext();
 
-    void reset();  // Reset and release texture object
+    void reset();              // Reset and release texture object
+    bool is_texture_bound();   // Query whether texture is currently bound
 
     // Copy disabled, move allowed
     SpMVExecutionContext(const SpMVExecutionContext&) = delete;
+    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
     SpMVExecutionContext(SpMVExecutionContext&&) noexcept;
+    SpMVExecutionContext& operator=(SpMVExecutionContext&&) noexcept;
 };
 ```
 

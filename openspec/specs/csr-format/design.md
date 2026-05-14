@@ -37,26 +37,20 @@ Sparse Matrix:              CSR Storage:
 
 ### D2: Memory Management
 
-Use `owns_host_memory` and `owns_device_memory` flags to track memory ownership:
+Host memory is always owned by the `CSRMatrix` and freed on `csr_destroy()`. Device memory is managed internally: `csr_to_gpu()` allocates device buffers, `csr_from_gpu()` downloads data, and `csr_destroy()` cleans up both host and device memory.
 
-```cpp
-// Ownership flags prevent double-free
-bool owns_host_memory;     // Free host memory on destroy?
-bool owns_device_memory;   // Free device memory on destroy?
-```
-
-**Rationale**: Enables flexible memory management patterns including views and transfers.
+**Rationale**: Simplifies the public interface by removing ownership flags. Callers no longer need to reason about `owns_host_memory` or manually call `csr_free_gpu()`.
 
 ### D3: GPU Memory Transfer
 
-Explicit transfer functions rather than automatic synchronization:
+Explicit transfer functions with internal device memory management:
 
 ```cpp
-int csr_to_gpu(CSRMatrix* csr);    // Host -> Device
-int csr_from_gpu(const CSRMatrix* csr);  // Device -> Host
+int csr_to_gpu(CSRMatrix* csr);      // Host -> Device (allocates or reuses)
+int csr_from_gpu(CSRMatrix* csr);    // Device -> Host
 ```
 
-**Rationale**: Gives developers control over transfer timing for performance optimization.
+**Rationale**: Gives developers control over transfer timing while hiding device pointer bookkeeping.
 
 ## Risks / Trade-offs
 

@@ -42,20 +42,19 @@ struct SpMVThresholds {
 可选的执行上下文，用于跨迭代复用纹理缓存：
 
 ```cpp
-struct SpMVExecutionContext {
-    cudaTextureObject_t tex_x;  // 纹理对象
-    const float* cached_x;      // 缓存的 x 指针
-    size_t cached_x_length;     // 缓存的 x 长度
-    bool texture_enabled;       // 是否启用纹理
-
+class SpMVExecutionContext {
+   public:
     SpMVExecutionContext();
     ~SpMVExecutionContext();
 
-    void reset();  // 重置并释放纹理对象
+    void reset();              // 重置并释放纹理对象
+    bool is_texture_bound();   // 查询当前是否绑定了纹理
 
     // 禁用拷贝，允许移动
     SpMVExecutionContext(const SpMVExecutionContext&) = delete;
+    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
     SpMVExecutionContext(SpMVExecutionContext&&) noexcept;
+    SpMVExecutionContext& operator=(SpMVExecutionContext&&) noexcept;
 };
 ```
 
