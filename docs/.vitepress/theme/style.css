@@ -21,17 +21,6 @@
   --spmv-accent: #00B894;
   --spmv-accent-soft: rgba(0, 184, 148, 0.14);
 
-  /* Performance Colors */
-  --spmv-perf-high: #22C55E;
-  --spmv-perf-medium: #EAB308;
-  --spmv-perf-low: #EF4444;
-
-  /* Kernel Colors */
-  --spmv-kernel-scalar: #8B5CF6;
-  --spmv-kernel-vector: #3B82F6;
-  --spmv-kernel-merge: #10B981;
-  --spmv-kernel-ell: #F59E0B;
-
   /* Background */
   --vp-c-bg: #ffffff;
   --vp-c-bg-alt: #f6f8fa;
@@ -91,7 +80,6 @@
 
   /* Whitepaper-specific */
   --spmv-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --spmv-metric-value-font: 'JetBrains Mono', monospace;
 }
 
 /* === Dark Mode Override === */
@@ -593,7 +581,7 @@
 }
 
 .home-metric-value {
-  font-family: var(--spmv-metric-value-font);
+  font-family: 'JetBrains Mono', monospace;
   font-size: 28px;
   font-weight: 700;
   color: var(--vp-c-brand-1);
@@ -604,31 +592,6 @@
   font-size: 13px;
   color: var(--vp-c-text-3);
   margin-top: var(--spacing-xs);
-}
-
-/* === Homepage: Section Titles === */
-.home-section-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--vp-c-text-1);
-  margin: var(--spacing-2xl) 0 var(--spacing-lg) 0;
-  padding-bottom: var(--spacing-sm);
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-
-.home-section-desc {
-  font-size: 14px;
-  color: var(--vp-c-text-2);
-  margin: calc(-1 * var(--spacing-md)) 0 var(--spacing-lg) 0;
-  line-height: 1.6;
-}
-
-/* === Homepage: Dashboard (Charts) === */
-.home-dashboard {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
 }
 
 /* === Homepage: Architecture === */
@@ -695,47 +658,70 @@
   background: var(--vp-c-brand-soft);
 }
 
-/* === Homepage: Quick Start === */
-.quick-start {
-  background: var(--vp-c-bg);
-  border: 1px solid var(--vp-c-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
+/* === Performance Bars (CSS-based charts) === */
+.perf-bars {
+  margin: var(--spacing-xl) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
 }
 
-.quick-start-title {
-  font-weight: 600;
+.perf-bar-group {
+  padding: var(--spacing-lg);
+  background: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-border);
+  border-radius: var(--radius-lg);
+}
+
+.perf-bar-title {
   font-size: 14px;
+  font-weight: 600;
   color: var(--vp-c-text-1);
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
 }
 
-.quick-start-content {
+.perf-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.perf-label {
+  width: 120px;
+  font-size: 13px;
   color: var(--vp-c-text-2);
-  font-size: 13px;
-  line-height: 1.6;
+  flex-shrink: 0;
 }
 
-.quick-start-content code {
-  background: var(--vp-c-bg-soft);
-  padding: 2px 6px;
+.perf-bar {
+  flex: 1;
+  height: 20px;
+  background: var(--vp-c-bg);
   border-radius: 4px;
-  font-size: 12px;
-  color: var(--vp-c-brand-1);
-}
-
-.command-block {
-  background: var(--vp-c-bg-soft);
+  position: relative;
   border: 1px solid var(--vp-c-border);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  margin: var(--spacing-md) 0;
 }
 
-.command-block code {
-  font-family: var(--vp-font-family-mono);
+.perf-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: var(--width);
+  background: var(--vp-c-brand-1);
+  border-radius: 4px;
+  transition: width var(--transition-normal);
+}
+
+.perf-value {
+  width: 50px;
+  text-align: right;
   font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--vp-c-text-1);
+  flex-shrink: 0;
 }
 
 /* === Language Selector (root page fallback) === */
@@ -845,10 +831,6 @@
     font-size: 24px;
   }
 
-  .home-dashboard {
-    grid-template-columns: 1fr;
-  }
-
   .home-metrics {
     flex-wrap: wrap;
   }
@@ -901,6 +883,19 @@
     flex-direction: column;
     gap: var(--spacing-md);
   }
+
+  .perf-row {
+    flex-wrap: wrap;
+  }
+
+  .perf-label {
+    width: 100%;
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .perf-bar {
+    flex: 1;
+  }
 }
 
 /* === Print === */
@@ -909,8 +904,7 @@
   .VPSidebar,
   .VPFooter,
   .home-header,
-  .home-nav,
-  .quick-start {
+  .home-nav {
     display: none;
   }
 

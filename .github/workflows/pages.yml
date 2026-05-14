@@ -19,63 +19,69 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
+    # Only run on the original repository, not on forks
+    if: github.repository == 'LessUp/gpu-spmv'
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
 
-      - name: Cache node_modules
+      - name: Cache docs node_modules
         uses: actions/cache@v4
         with:
           path: docs/node_modules
-          key: ${{ runner.os }}-docs-node-modules-${{ hashFiles('docs/package-lock.json') }}
+          key: ${{ runner.os }}-docs-node-modules-${{ hashFiles('docs/package.json') }}
           restore-keys: |
             ${{ runner.os }}-docs-node-modules-
 
-      - name: Install dependencies
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Set VitePress base
+        shell: bash
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${BASE_PATH}" ]]; then
+            base="/"
+          else
+            base="${BASE_PATH%/}/"
+          fi
+          echo "VITEPRESS_BASE=${base}" >> "$GITHUB_ENV"
+
+      - name: Install docs dependencies
         working-directory: docs
-        run: npm ci
+        run: npm install --no-package-lock
 
       - name: Sync changelog
         working-directory: docs
         run: npm run sync
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Set VitePress base
-        run: echo "VITEPRESS_BASE=${{ steps.pages.outputs.base_path }}" >> "$GITHUB_ENV"
-
-      - name: Build VitePress
+      - name: Build docs
         working-directory: docs
+        env:
+          VITEPRESS_BASE: ${{ env.VITEPRESS_BASE }}
         run: npm run build
-
-      - name: Clean dist markdown leaks
-        run: rm -f docs/.vitepress/dist/*.md
 
       - name: Add .nojekyll
         run: touch docs/.vitepress/dist/.nojekyll
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
+        id: deploy
         uses: actions/deploy-pages@v4

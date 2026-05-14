@@ -34,13 +34,11 @@
 
 ### By Matrix Pattern
 
-<PerformanceChart title="Kernel Performance by Matrix Pattern" />
-
 | Pattern | Size | NNZ | Scalar | Vector | Merge | ELL |
 |:--------|:-----|:----|:------:|:------:|:-----:|:---:|
-| Diagonal | 100K | 100K | 37.2% | 69.1% | 72.4% | 74.8% |
-| Uniform | 100K | 5M | 41.5% | 71.8% | 70.9% | 82.3% |
-| Power-Law | 100K | 5M | 32.1% | 45.6% | 69.2% | 34.7% |
+| Diagonal | 100K | 100K | 37.2% | 69.1% | 72.4% | **74.8%** |
+| Uniform | 100K | 5M | 41.5% | 71.8% | 70.9% | **82.3%** |
+| Power-Law | 100K | 5M | 32.1% | 45.6% | **69.2%** | 34.7% |
 | Band | 100K | 5M | 28.4% | 64.9% | 58.1% | 41.2% |
 
 **Key Observations**:
@@ -49,16 +47,34 @@
 2. **Merge Path is most robust** across irregular patterns
 3. **Scalar CSR is only viable for very sparse matrices**
 
-### By Matrix Size
+### Performance Visualization
 
-<TrendChart title="Performance Trend by Matrix Size" />
+<div class="perf-bars">
+  <div class="perf-bar-group">
+    <div class="perf-bar-title">Uniform Matrix (100K × 100K)</div>
+    <div class="perf-row"><span class="perf-label">ELL Kernel</span><div class="perf-bar" style="--width: 82.3%"></div><span class="perf-value">82.3%</span></div>
+    <div class="perf-row"><span class="perf-label">Vector CSR</span><div class="perf-bar" style="--width: 71.8%"></div><span class="perf-value">71.8%</span></div>
+    <div class="perf-row"><span class="perf-label">Merge Path</span><div class="perf-bar" style="--width: 70.9%"></div><span class="perf-value">70.9%</span></div>
+    <div class="perf-row"><span class="perf-label">Scalar CSR</span><div class="perf-bar" style="--width: 41.5%"></div><span class="perf-value">41.5%</span></div>
+  </div>
+
+  <div class="perf-bar-group">
+    <div class="perf-bar-title">Power-Law Matrix (100K × 100K)</div>
+    <div class="perf-row"><span class="perf-label">Merge Path</span><div class="perf-bar" style="--width: 69.2%"></div><span class="perf-value">69.2%</span></div>
+    <div class="perf-row"><span class="perf-label">Vector CSR</span><div class="perf-bar" style="--width: 45.6%"></div><span class="perf-value">45.6%</span></div>
+    <div class="perf-row"><span class="perf-label">ELL Kernel</span><div class="perf-bar" style="--width: 34.7%"></div><span class="perf-value">34.7%</span></div>
+    <div class="perf-row"><span class="perf-label">Scalar CSR</span><div class="perf-bar" style="--width: 32.1%"></div><span class="perf-value">32.1%</span></div>
+  </div>
+</div>
+
+### By Matrix Size
 
 | Size | NNZ | Scalar | Vector | Merge | ELL |
 |:-----|:----|:------:|:------:|:-----:|:---:|
-| 10K × 10K | 500K | 42.1% | 70.2% | 68.5% | 78.3% |
-| 100K × 100K | 5M | 36.7% | 68.7% | 71.5% | 73.7% |
-| 1M × 1M | 50M | 34.8% | 65.5% | 70.8% | 71.2% |
-| 10M × 10M | 500M | 33.2% | 62.1% | 69.4% | 68.9% |
+| 10K × 10K | 500K | 42.1% | 70.2% | 68.5% | **78.3%** |
+| 100K × 100K | 5M | 36.7% | 68.7% | **71.5%** | 73.7% |
+| 1M × 1M | 50M | 34.8% | 65.5% | **70.8%** | 71.2% |
+| 10M × 10M | 500M | 33.2% | 62.1% | **69.4%** | 68.9% |
 
 **Scaling Analysis**:
 
@@ -72,8 +88,6 @@
 
 The auto-selection algorithm achieves optimal or near-optimal selection in **95%+ of cases**:
 
-<KernelSelector />
-
 ```mermaid
 flowchart TB
     subgraph Selection["Selection Decision Tree"]
@@ -83,7 +97,7 @@ flowchart TB
         D[Vector CSR]
         E[Merge Path]
     end
-    
+
     A -->|Yes| B
     A -->|No| C
     C -->|Yes| D
@@ -127,12 +141,10 @@ flowchart TB
 
 ### vs. cuSPARSE
 
-<ComparisonTable lang="en" />
-
 | Matrix | GPU SpMV | cuSPARSE | Speedup |
 |:-------|:--------:|:--------:|:-------:|
 | Uniform 100K | 71.5% | 68.2% | 1.05× |
-| Power-Law 100K | 69.2% | 52.1% | 1.33× |
+| Power-Law 100K | 69.2% | 52.1% | **1.33×** |
 | Real-World (webbase) | 67.8% | 61.4% | 1.10× |
 
 **Advantages**:
@@ -144,8 +156,8 @@ flowchart TB
 
 | Matrix | GPU SpMV | Generic | Speedup |
 |:-------|:--------:|:-------:|:-------:|
-| Uniform 100K | 71.5% | 35.2% | 2.03× |
-| Power-Law 100K | 69.2% | 28.7% | 2.41× |
+| Uniform 100K | 71.5% | 35.2% | **2.03×** |
+| Power-Law 100K | 69.2% | 28.7% | **2.41×** |
 
 ---
 
