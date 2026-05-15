@@ -21,7 +21,7 @@ concurrency:
 jobs:
   deploy:
     # Only run on the original repository, not on forks
-    if: github.repository == 'LessUp/gpu-spmv'
+    if: github.repository == 'AICL-Lab/gpu-spmv'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -67,6 +67,10 @@ jobs:
       - name: Sync changelog
         working-directory: docs
         run: npm run sync
+
+      - name: Verify docs site
+        working-directory: docs
+        run: npm run verify:site
 
       - name: Build docs
         working-directory: docs

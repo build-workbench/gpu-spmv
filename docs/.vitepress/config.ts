@@ -124,7 +124,7 @@ export default withMermaid(
             ]
           },
           editLink: {
-            pattern: 'https://github.com/LessUp/gpu-spmv/edit/main/docs/:path',
+            pattern: 'https://github.com/AICL-Lab/gpu-spmv/edit/main/docs/:path',
             text: '在 GitHub 上编辑此页'
           },
           docFooter: { prev: '上一页', next: '下一页' },
@@ -210,7 +210,7 @@ export default withMermaid(
             ]
           },
           editLink: {
-            pattern: 'https://github.com/LessUp/gpu-spmv/edit/main/docs/:path',
+            pattern: 'https://github.com/AICL-Lab/gpu-spmv/edit/main/docs/:path',
             text: 'Edit this page on GitHub'
           },
           outline: { label: 'On This Page', level: [2, 3] }
@@ -222,12 +222,12 @@ export default withMermaid(
       logo: '/images/logo.svg',
       siteTitle: 'GPU SpMV',
       socialLinks: [
-        { icon: 'github', link: 'https://github.com/LessUp/gpu-spmv' }
+        { icon: 'github', link: 'https://github.com/AICL-Lab/gpu-spmv' }
       ],
       search: { provider: 'local' },
       footer: {
         message: 'MIT License',
-        copyright: '© 2024-2026 LessUp'
+        copyright: '© 2024-2026 AICL-Lab'
       },
       outline: [2, 3]
     },
