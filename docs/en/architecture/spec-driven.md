@@ -89,5 +89,5 @@ Demonstrating Spec-Driven Development in interviews:
 
 ## References
 
-- [OpenSpec Specs](https://github.com/LessUp/gpu-spmv/tree/main/openspec)
+- [OpenSpec Specs](https://github.com/AICL-Lab/gpu-spmv/tree/main/openspec)
 - [Architecture Overview](/en/architecture/overview)

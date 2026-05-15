@@ -1,0 +1,67 @@
+.spmv-layout-top {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 420px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top left, rgba(118, 185, 0, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(0, 212, 170, 0.12), transparent 28%);
+  z-index: 0;
+}
+
+.Layout,
+.VPContent,
+.VPDoc {
+  position: relative;
+  z-index: 1;
+}
+
+.VPContent.is-home {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--spmv-surface-2) 88%, transparent) 0%, transparent 100%);
+}
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3 {
+  letter-spacing: -0.02em;
+}
+
+.vp-doc p,
+.vp-doc li {
+  color: var(--spmv-ink-2);
+}
+
+.spmv-card-grid {
+  display: grid;
+  gap: var(--spmv-grid-gap);
+}
+
+.spmv-card-grid.cols-2 {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.spmv-card-grid.cols-3 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.spmv-surface-card {
+  background: color-mix(in srgb, var(--spmv-surface-1) 92%, transparent);
+  border: 1px solid var(--spmv-border);
+  border-radius: var(--spmv-radius-lg);
+  box-shadow: var(--spmv-shadow-md);
+}
+
+.spmv-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(118, 185, 0, 0.12);
+  color: var(--vp-c-brand-1);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

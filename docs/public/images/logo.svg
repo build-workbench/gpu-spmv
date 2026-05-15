@@ -8,5 +8,5 @@
   <!-- Background -->
   <rect width="128" height="128" rx="24" fill="url(#logoGrad)"/>
   <!-- Text -->
-  <text x="64" y="82" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="48" font-weight="800" fill="#000">Sp</text>
+  <text x="64" y="82" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="48" font-weight="800" fill="#0F172A">Sp</text>
 </svg>

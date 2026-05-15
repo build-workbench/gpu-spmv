@@ -14,7 +14,7 @@
 ### 克隆和构建
 
 ```bash
-git clone https://github.com/LessUp/gpu-spmv.git
+git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
 cmake --preset default
 cmake --build --preset default
@@ -79,7 +79,7 @@ npm run dev
 
 ## 获取帮助
 
-- 提交 [Issue](https://github.com/LessUp/gpu-spmv/issues)
+- 提交 [Issue](https://github.com/AICL-Lab/gpu-spmv/issues)
 - 查看现有文档
 - 阅读 OpenSpec 规范
 

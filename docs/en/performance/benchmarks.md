@@ -1,6 +1,12 @@
 # Benchmarks
 
-GPU SpMV performance test results on NVIDIA RTX 3090.
+<script setup lang="ts">
+import { benchmarkData } from '../../.vitepress/data/benchmarks'
+</script>
+
+This benchmark page is not only a table of numbers. Its purpose is to explain **what these results actually mean and how they should be interpreted**.
+
+<MetricStrip :items="benchmarkData.summary" />
 
 ## Test Environment
 
@@ -88,29 +94,15 @@ SpMV is memory bandwidth bound. Our implementation achieves 70%+ of theoretical 
 - **Ampere (SM 8.6)**: Best performance
 - **Hopper (SM 9.0)**: Full support
 
-## Benchmark Method
+## How to read these results
 
-```cpp
-#include <spmv/benchmark.h>
-
-int main() {
-    CSRMatrix* csr = /* ... */;
-    csr_to_gpu(csr);
-
-    // Multiple runs for average
-    BenchmarkResult result = benchmark_spmv(csr, 100);
-
-    printf("Avg time: %.3f ms\n", result.avg_ms);
-    printf("Min time: %.3f ms\n", result.min_ms);
-    printf("Max time: %.3f ms\n", result.max_ms);
-    printf("Stddev: %.3f ms\n", result.stddev_ms);
-    printf("Bandwidth: %.1f GB/s\n", result.bandwidth_gb_s);
-
-    return 0;
-}
-```
+- **70%+ utilization** means the implementation is approaching a sensible memory-bound ceiling.
+- **ELL winning on regular patterns** does not mean it should be used universally; applicability and conversion cost still matter.
+- **Merge Path staying ahead on skewed matrices** is evidence that load balancing is the dominant concern there.
+- **The selector matters** because it turns those judgments into default behavior instead of a manual tuning burden.
 
 ## References
 
+- [Performance Methodology](/en/performance/methodology)
 - [Optimization Guide](/en/performance/optimization-guide)
 - [Kernel Selection](/en/architecture/kernel-selection)

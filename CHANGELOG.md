@@ -42,7 +42,7 @@ This is the first stable release of GPU SpMV, featuring complete CSR and ELL for
 - Doxygen-compatible documentation
 
 #### Documentation
-- Full documentation site at https://lessup.github.io/gpu-spmv/
+- Full documentation site at https://aicl-lab.github.io/gpu-spmv/
 - Bilingual README (English and Chinese)
 - API reference, performance guide, and code examples
 - Architecture documentation and design decision records
@@ -140,5 +140,5 @@ No breaking changes from pre-release versions. The API is now stable.
 
 ---
 
-[1.0.0]: https://github.com/LessUp/gpu-spmv/releases/tag/v1.0.0
-[0.1.0]: https://github.com/LessUp/gpu-spmv/tree/7d6dd0c
+[1.0.0]: https://github.com/AICL-Lab/gpu-spmv/releases/tag/v1.0.0
+[0.1.0]: https://github.com/AICL-Lab/gpu-spmv/tree/7d6dd0c

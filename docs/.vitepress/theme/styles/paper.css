@@ -1,0 +1,44 @@
+.spmv-section {
+  margin: 36px 0;
+  padding: 28px;
+}
+
+.spmv-section h2 {
+  margin: 14px 0 12px;
+  font-size: 1.85rem;
+  color: var(--spmv-ink-1);
+}
+
+.spmv-section p {
+  margin: 0;
+}
+
+.spmv-callout {
+  margin: 24px 0;
+  padding: 20px 22px;
+  border-radius: var(--spmv-radius-md);
+  border: 1px solid var(--spmv-border);
+  background: color-mix(in srgb, var(--spmv-surface-1) 92%, transparent);
+}
+
+.spmv-callout[data-tone='success'] {
+  border-color: rgba(118, 185, 0, 0.35);
+  background: rgba(118, 185, 0, 0.08);
+}
+
+.spmv-callout[data-tone='info'] {
+  border-color: rgba(0, 212, 170, 0.3);
+  background: rgba(0, 212, 170, 0.08);
+}
+
+.spmv-callout[data-tone='warning'] {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.spmv-callout-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--spmv-ink-1);
+}

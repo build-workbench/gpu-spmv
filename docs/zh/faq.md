@@ -198,4 +198,4 @@ auto end = std::chrono::high_resolution_clock::now();
 
 1. 查看 [API 参考](/zh/api/spmv) 了解详细用法
 2. 查看 [性能指南](/zh/performance/optimization-guide) 了解优化技巧
-3. 在 [GitHub Issues](https://github.com/LessUp/gpu-spmv/issues) 提问
+3. 在 [GitHub Issues](https://github.com/AICL-Lab/gpu-spmv/issues) 提问

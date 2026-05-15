@@ -205,7 +205,7 @@ To reproduce these benchmarks:
 
 ```bash
 # Clone and build
-git clone https://github.com/LessUp/gpu-spmv.git
+git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build

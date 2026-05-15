@@ -1,0 +1,54 @@
+.spmv-architecture-canvas,
+.theme-aware-art {
+  width: 100%;
+  display: block;
+}
+
+.spmv-architecture-shell {
+  padding: 22px;
+}
+
+.spmv-node {
+  fill: color-mix(in srgb, var(--spmv-surface-1) 94%, transparent);
+  stroke: var(--spmv-border);
+  stroke-width: 1.5;
+}
+
+.spmv-node-text {
+  fill: var(--spmv-ink-1);
+  font: 700 14px Inter, sans-serif;
+}
+
+.spmv-node-caption {
+  fill: var(--spmv-ink-3);
+  font: 500 12px Inter, sans-serif;
+}
+
+.spmv-link {
+  stroke: color-mix(in srgb, var(--spmv-brand-1) 55%, var(--spmv-border));
+  stroke-width: 2;
+  fill: none;
+}
+
+.theme-aware-art .art-bg {
+  fill: color-mix(in srgb, var(--spmv-surface-2) 92%, transparent);
+  stroke: var(--spmv-border);
+}
+
+.theme-aware-art .art-accent-1 {
+  fill: var(--spmv-brand-1);
+}
+
+.theme-aware-art .art-accent-2 {
+  fill: var(--spmv-brand-2);
+}
+
+.theme-aware-art .art-title {
+  fill: var(--spmv-ink-1);
+  font: 700 24px Inter, sans-serif;
+}
+
+.theme-aware-art .art-caption {
+  fill: var(--spmv-ink-2);
+  font: 500 14px Inter, sans-serif;
+}

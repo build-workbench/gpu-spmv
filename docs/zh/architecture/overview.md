@@ -1,6 +1,6 @@
 # 架构概览
 
-GPU SpMV 采用分层架构设计，清晰分离存储、计算和应用层。
+GPU SpMV 的架构重点不是“模块图长什么样”，而是 **如何把矩阵统计、kernel 选择、执行上下文和验证链路串成可解释的工程系统**。
 
 ## 系统架构
 
@@ -84,40 +84,16 @@ graph TB
 - **图神经网络** — 稀疏图卷积
 - **科学计算** — 有限元、CFD
 
-## 设计亮点
+## 这份架构总览最重要的三件事
 
-### 1. RAII 资源管理
-
-```cpp
-// 自动生命周期管理，防止内存泄漏
-class CudaBuffer {
-public:
-    explicit CudaBuffer(size_t n) { cudaMalloc(&ptr_, n * sizeof(T)); }
-    ~CudaBuffer() { cudaFree(ptr_); }
-    // 禁用拷贝，允许移动
-};
-```
-
-### 2. 执行上下文
-
-```cpp
-// 缓存纹理对象，避免重复创建
-SpMVExecutionContext ctx;
-for (int i = 0; i < n_iter; i++) {
-    spmv_csr(csr, d_x, d_y, &config, n, &ctx);
-    // 纹理对象被复用
-}
-```
-
-### 3. 自动 Kernel 选择
-
-```cpp
-// 基于矩阵特征自动选择最优 Kernel
-SpMVConfig config = spmv_auto_config(csr);
-```
+1. **数据怎么流动**：输入矩阵先被分析，再决定走哪条执行路径。
+2. **为什么自动选择成立**：不是玄学 heuristics，而是围绕 `avg_nnz_per_row` 与偏斜度展开。
+3. **为什么它可信**：资源管理、错误语义、CPU 参考路径和 property tests 共同形成约束。
 
 ## 相关文档
 
 - [Kernel 选择策略](/zh/architecture/kernel-selection)
+- [执行流水线](/zh/architecture/execution-pipeline)
 - [内存布局](/zh/architecture/memory-layout)
+- [可靠性约束](/zh/architecture/reliability)
 - [Spec-Driven 开发](/zh/architecture/spec-driven)

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="lightBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="lightAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#76b900"/>
+      <stop offset="100%" stop-color="#00d4aa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#lightBg)"/>
+  <rect x="72" y="80" width="180" height="180" rx="32" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="96" y="104" width="132" height="132" rx="28" fill="url(#lightAccent)" opacity="0.12"/>
+  <text x="162" y="196" text-anchor="middle" font-family="Inter, sans-serif" font-size="84" font-weight="800" fill="#0f172a">Sp</text>
+  <text x="320" y="182" font-family="Inter, sans-serif" font-size="72" font-weight="800" fill="#0f172a">GPU SpMV</text>
+  <text x="320" y="246" font-family="Inter, sans-serif" font-size="26" font-weight="500" fill="#475569">Technical whitepaper, architecture, and evidence-driven documentation.</text>
+  <rect x="320" y="320" width="210" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="550" y="320" width="210" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1"/>
+  <rect x="780" y="320" width="240" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="348" y="365" font-family="JetBrains Mono, monospace" font-size="34" font-weight="700" fill="#76b900">70%+</text>
+  <text x="348" y="398" font-family="Inter, sans-serif" font-size="18" fill="#475569">Bandwidth utilization</text>
+  <text x="578" y="365" font-family="JetBrains Mono, monospace" font-size="34" font-weight="700" fill="#00d4aa">4</text>
+  <text x="578" y="398" font-family="Inter, sans-serif" font-size="18" fill="#475569">Adaptive kernels</text>
+  <text x="808" y="365" font-family="JetBrains Mono, monospace" font-size="34" font-weight="700" fill="#0f172a">Docs + Code</text>
+  <text x="808" y="398" font-family="Inter, sans-serif" font-size="18" fill="#475569">Interview-ready showcase</text>
+  <text x="72" y="584" font-family="Inter, sans-serif" font-size="20" fill="#64748b">github.com/AICL-Lab/gpu-spmv</text>
+</svg>

@@ -1,0 +1,25 @@
+.spmv-citation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin: 24px 0;
+}
+
+.spmv-citation-card {
+  padding: 22px;
+}
+
+.spmv-citation-card h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  color: var(--spmv-ink-1);
+}
+
+.spmv-citation-card p {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.spmv-citation-card a {
+  font-weight: 700;
+}

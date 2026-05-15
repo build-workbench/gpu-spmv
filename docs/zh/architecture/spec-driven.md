@@ -157,5 +157,5 @@ flowchart LR
 
 ## 参考
 
-- [OpenSpec 规范](https://github.com/LessUp/gpu-spmv/tree/main/openspec)
+- [OpenSpec 规范](https://github.com/AICL-Lab/gpu-spmv/tree/main/openspec)
 - [架构概览](/zh/architecture/overview)

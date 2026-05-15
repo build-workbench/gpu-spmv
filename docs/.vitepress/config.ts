@@ -26,11 +26,11 @@ export default withMermaid(
           content: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library'
         }
       ],
-      ['meta', { property: 'og:image', content: `${base}images/og-image.svg` }],
+      ['meta', { property: 'og:image', content: `${base}images/social/og-dark.svg` }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
       ['meta', { name: 'twitter:title', content: 'GPU SpMV' }],
       ['meta', { name: 'twitter:description', content: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library' }],
-      ['meta', { name: 'twitter:image', content: `${base}images/og-image.svg` }],
+      ['meta', { name: 'twitter:image', content: `${base}images/social/og-dark.svg` }],
       ['link', { rel: 'icon', href: `${base}images/favicon.svg`, type: 'image/svg+xml' }],
       ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
       ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
@@ -59,10 +59,10 @@ export default withMermaid(
         themeConfig: {
           nav: [
             { text: '技术白皮书', link: '/zh/whitepaper/', activeMatch: '/zh/whitepaper/' },
-            { text: '快速开始', link: '/zh/quickstart', activeMatch: '/zh/(quickstart|examples)/' },
             { text: '架构设计', link: '/zh/architecture/overview', activeMatch: '/zh/architecture/' },
+            { text: '性能测试', link: '/zh/performance/benchmarks', activeMatch: '/zh/performance/' },
             { text: 'API 参考', link: '/zh/api/spmv', activeMatch: '/zh/api/' },
-            { text: '性能测试', link: '/zh/performance/benchmarks', activeMatch: '/zh/performance/' }
+            { text: '学术引用', link: '/zh/references', activeMatch: '/zh/(references|citation)/' }
           ],
           sidebar: {
             '/zh/': [
@@ -88,8 +88,10 @@ export default withMermaid(
                 collapsed: false,
                 items: [
                   { text: '系统概览', link: '/zh/architecture/overview' },
+                  { text: '执行流水线', link: '/zh/architecture/execution-pipeline' },
                   { text: 'Kernel 选择策略', link: '/zh/architecture/kernel-selection' },
                   { text: '内存布局', link: '/zh/architecture/memory-layout' },
+                  { text: '可靠性约束', link: '/zh/architecture/reliability' },
                   { text: 'Spec-Driven 开发', link: '/zh/architecture/spec-driven' }
                 ]
               },
@@ -97,6 +99,7 @@ export default withMermaid(
                 text: '性能优化',
                 collapsed: false,
                 items: [
+                  { text: '性能方法学', link: '/zh/performance/methodology' },
                   { text: '基准测试', link: '/zh/performance/benchmarks' },
                   { text: '优化指南', link: '/zh/performance/optimization-guide' }
                 ]
@@ -145,10 +148,10 @@ export default withMermaid(
         themeConfig: {
           nav: [
             { text: 'Whitepaper', link: '/en/whitepaper/', activeMatch: '/en/whitepaper/' },
-            { text: 'Getting Started', link: '/en/quickstart', activeMatch: '/en/(quickstart|examples)/' },
             { text: 'Architecture', link: '/en/architecture/overview', activeMatch: '/en/architecture/' },
+            { text: 'Benchmarks', link: '/en/performance/benchmarks', activeMatch: '/en/performance/' },
             { text: 'API Reference', link: '/en/api/spmv', activeMatch: '/en/api/' },
-            { text: 'Benchmarks', link: '/en/performance/benchmarks', activeMatch: '/en/performance/' }
+            { text: 'References', link: '/en/references', activeMatch: '/en/(references|citation)/' }
           ],
           sidebar: {
             '/en/': [
@@ -174,8 +177,10 @@ export default withMermaid(
                 collapsed: false,
                 items: [
                   { text: 'System Overview', link: '/en/architecture/overview' },
+                  { text: 'Execution Pipeline', link: '/en/architecture/execution-pipeline' },
                   { text: 'Kernel Selection', link: '/en/architecture/kernel-selection' },
                   { text: 'Memory Layout', link: '/en/architecture/memory-layout' },
+                  { text: 'Reliability Constraints', link: '/en/architecture/reliability' },
                   { text: 'Spec-Driven Dev', link: '/en/architecture/spec-driven' }
                 ]
               },
@@ -183,6 +188,7 @@ export default withMermaid(
                 text: 'Performance',
                 collapsed: false,
                 items: [
+                  { text: 'Methodology', link: '/en/performance/methodology' },
                   { text: 'Benchmarks', link: '/en/performance/benchmarks' },
                   { text: 'Optimization Guide', link: '/en/performance/optimization-guide' }
                 ]
@@ -219,7 +225,10 @@ export default withMermaid(
     },
 
     themeConfig: {
-      logo: '/images/logo.svg',
+      logo: {
+        light: '/images/brand/logo-mark-light.svg',
+        dark: '/images/brand/logo-mark-dark.svg'
+      },
       siteTitle: 'GPU SpMV',
       socialLinks: [
         { icon: 'github', link: 'https://github.com/AICL-Lab/gpu-spmv' }

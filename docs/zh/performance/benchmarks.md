@@ -1,6 +1,12 @@
 # 基准测试
 
-GPU SpMV 在 NVIDIA RTX 3090 上的性能测试结果。
+<script setup lang="ts">
+import { benchmarkData } from '../../.vitepress/data/benchmarks'
+</script>
+
+GPU SpMV 的 benchmark 页面不只罗列数字，而是帮助读者理解 **这些数字说明了什么，不说明什么**。
+
+<MetricStrip :items="benchmarkData.summary" />
 
 ## 测试环境
 
@@ -88,29 +94,15 @@ SpMV 是内存带宽受限的计算，我们的实现达到 70%+ 的理论带宽
 - **Ampere (SM 8.6)**: 最佳性能
 - **Hopper (SM 9.0)**: 完全支持
 
-## 基准测试方法
+## 如何阅读这些结果
 
-```cpp
-#include <spmv/benchmark.h>
-
-int main() {
-    CSRMatrix* csr = /* ... */;
-    csr_to_gpu(csr);
-
-    // 多次运行取平均
-    BenchmarkResult result = benchmark_spmv(csr, 100);
-
-    printf("Avg time: %.3f ms\n", result.avg_ms);
-    printf("Min time: %.3f ms\n", result.min_ms);
-    printf("Max time: %.3f ms\n", result.max_ms);
-    printf("Stddev: %.3f ms\n", result.stddev_ms);
-    printf("Bandwidth: %.1f GB/s\n", result.bandwidth_gb_s);
-
-    return 0;
-}
-```
+- **70%+ 带宽利用率** 说明实现已经接近“受限于访存”的合理上界。
+- **ELL 在规则模式下更高**，并不意味着它适合所有矩阵；格式转换和适用范围必须一起考虑。
+- **Merge Path 在高偏斜分布下稳定领先**，说明负载均衡确实是这类矩阵的第一问题。
+- **自动选择器的价值** 在于把这些判断变成默认能力，而不是要求用户手工猜测。
 
 ## 参考
 
+- [性能方法学](/zh/performance/methodology)
 - [优化指南](/zh/performance/optimization-guide)
 - [Kernel 选择策略](/zh/architecture/kernel-selection)

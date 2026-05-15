@@ -1,6 +1,6 @@
 # Architecture Overview
 
-GPU SpMV uses a layered architecture design with clear separation of storage, computation, and application layers.
+The architectural story of GPU SpMV is not just “what modules exist,” but **how matrix statistics, kernel choice, execution context, and validation fit together into an explainable engineering system**.
 
 ## System Architecture
 
@@ -84,8 +84,16 @@ Applications built on SpMV:
 - **Graph Neural Networks** — Sparse graph convolution
 - **Scientific Computing** — FEM, CFD
 
+## The three most important ideas on this page
+
+1. **How data flows** from sparse input to validated output.
+2. **Why automatic selection is justified** by `avg_nnz_per_row` and skewness rather than opaque tuning.
+3. **Why the system is trustworthy** thanks to resource management, semantic errors, CPU reference paths, and property tests.
+
 ## Related Documentation
 
 - [Kernel Selection](/en/architecture/kernel-selection)
+- [Execution Pipeline](/en/architecture/execution-pipeline)
 - [Memory Layout](/en/architecture/memory-layout)
+- [Reliability Constraints](/en/architecture/reliability)
 - [Spec-Driven Development](/en/architecture/spec-driven)
