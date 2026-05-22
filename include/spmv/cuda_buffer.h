@@ -1,7 +1,7 @@
 #ifndef SPMV_CUDA_BUFFER_H
 #define SPMV_CUDA_BUFFER_H
 
-#include <cuda_runtime.h>
+#include "cuda_compat.h"
 
 #include <cstddef>
 #include <utility>

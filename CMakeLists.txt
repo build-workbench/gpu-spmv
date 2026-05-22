@@ -8,41 +8,60 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(NOT SPMV_REQUIRE_CUDA)
-    message(STATUS "SPMV_REQUIRE_CUDA=OFF; configuring in no-CUDA mode. No build targets will be generated.")
-    enable_testing()
-    return()
-endif()
+set(SPMV_WITH_CUDA OFF)
 
-check_language(CUDA)
-if(NOT CMAKE_CUDA_COMPILER)
-    message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH, or configure with -DSPMV_REQUIRE_CUDA=OFF for a configure-only fallback.")
-endif()
+if(SPMV_REQUIRE_CUDA)
+    check_language(CUDA)
+    if(NOT CMAKE_CUDA_COMPILER)
+        message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH, or configure with -DSPMV_REQUIRE_CUDA=OFF for a CPU-only fallback.")
+    endif()
 
-enable_language(CUDA)
-set(CMAKE_CUDA_STANDARD 17)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    set(SPMV_WITH_CUDA ON)
 
-# CUDA 架构设置
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+    # CUDA 架构设置
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86 89 90)
+    endif()
+else()
+    message(STATUS "SPMV_REQUIRE_CUDA=OFF; configuring in no-CUDA mode. Building core library and CPU tests only.")
 endif()
 
 # ---------- 主库 ----------
 set(SPMV_SOURCES
     src/csr_matrix.cpp
     src/ell_matrix.cpp
+    src/internal/csr_device.cpp
+    src/internal/ell_device.cpp
     src/spmv_cpu.cpp
+    src/spmv_context.cpp
     src/internal/kernel_selector.cpp
-    src/spmv_kernels.cu
     src/bandwidth.cpp
-    src/benchmark.cu
-    src/pagerank.cu
+    src/pagerank_common.cpp
 )
+
+if(SPMV_WITH_CUDA)
+    list(APPEND SPMV_SOURCES
+        src/spmv_kernels.cu
+        src/benchmark.cu
+        src/pagerank.cu
+    )
+else()
+    list(APPEND SPMV_SOURCES
+        src/no_cuda_stubs.cpp
+    )
+endif()
 
 add_library(spmv STATIC ${SPMV_SOURCES})
 target_include_directories(spmv PUBLIC ${CMAKE_SOURCE_DIR}/include)
-set_target_properties(spmv PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+if(SPMV_WITH_CUDA)
+    target_compile_definitions(spmv PUBLIC SPMV_WITH_CUDA=1)
+    set_target_properties(spmv PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+else()
+    target_compile_definitions(spmv PUBLIC SPMV_WITH_CUDA=0)
+endif()
 
 # CUDA 编译选项
 target_compile_options(spmv PRIVATE
@@ -64,19 +83,32 @@ enable_testing()
 
 # ---------- 测试 ----------
 set(TEST_SOURCES
+    tests/test_architecture.cpp
     tests/test_common.cpp
     tests/test_csr.cpp
     tests/test_ell.cpp
     tests/test_kernel_selector.cpp
-    tests/test_spmv.cu
-    tests/test_bandwidth.cu
-    tests/test_benchmark.cu
-    tests/test_pagerank.cu
+    tests/test_no_cuda.cpp
+    tests/test_pagerank_core.cpp
 )
+
+if(SPMV_WITH_CUDA)
+    list(APPEND TEST_SOURCES
+        tests/test_spmv.cu
+        tests/test_bandwidth.cu
+        tests/test_benchmark.cu
+        tests/test_pagerank.cu
+    )
+endif()
 
 add_executable(spmv_tests ${TEST_SOURCES})
 target_link_libraries(spmv_tests PRIVATE spmv GTest::gtest_main)
-set_target_properties(spmv_tests PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+if(SPMV_WITH_CUDA)
+    target_compile_definitions(spmv_tests PRIVATE SPMV_WITH_CUDA=1)
+    set_target_properties(spmv_tests PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+else()
+    target_compile_definitions(spmv_tests PRIVATE SPMV_WITH_CUDA=0)
+endif()
 target_compile_options(spmv_tests PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
 )
@@ -84,13 +116,15 @@ target_compile_options(spmv_tests PRIVATE
 include(GoogleTest)
 gtest_discover_tests(spmv_tests)
 
-# ---------- 基准测试 ----------
-add_executable(spmv_benchmark benchmarks/main.cu)
-target_link_libraries(spmv_benchmark PRIVATE spmv)
-set_target_properties(spmv_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-target_compile_options(spmv_benchmark PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
-)
+if(SPMV_WITH_CUDA)
+    # ---------- 基准测试 ----------
+    add_executable(spmv_benchmark benchmarks/main.cu)
+    target_link_libraries(spmv_benchmark PRIVATE spmv)
+    set_target_properties(spmv_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    target_compile_options(spmv_benchmark PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+    )
+endif()
 
 # ---------- Installation ----------
 include(GNUInstallDirs)

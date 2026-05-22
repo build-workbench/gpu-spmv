@@ -101,6 +101,7 @@ cmake --preset release && cmake --build --preset release
 
 # CPU-only（无 GPU 环境，CI 使用此配置）
 cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF && cmake --build build-no-cuda
+ctest --test-dir build-no-cuda --output-on-failure
 
 # 运行测试
 ctest --preset default
@@ -110,7 +111,7 @@ ctest --preset default
 find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i
 ```
 
-> **CI 无 GPU**：需要 CUDA 设备的测试在 CI 中会跳过。`benchmarks/main.cu` 和 `pagerank.cu` 在无 GPU 时自动退出。
+> **CI 无 GPU**：CPU-only 配置会构建 core library + CPU 测试；需要 CUDA 设备的测试、基准程序和 PageRank CUDA 实现不会参与该配置。
 
 ---
 

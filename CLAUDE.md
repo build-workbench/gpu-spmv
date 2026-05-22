@@ -35,7 +35,7 @@
           cmake
           - S.- B build - no - cuda - DSPMV_REQUIRE_CUDA =
     OFF && cmake-- build build - no -
-                   cuda
+                   cuda && ctest --test-dir build-no-cuda --output-on-failure
 
 #测试
                    ctest-- preset default
@@ -62,7 +62,8 @@
 
                          ##CI 特殊说明
 
-                   - CI 无 GPU：`benchmarks / main.cu`、`src / pagerank.cu` 无 GPU 时自动退出
+                   - CI 无 GPU：CPU-only 配置会构建 core library + CPU 测试；CUDA 测试 / benchmark /
+                   PageRank CUDA 路径不参与该配置
                    - CI 使用 clang - format - 18 检查格式 - CPU - only 构建：`cmake - S.- B build
                    - no - cuda - DSPMV_REQUIRE_CUDA = OFF`
 

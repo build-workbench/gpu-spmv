@@ -1,7 +1,7 @@
 #ifndef SPMV_COMMON_H
 #define SPMV_COMMON_H
 
-#include <cuda_runtime.h>
+#include "cuda_compat.h"
 
 #include <cstdint>
 #include <cstdio>

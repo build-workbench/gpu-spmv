@@ -129,16 +129,11 @@ class SpMVExecutionContext {
     /** @brief Query whether a texture object is currently bound. */
     bool is_texture_bound() const { return tex_x_ != 0; }
 
-    /**
-     * @brief Prepare texture object for input vector x.
-     * @return 0 on success, negative error code on failure.
-     *
-     * Internal API; defined in spmv_kernels.cu.
-     */
-    int prepare_texture(const float* d_x, size_t x_length, bool requested,
-                        cudaTextureObject_t* tex_out, bool* use_texture_out);
-
    private:
+    friend int spmv_prepare_texture(SpMVExecutionContext* context, const float* d_x, size_t x_length,
+                                    bool requested, cudaTextureObject_t* tex_out,
+                                    bool* use_texture_out);
+
     cudaTextureObject_t tex_x_ = 0;
     const float* cached_x_ = nullptr;
     size_t cached_x_length_ = 0;

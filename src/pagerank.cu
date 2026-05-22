@@ -1,4 +1,5 @@
 #include "internal/csr_device.h"
+#include "internal/pagerank_common.h"
 #include "spmv/cuda_buffer.h"
 #include "spmv/pagerank.h"
 #include "spmv/spmv.h"
@@ -37,36 +38,6 @@ __global__ void compute_l2_diff_kernel(const float* a, const float* b, float* pa
 static int map_cuda_exception_to_spmv_error(const CudaException& e) {
     return (e.error() == cudaErrorMemoryAllocation) ? static_cast<int>(SpMVError::CUDA_MALLOC)
                                                     : static_cast<int>(SpMVError::CUDA_MEMCPY);
-}
-
-static std::vector<int> find_dangling_nodes(const CSRMatrix* adj_matrix) {
-    std::vector<int> dangling;
-    if (!adj_matrix || adj_matrix->num_cols <= 0 || adj_matrix->num_rows <= 0) {
-        return dangling;
-    }
-    if (!adj_matrix->values || !adj_matrix->col_indices || !adj_matrix->row_ptrs) {
-        return dangling;
-    }
-
-    int num_cols = adj_matrix->num_cols;
-    std::vector<float> col_sums(num_cols, 0.0f);
-    for (int row = 0; row < adj_matrix->num_rows; row++) {
-        int start = adj_matrix->row_ptrs[row];
-        int end = adj_matrix->row_ptrs[row + 1];
-        for (int idx = start; idx < end; idx++) {
-            int col = adj_matrix->col_indices[idx];
-            if (col >= 0 && col < num_cols) {
-                col_sums[col] += adj_matrix->values[idx];
-            }
-        }
-    }
-
-    for (int col = 0; col < num_cols; col++) {
-        if (col_sums[col] == 0.0f) {
-            dangling.push_back(col);
-        }
-    }
-    return dangling;
 }
 
 PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* config) {
@@ -135,7 +106,7 @@ PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* confi
 
         d_ranks_old.copyFromHost(result.ranks, n);
 
-        std::vector<int> dangling_nodes = find_dangling_nodes(adj_matrix);
+        std::vector<int> dangling_nodes = pagerank_find_dangling_nodes(adj_matrix);
         CudaBuffer<int> d_dangling_nodes(dangling_nodes.size());
         if (!dangling_nodes.empty()) {
             d_dangling_nodes.copyFromHost(dangling_nodes.data(), dangling_nodes.size());
@@ -213,15 +184,7 @@ PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* confi
             d_ranks_old.copyToHost(result.ranks, n);
         }
 
-        float sum = 0.0f;
-        for (int i = 0; i < n; i++) {
-            sum += result.ranks[i];
-        }
-        if (sum > 0.0f) {
-            for (int i = 0; i < n; i++) {
-                result.ranks[i] /= sum;
-            }
-        }
+        pagerank_normalize(result.ranks, n);
 
         result.error_code = static_cast<int>(SpMVError::SUCCESS);
         return result;
@@ -229,34 +192,6 @@ PageRankResult pagerank(const CSRMatrix* adj_matrix, const PageRankConfig* confi
         return fail(map_cuda_exception_to_spmv_error(e));
     } catch (const std::bad_alloc&) {
         return fail(static_cast<int>(SpMVError::OUT_OF_MEMORY));
-    }
-}
-
-void pagerank_free(PageRankResult* result) {
-    if (result && result->ranks) {
-        delete[] result->ranks;
-        result->ranks = nullptr;
-    }
-}
-
-void pagerank_top_k(const PageRankResult* result, int num_nodes, int k, TopKNode* top_k) {
-    if (!result || !result->ranks || !top_k || k <= 0 || num_nodes <= 0 ||
-        result->error_code != static_cast<int>(SpMVError::SUCCESS)) {
-        return;
-    }
-
-    std::vector<TopKNode> nodes(num_nodes);
-    for (int i = 0; i < num_nodes; i++) {
-        nodes[i].node_id = i;
-        nodes[i].rank = result->ranks[i];
-    }
-
-    int actual_k = std::min(k, num_nodes);
-    std::partial_sort(nodes.begin(), nodes.begin() + actual_k, nodes.end(),
-                      [](const TopKNode& a, const TopKNode& b) { return a.rank > b.rank; });
-
-    for (int i = 0; i < actual_k; i++) {
-        top_k[i] = nodes[i];
     }
 }
 

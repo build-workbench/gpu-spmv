@@ -1,5 +1,6 @@
 #include "internal/csr_device.h"
 #include "internal/ell_device.h"
+#include "internal/texture_cache.h"
 #include "spmv/bandwidth.h"
 #include "spmv/spmv.h"
 
@@ -124,53 +125,6 @@ struct ScopedTexture {
         return static_cast<int>(SpMVError::SUCCESS);
     }
 };
-
-int SpMVExecutionContext::prepare_texture(const float* d_x, size_t x_length, bool requested,
-                                          cudaTextureObject_t* tex_out, bool* use_texture_out) {
-    if (!tex_out || !use_texture_out) {
-        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-    }
-
-    *tex_out = 0;
-    *use_texture_out = false;
-
-    if (!requested || !d_x || x_length == 0) {
-        reset();
-        return static_cast<int>(SpMVError::SUCCESS);
-    }
-
-    bool needs_rebuild = !texture_enabled_ || tex_x_ == 0 || cached_x_ != d_x ||
-                         cached_x_length_ != x_length;
-    if (needs_rebuild) {
-        reset();
-
-        cudaResourceDesc res_desc{};
-        res_desc.resType = cudaResourceTypeLinear;
-        res_desc.res.linear.devPtr = const_cast<float*>(d_x);
-        res_desc.res.linear.desc = cudaCreateChannelDesc<float>();
-        res_desc.res.linear.sizeInBytes = x_length * sizeof(float);
-
-        cudaTextureDesc tex_desc{};
-        tex_desc.addressMode[0] = cudaAddressModeClamp;
-        tex_desc.filterMode = cudaFilterModePoint;
-        tex_desc.readMode = cudaReadModeElementType;
-        tex_desc.normalizedCoords = 0;
-
-        cudaError_t err = cudaCreateTextureObject(&tex_x_, &res_desc, &tex_desc, nullptr);
-        if (err != cudaSuccess) {
-            reset();
-            return static_cast<int>(SpMVError::CUDA_MALLOC);
-        }
-
-        cached_x_ = d_x;
-        cached_x_length_ = x_length;
-        texture_enabled_ = true;
-    }
-
-    *tex_out = tex_x_;
-    *use_texture_out = true;
-    return static_cast<int>(SpMVError::SUCCESS);
-}
 
 __device__ __forceinline__ float fetch_x(const float* x, cudaTextureObject_t tex_x,
                                          bool use_texture, int idx) {
@@ -430,8 +384,8 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
 
     if (use_texture && texture_length > 0) {
         if (context) {
-            int tex_status = context->prepare_texture(d_x, texture_length, use_texture,
-                                                       &tex_x, &use_texture);
+            int tex_status = spmv_prepare_texture(context, d_x, texture_length, use_texture, &tex_x,
+                                                  &use_texture);
             if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = tex_status;
                 return result;
@@ -565,8 +519,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMV
 
     if (use_texture && texture_length > 0) {
         if (context) {
-            int tex_status = context->prepare_texture(d_x, texture_length, use_texture,
-                                                       &tex_x, &use_texture);
+            int tex_status = spmv_prepare_texture(context, d_x, texture_length, use_texture, &tex_x,
+                                                  &use_texture);
             if (tex_status != static_cast<int>(SpMVError::SUCCESS)) {
                 result.error_code = tex_status;
                 return result;

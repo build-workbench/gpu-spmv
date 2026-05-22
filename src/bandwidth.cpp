@@ -1,6 +1,5 @@
 #include "spmv/bandwidth.h"
-
-#include <cuda_runtime.h>
+#include "spmv/cuda_compat.h"
 
 #include <algorithm>
 #include <mutex>

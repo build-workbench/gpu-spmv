@@ -1,69 +1,13 @@
+#include "internal/ell_device.h"
 #include "spmv/ell_matrix.h"
 
 #include <algorithm>
+#include <climits>
 #include <cstring>
 #include <fstream>
 #include <new>
 
 namespace spmv {
-
-// Internal device state -------------------------------------------------------
-struct ELLMatrixInternal {
-    float* d_values = nullptr;
-    int* d_col_indices = nullptr;
-};
-
-// Helpers --------------------------------------------------------------------
-static ELLMatrixInternal* get_internal(ELLMatrix* mat) {
-    return mat ? static_cast<ELLMatrixInternal*>(mat->internal) : nullptr;
-}
-
-static const ELLMatrixInternal* get_internal(const ELLMatrix* mat) {
-    return mat ? static_cast<const ELLMatrixInternal*>(mat->internal) : nullptr;
-}
-
-static void free_device(ELLMatrixInternal* internal) {
-    if (!internal)
-        return;
-    if (internal->d_values) {
-        cudaFree(internal->d_values);
-        internal->d_values = nullptr;
-    }
-    if (internal->d_col_indices) {
-        cudaFree(internal->d_col_indices);
-        internal->d_col_indices = nullptr;
-    }
-}
-
-// Internal API (used by src/ only) -------------------------------------------
-float* ell_d_values(ELLMatrix* mat) {
-    auto* internal = get_internal(mat);
-    return internal ? internal->d_values : nullptr;
-}
-
-const float* ell_d_values(const ELLMatrix* mat) {
-    auto* internal = get_internal(mat);
-    return internal ? internal->d_values : nullptr;
-}
-
-int* ell_d_col_indices(ELLMatrix* mat) {
-    auto* internal = get_internal(mat);
-    return internal ? internal->d_col_indices : nullptr;
-}
-
-const int* ell_d_col_indices(const ELLMatrix* mat) {
-    auto* internal = get_internal(mat);
-    return internal ? internal->d_col_indices : nullptr;
-}
-
-bool ell_has_device_data(const ELLMatrix* mat) {
-    auto* internal = get_internal(mat);
-    return internal && internal->d_values != nullptr;
-}
-
-void ell_free_device_data(ELLMatrix* mat) {
-    free_device(get_internal(mat));
-}
 
 // Public API -----------------------------------------------------------------
 
@@ -88,7 +32,7 @@ ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
         }
     }
 
-    mat->internal = new ELLMatrixInternal();
+    mat->internal = ell_create_device_state();
 
     return mat;
 }
@@ -100,11 +44,7 @@ void ell_destroy(ELLMatrix* mat) {
     delete[] mat->values;
     delete[] mat->col_indices;
 
-    auto* internal = get_internal(mat);
-    if (internal) {
-        free_device(internal);
-        delete internal;
-    }
+    ell_destroy_device_state(mat);
 
     delete mat;
 }
@@ -118,7 +58,7 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    free_device(get_internal(ell));
+    ell_free_device_data(ell);
 
     int max_nnz = 0;
     for (int i = 0; i < rows; i++) {
@@ -177,7 +117,7 @@ int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr) {
         return static_cast<int>(SpMVError::INVALID_FORMAT);
     }
 
-    free_device(get_internal(ell));
+    ell_free_device_data(ell);
 
     int max_nnz = 0;
     for (int i = 0; i < csr->num_rows; i++) {
@@ -260,84 +200,9 @@ float ell_get_element(const ELLMatrix* mat, int row, int col) {
     return 0.0f;
 }
 
-int ell_to_gpu(ELLMatrix* mat) {
-    if (!mat) {
-        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-    }
+int ell_to_gpu(ELLMatrix* mat) { return ell_upload_device_data(mat); }
 
-    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-    if (size > 0 && (!mat->values || !mat->col_indices)) {
-        return static_cast<int>(SpMVError::INVALID_FORMAT);
-    }
-
-    auto* internal = get_internal(mat);
-    if (!internal) {
-        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-    }
-
-    free_device(internal);
-
-    float* new_d_values = nullptr;
-    int* new_d_col_indices = nullptr;
-
-    auto cleanup = [&]() {
-        if (new_d_values)
-            cudaFree(new_d_values);
-        if (new_d_col_indices)
-            cudaFree(new_d_col_indices);
-    };
-
-    if (size > 0) {
-        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values), size * sizeof(float));
-        if (err != cudaSuccess) {
-            cleanup();
-            return static_cast<int>(SpMVError::CUDA_MALLOC);
-        }
-
-        err = cudaMalloc(reinterpret_cast<void**>(&new_d_col_indices), size * sizeof(int));
-        if (err != cudaSuccess) {
-            cleanup();
-            return static_cast<int>(SpMVError::CUDA_MALLOC);
-        }
-
-        err = cudaMemcpy(new_d_values, mat->values, size * sizeof(float), cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            cleanup();
-            return static_cast<int>(SpMVError::CUDA_MEMCPY);
-        }
-
-        err = cudaMemcpy(new_d_col_indices, mat->col_indices, size * sizeof(int),
-                         cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            cleanup();
-            return static_cast<int>(SpMVError::CUDA_MEMCPY);
-        }
-    }
-
-    internal->d_values = new_d_values;
-    internal->d_col_indices = new_d_col_indices;
-    return static_cast<int>(SpMVError::SUCCESS);
-}
-
-int ell_from_gpu(ELLMatrix* mat) {
-    if (!mat) {
-        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-    }
-
-    auto* internal = get_internal(mat);
-    size_t size = static_cast<size_t>(mat->num_rows) * mat->max_nnz_per_row;
-    if (size > 0 && internal && internal->d_values && internal->d_col_indices) {
-        if (!mat->values || !mat->col_indices) {
-            return static_cast<int>(SpMVError::INVALID_ARGUMENT);
-        }
-        CUDA_CHECK_MEMCPY(
-            cudaMemcpy(mat->values, internal->d_values, size * sizeof(float), cudaMemcpyDeviceToHost));
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, internal->d_col_indices, size * sizeof(int),
-                                     cudaMemcpyDeviceToHost));
-    }
-
-    return static_cast<int>(SpMVError::SUCCESS);
-}
+int ell_from_gpu(ELLMatrix* mat) { return ell_download_device_data(mat); }
 
 int ell_serialize(const ELLMatrix* mat, const char* filename) {
     if (!mat || !filename) {
@@ -412,7 +277,7 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    free_device(get_internal(mat));
+    ell_free_device_data(mat);
 
     delete[] mat->values;
     delete[] mat->col_indices;
