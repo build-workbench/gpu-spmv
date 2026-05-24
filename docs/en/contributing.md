@@ -14,7 +14,7 @@ Thank you for your interest in contributing to GPU SpMV!
 ### Clone and Build
 
 ```bash
-git clone https://github.com/LessUp/gpu-spmv.git
+git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
 cmake --preset default
 cmake --build --preset default
@@ -79,7 +79,7 @@ npm run dev
 
 ## Getting Help
 
-- Open an [Issue](https://github.com/LessUp/gpu-spmv/issues)
+- Open an [Issue](https://github.com/AICL-Lab/gpu-spmv/issues)
 - Check existing documentation
 - Review OpenSpec specs
 

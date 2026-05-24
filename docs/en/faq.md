@@ -198,4 +198,4 @@ If the above doesn't answer your question:
 
 1. Check [API Reference](/en/api/spmv) for detailed usage
 2. Check [Optimization Guide](/en/performance/optimization-guide) for performance tips
-3. Ask on [GitHub Issues](https://github.com/LessUp/gpu-spmv/issues)
+3. Ask on [GitHub Issues](https://github.com/AICL-Lab/gpu-spmv/issues)

@@ -1,100 +1,28 @@
-# Technical Whitepaper
+# GPU SpMV: Read the project as an engineering artifact
 
-## Executive Summary
+<CalloutPanel title="Project Positioning" tone="success">
+This site is written for interviewers, open-source readers, and performance engineers. The whitepaper landing page leads with conclusions, then points to the design decisions and evidence chain behind them.
+</CalloutPanel>
 
-GPU SpMV is a **production-grade CUDA library** implementing high-performance sparse matrix-vector multiplication (SpMV), achieving **70%+ of theoretical memory bandwidth** on modern NVIDIA GPUs.
+## Why this project deserves a whitepaper
 
-### Key Contributions
+- SpMV is a classic **memory-bandwidth-bound** workload, so performance depends more on access patterns than raw arithmetic throughput.
+- The interesting part is not only which kernel exists, but **why it is chosen, when it is chosen, and how that choice is justified**.
+- This project combines CUDA performance work with RAII resource management, explicit error handling, spec-driven development, and readable documentation.
 
-| Contribution | Impact |
-|:-------------|:-------|
-| **4 Optimized Kernels** | Adaptive kernel selection based on matrix characteristics |
-| **Merge Path Algorithm** | Perfect load balancing for irregular sparsity patterns |
-| **ELL Column-Major Layout** | Fully coalesced memory access for uniform matrices |
-| **Spec-Driven Development** | Complete design decision traceability |
+## What this whitepaper is meant to answer
 
-### Performance Highlights
+1. Why the problem matters and where the real bottlenecks are.
+2. What each optimized kernel and the selector are responsible for.
+3. How performance, engineering discipline, and explainability are tied together.
+4. Where to continue reading for architecture, API usage, performance interpretation, and references.
 
-| Matrix Size | Non-zeros | Kernel | Bandwidth Utilization |
-|:-----------:|:---------:|:-------|:---------------------:|
-| 10K × 10K | 500K | Vector CSR | **70.2%** |
-| 100K × 100K | 5M | Merge Path | **71.5%** |
-| 1M × 1M | 50M | Merge Path | **70.8%** |
+## Reading Path
 
-::: info Benchmark Environment
-NVIDIA RTX 3090 (Ampere architecture, theoretical bandwidth: 936 GB/s)
-:::
-
-### Target Audience
-
-- **Systems Architects**: Designing GPU-accelerated sparse computations
-- **HPC Engineers**: Optimizing memory-bound workloads
-- **Researchers**: Requiring reproducible, well-documented baselines
-- **Application Developers**: Building graph algorithms, iterative solvers
-
-### Document Structure
-
-| Section | Purpose |
-|:--------|:--------|
-| [Design Philosophy](/en/whitepaper/philosophy) | Architectural principles and trade-offs |
-| [Performance Analysis](/en/whitepaper/performance) | Detailed benchmark methodology and results |
-| [Architecture Overview](/en/architecture/overview) | System design documentation |
-| [API Reference](/en/api/spmv) | Complete API documentation |
-
----
-
-## Why SpMV Matters
-
-Sparse matrix-vector multiplication (SpMV) is a fundamental operation in:
-
-- **Graph Analytics**: PageRank, community detection, shortest path
-- **Scientific Computing**: Finite element analysis, CFD, iterative solvers
-- **Machine Learning**: Sparse neural networks, recommendation systems
-
-SpMV is inherently **memory-bound** — each non-zero element requires reading matrix data, column indices, and vector values, with minimal computation. Achieving high bandwidth utilization is the primary optimization challenge.
-
----
-
-## Design Overview
-
-```mermaid
-flowchart TB
-    subgraph Input["Input"]
-        Matrix[Sparse Matrix]
-        Vector[Dense Vector]
-    end
-    
-    subgraph Analysis["Matrix Analysis"]
-        NNZ[avg_nnz per row]
-        Skew[Skewness]
-        Pattern[Distribution Pattern]
-    end
-    
-    subgraph Selection["Kernel Selection"]
-        Decision{Auto Select}
-        Scalar[Scalar CSR<br/>avg_nnz < 4]
-        Vector[Vector CSR<br/>uniform rows]
-        Merge[Merge Path<br/>high skewness]
-        ELL[ELL Kernel<br/>column-major]
-    end
-    
-    subgraph Execution["GPU Execution"]
-        Compute[SpMV Computation]
-        Result[Result Vector]
-    end
-    
-    Matrix --> Analysis
-    Vector --> Execution
-    Analysis --> Decision
-    Decision --> Scalar
-    Decision --> Vector
-    Decision --> Merge
-    Decision --> ELL
-    Scalar --> Compute
-    Vector --> Compute
-    Merge --> Compute
-    ELL --> Compute
-    Compute --> Result
-```
-
-The library automatically selects the optimal kernel based on matrix characteristics, ensuring near-peak performance across diverse sparsity patterns.
+| Page | Role |
+|:-----|:-----|
+| [Design Philosophy](/en/whitepaper/philosophy) | See the architectural priorities and trade-offs |
+| [Performance Analysis](/en/whitepaper/performance) | Learn how to interpret the benchmark evidence |
+| [Architecture Overview](/en/architecture/overview) | Understand the execution pipeline and module boundaries |
+| [API Reference](/en/api/spmv) | Inspect the external interface |
+| [References](/en/references) | Review papers, projects, and further reading |

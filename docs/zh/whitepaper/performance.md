@@ -205,7 +205,7 @@ for (auto& x : inputs) {
 
 ```bash
 # 克隆并构建
-git clone https://github.com/LessUp/gpu-spmv.git
+git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build

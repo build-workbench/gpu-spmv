@@ -16,16 +16,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml">
-    <img src="https://github.com/LessUp/gpu-spmv/actions/workflows/ci.yml/badge.svg" alt="CI">
+  <a href="https://github.com/AICL-Lab/gpu-spmv/actions/workflows/ci.yml">
+    <img src="https://github.com/AICL-Lab/gpu-spmv/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
-  <a href="https://lessup.github.io/gpu-spmv/">
+  <a href="https://aicl-lab.github.io/gpu-spmv/">
     <img src="https://img.shields.io/badge/Docs-GitHub%20Pages-2EA44F?logo=github" alt="Documentation">
   </a>
-  <a href="https://github.com/LessUp/gpu-spmv/releases">
-    <img src="https://img.shields.io/github/v/release/LessUp/gpu-spmv?color=blue" alt="Release">
+  <a href="https://github.com/AICL-Lab/gpu-spmv/releases">
+    <img src="https://img.shields.io/github/v/release/AICL-Lab/gpu-spmv?color=blue" alt="Release">
   </a>
-  <a href="https://github.com/LessUp/gpu-spmv/blob/main/LICENSE">
+  <a href="https://github.com/AICL-Lab/gpu-spmv/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
   </a>
 </p>
@@ -105,7 +105,7 @@ if (result.error != SpMVError::SUCCESS) {
 
 ```bash
 # 1. Clone
-git clone https://github.com/LessUp/gpu-spmv.git && cd gpu-spmv
+git clone https://github.com/AICL-Lab/gpu-spmv.git && cd gpu-spmv
 
 # 2. Build
 cmake --preset release && cmake --build --preset release
@@ -143,7 +143,7 @@ int main() {
 }
 ```
 
-📚 **More examples**: [Documentation Site](https://lessup.github.io/gpu-spmv/examples)
+📚 **More examples**: [Documentation Site](https://aicl-lab.github.io/gpu-spmv/en/examples/basic-spmv)
 
 ---
 
@@ -167,7 +167,7 @@ Benchmark on **NVIDIA RTX 3090** (Ampere, 936 GB/s peak):
 # Avg time: 23.5 ms | Bandwidth: 69.8 GB/s (71.5% of peak)
 ```
 
-📈 **Full performance guide**: [Performance Optimization](https://lessup.github.io/gpu-spmv/performance)
+📈 **Full performance guide**: [Performance Optimization](https://aicl-lab.github.io/gpu-spmv/en/performance/optimization-guide)
 
 ---
 
@@ -194,16 +194,16 @@ gpu-spmv/
 
 ## 📚 Documentation
 
-Complete documentation is available at **[https://lessup.github.io/gpu-spmv/](https://lessup.github.io/gpu-spmv/)**:
+Complete documentation is available at **[https://aicl-lab.github.io/gpu-spmv/](https://aicl-lab.github.io/gpu-spmv/)**:
 
 | Document | Description |
 |:---------|:------------|
-| [📦 Installation Guide](https://lessup.github.io/gpu-spmv/installation) | System requirements, detailed installation |
-| [📚 API Reference](https://lessup.github.io/gpu-spmv/api) | Complete API documentation, data structures |
-| [📝 Examples](https://lessup.github.io/gpu-spmv/examples) | 7 complete code examples (basic → advanced) |
-| [🚀 Performance Guide](https://lessup.github.io/gpu-spmv/performance) | Tuning strategies, benchmark data |
-| [🏗️ Architecture](https://lessup.github.io/gpu-spmv/architecture) | System design, kernel selection |
-| [📋 Changelog](https://lessup.github.io/gpu-spmv/changelog) | Version history, migration guide |
+| [📦 Installation Guide](https://aicl-lab.github.io/gpu-spmv/en/quickstart) | System requirements, detailed installation |
+| [📚 API Reference](https://aicl-lab.github.io/gpu-spmv/en/api/spmv) | Complete API documentation, data structures |
+| [📝 Examples](https://aicl-lab.github.io/gpu-spmv/en/examples/basic-spmv) | End-to-end code example and walkthrough |
+| [🚀 Performance Guide](https://aicl-lab.github.io/gpu-spmv/en/performance/optimization-guide) | Tuning strategies, benchmark data |
+| [🏗️ Architecture](https://aicl-lab.github.io/gpu-spmv/en/architecture/overview) | System design, kernel selection |
+| [📋 Changelog](https://aicl-lab.github.io/gpu-spmv/en/changelog) | Version history, migration guide |
 
 ---
 

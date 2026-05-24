@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-changelog.mjs",
+    "verify:site": "node scripts/verify-site.mjs",
     "dev": "npm run sync && vitepress dev",
-    "build": "npm run sync && vitepress build",
+    "build": "npm run sync && npm run verify:site && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {

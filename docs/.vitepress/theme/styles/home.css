@@ -1,0 +1,89 @@
+.spmv-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 32px;
+  align-items: stretch;
+  margin: 24px 0 48px;
+}
+
+.spmv-hero-copy,
+.spmv-hero-art {
+  padding: 32px;
+}
+
+.spmv-hero-copy h1 {
+  margin: 18px 0 16px;
+  font-size: clamp(2.4rem, 5vw, 4.3rem);
+  line-height: 1.02;
+  color: var(--spmv-ink-1);
+}
+
+.spmv-hero-copy p {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.spmv-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.spmv-hero-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 160px;
+  padding: 13px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--spmv-border);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.spmv-hero-actions a.primary {
+  background: linear-gradient(135deg, var(--spmv-brand-1), var(--spmv-brand-2));
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.spmv-hero-actions a.secondary {
+  color: var(--spmv-ink-1);
+}
+
+.spmv-hero-actions a:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--spmv-brand-1) 50%, var(--spmv-border));
+}
+
+.spmv-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.spmv-metric-card {
+  padding: 20px;
+}
+
+.spmv-metric-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--spmv-ink-1);
+}
+
+.spmv-metric-label {
+  margin-top: 8px;
+  font-size: 0.94rem;
+  color: var(--spmv-ink-2);
+}
+
+@media (max-width: 960px) {
+  .spmv-hero {
+    grid-template-columns: 1fr;
+  }
+}

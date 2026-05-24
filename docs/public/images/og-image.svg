@@ -81,6 +81,6 @@
 
   <!-- Footer -->
   <text x="600" y="600" font-family="Inter, sans-serif" font-size="16" fill="#64748B" text-anchor="middle">
-    github.com/LessUp/gpu-spmv
+    github.com/AICL-Lab/gpu-spmv
   </text>
 </svg>
