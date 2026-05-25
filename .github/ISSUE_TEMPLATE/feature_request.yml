@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a new feature! Please fill out the sections below.
+        Thanks for suggesting a new feature. Keep the request focused on the core SpMV library.
 
   - type: textarea
     id: problem
@@ -44,27 +44,24 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: code-example
-    attributes:
-      label: Proposed API (if applicable)
-      description: If this involves new API, show how it might look
-      render: cpp
-      placeholder: |
-        // Example of how the new API might be used
-        SpMVResult result = spmv_new_feature(...);
+ - type: textarea
+   id: code-example
+   attributes:
+     label: Proposed API (if applicable)
+     description: If this involves a new API, show how it might look.
+     render: cpp
+     placeholder: |
+       // Example of how the new API might be used
+       SpMVResult result = spmv_new_feature(...);
+   validations:
+     required: false
 
-- type:checkboxes
-            id:spec - driven
-    attributes:
-         label:Spec - Driven Development
-       options:-
-         label:I understand this feature would require a spec in `openspec /
-               specs /` before implementation
-      required:true
-
-               -
-          type:checkboxes id:checklist attributes:label:Checklist options:-
-         label:I have checked that this feature has not been requested before
-      required:true -
-         label:I have read the existing specs in `openspec / specs /` required:false
+ - type: checkboxes
+   id: checklist
+   attributes:
+     label: Checklist
+     options:
+       - label: I have checked that this feature has not been requested before.
+         required: true
+       - label: This request belongs in the core SpMV library rather than in project tooling or documentation site experiments.
+         required: true

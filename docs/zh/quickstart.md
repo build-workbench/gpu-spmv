@@ -30,30 +30,37 @@ cd gpu-spmv
 
 ### 2. 构建项目
 
-使用 CMake Presets（推荐）：
+使用 CMake Presets（Linux 下推荐）：
 
 ```bash
-# Release 模式构建
-cmake --preset release
-cmake --build --preset release
+# Debug 构建，适合开发和测试
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+
+# Release 构建
+cmake --preset cuda-linux-release
+cmake --build --preset cuda-linux-release
 ```
 
 或使用传统方式：
 
 ```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+cmake -S . -B build-cuda-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=/usr/bin/gcc \
+  -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+  -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++
+cmake --build build-cuda-release
 ```
 
 ### 3. 运行测试
 
 ```bash
 # 运行所有测试
-ctest --preset default
+ctest --preset cuda-linux
 
 # 或直接运行测试程序
-./build-release/spmv_tests
+./build-cuda/spmv_tests
 ```
 
 ## 第一个程序
@@ -102,7 +109,7 @@ int main() {
 # 编译
 nvcc -o first_spmv first_spmv.cpp \
     -I./include \
-    -L./build-release -lgpu_spmv \
+    -L./build-cuda-release -lgpu_spmv \
     -lcudart
 
 # 运行
@@ -128,10 +135,20 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 nvidia-smi
 ```
 
-如果无 GPU，使用 CPU-only 模式测试：
+如果 shell 注入了 Conda 编译器，请优先使用 Linux CUDA preset，而不是通用 preset：
 
 ```bash
-cmake --preset minimal
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+ctest --preset cuda-linux
+```
+
+如果无 GPU，请使用 CPU-only 测试：
+
+```bash
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+cmake --build build-no-cuda
+ctest --test-dir build-no-cuda --output-on-failure
 ```
 
 ## 下一步

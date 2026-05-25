@@ -11,12 +11,36 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(SPMV_WITH_CUDA OFF)
 
 if(SPMV_REQUIRE_CUDA)
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+        string(TOLOWER "${CMAKE_CXX_COMPILER}" SPMV_CXX_COMPILER_LOWER)
+        if(SPMV_CXX_COMPILER_LOWER MATCHES "(conda|miniconda|miniforge|mambaforge|micromamba)")
+            message(FATAL_ERROR
+                "CUDA builds with Conda-managed host compilers are unsupported in gpu-spmv. "
+                "Use the `cuda-linux` or `cuda-linux-release` preset, or configure with "
+                "-DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ "
+                "-DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++."
+            )
+        endif()
+    endif()
+
     check_language(CUDA)
     if(NOT CMAKE_CUDA_COMPILER)
         message(FATAL_ERROR "CUDA toolkit with nvcc is required to build gpu-spmv. Set CUDAToolkit_ROOT or ensure nvcc is available on PATH, or configure with -DSPMV_REQUIRE_CUDA=OFF for a CPU-only fallback.")
     endif()
 
     enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    find_path(SPMV_CUDA_RUNTIME_INCLUDE_DIR
+        NAMES cuda_runtime.h
+        PATHS
+            ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+            /usr/local/cuda/include
+            /usr/include
+        DOC "Directory containing cuda_runtime.h"
+    )
+    if(NOT SPMV_CUDA_RUNTIME_INCLUDE_DIR)
+        message(FATAL_ERROR "Failed to locate cuda_runtime.h for host C++ compilation.")
+    endif()
     set(CMAKE_CUDA_STANDARD 17)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
     set(SPMV_WITH_CUDA ON)
@@ -39,14 +63,11 @@ set(SPMV_SOURCES
     src/spmv_context.cpp
     src/internal/kernel_selector.cpp
     src/bandwidth.cpp
-    src/pagerank_common.cpp
 )
 
 if(SPMV_WITH_CUDA)
     list(APPEND SPMV_SOURCES
         src/spmv_kernels.cu
-        src/benchmark.cu
-        src/pagerank.cu
     )
 else()
     list(APPEND SPMV_SOURCES
@@ -57,7 +78,9 @@ endif()
 add_library(spmv STATIC ${SPMV_SOURCES})
 target_include_directories(spmv PUBLIC ${CMAKE_SOURCE_DIR}/include)
 if(SPMV_WITH_CUDA)
+    target_include_directories(spmv PUBLIC ${SPMV_CUDA_RUNTIME_INCLUDE_DIR})
     target_compile_definitions(spmv PUBLIC SPMV_WITH_CUDA=1)
+    target_link_libraries(spmv PUBLIC CUDA::cudart)
     set_target_properties(spmv PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 else()
     target_compile_definitions(spmv PUBLIC SPMV_WITH_CUDA=0)
@@ -89,15 +112,12 @@ set(TEST_SOURCES
     tests/test_ell.cpp
     tests/test_kernel_selector.cpp
     tests/test_no_cuda.cpp
-    tests/test_pagerank_core.cpp
 )
 
 if(SPMV_WITH_CUDA)
     list(APPEND TEST_SOURCES
         tests/test_spmv.cu
         tests/test_bandwidth.cu
-        tests/test_benchmark.cu
-        tests/test_pagerank.cu
     )
 endif()
 
@@ -115,16 +135,6 @@ target_compile_options(spmv_tests PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(spmv_tests)
-
-if(SPMV_WITH_CUDA)
-    # ---------- 基准测试 ----------
-    add_executable(spmv_benchmark benchmarks/main.cu)
-    target_link_libraries(spmv_benchmark PRIVATE spmv)
-    set_target_properties(spmv_benchmark PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-    target_compile_options(spmv_benchmark PRIVATE
-        $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
-    )
-endif()
 
 # ---------- Installation ----------
 include(GNUInstallDirs)

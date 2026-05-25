@@ -8,7 +8,7 @@ This site is written for interviewers, open-source readers, and performance engi
 
 - SpMV is a classic **memory-bandwidth-bound** workload, so performance depends more on access patterns than raw arithmetic throughput.
 - The interesting part is not only which kernel exists, but **why it is chosen, when it is chosen, and how that choice is justified**.
-- This project combines CUDA performance work with RAII resource management, explicit error handling, spec-driven development, and readable documentation.
+- This project combines CUDA performance work with RAII resource management, explicit error handling, and readable documentation.
 
 ## What this whitepaper is meant to answer
 

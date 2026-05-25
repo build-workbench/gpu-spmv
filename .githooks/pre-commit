@@ -30,7 +30,7 @@ done
 if [ $FAILED -ne 0 ]; then
   echo ""
   echo "Fix formatting then re-stage:"
-  echo "  find src include tests benchmarks -type f \\( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \\) | xargs $CLANG_FORMAT -i"
+  echo "  find src include tests -type f \\( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \\) | xargs $CLANG_FORMAT -i"
   exit 1
 fi
 

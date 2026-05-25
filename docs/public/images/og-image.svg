@@ -76,7 +76,7 @@
     <text x="25" y="55" font-family="Inter, sans-serif" font-size="18" fill="#F1F5F9">Automatic Kernel Selection</text>
 
     <circle cx="10" cy="90" r="6" fill="#8B5CF6"/>
-    <text x="25" y="95" font-family="Inter, sans-serif" font-size="18" fill="#F1F5F9">Spec-Driven Development</text>
+    <text x="25" y="95" font-family="Inter, sans-serif" font-size="18" fill="#F1F5F9">Focused Core Library</text>
   </g>
 
   <!-- Footer -->

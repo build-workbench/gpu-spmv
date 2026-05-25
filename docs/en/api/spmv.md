@@ -166,10 +166,8 @@ int main() {
 ## Headers
 
 ```cpp
-#include <spmv/benchmark.h>    // Performance benchmarking
 #include <spmv/csr_matrix.h>   // CSR matrix
 #include <spmv/cuda_buffer.h>  // RAII memory management
 #include <spmv/ell_matrix.h>   // ELL matrix
-#include <spmv/pagerank.h>     // PageRank
 #include <spmv/spmv.h>         // Main interface + SpMV computation
 ```

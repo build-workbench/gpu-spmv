@@ -201,15 +201,14 @@ for (auto& x : inputs) {
 
 ## Benchmark Reproduction
 
-To reproduce these benchmarks:
+To reproduce the library build and collect your own timings:
 
 ```bash
 # Clone and build
 git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-
-# Run benchmarks
-./build/spmv_benchmark --matrix-size 100000 --nnz 5000000
+cmake --preset release
+cmake --build --preset release
 ```
+
+After that, profile the exact `spmv_csr` or `spmv_ell` call path you care about inside your own driver or application. The repository no longer ships a dedicated benchmark executable because keeping measurement logic outside the core library makes the maintenance surface smaller.

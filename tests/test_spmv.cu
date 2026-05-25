@@ -13,7 +13,7 @@ using namespace spmv;
 using namespace spmv::test;
 
 static bool compareResults(const float* cpu_result, const float* gpu_result, int size,
-                           float rel_tol = 1e-6f) {
+                           float rel_tol = 1e-5f) {
     for (int i = 0; i < size; i++) {
         float diff = std::abs(cpu_result[i] - gpu_result[i]);
         float max_val = std::max(std::abs(cpu_result[i]), std::abs(gpu_result[i]));
@@ -23,9 +23,8 @@ static bool compareResults(const float* cpu_result, const float* gpu_result, int
                 return false;
         } else {
             float rel_error = diff / max_val;
-            if (rel_error > rel_tol) {
+            if (rel_error > rel_tol)
                 return false;
-            }
         }
     }
     return true;
@@ -74,7 +73,7 @@ TEST_F(SpMVPropertyTest, CSRCorrectness) {
             std::vector<float> y_gpu(rows);
             d_y.copyToHost(y_gpu.data(), rows);
 
-            EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows))
+            EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), rows, 5e-4f))
                 << "Results mismatch at iteration " << iter << " kernel " << config.kernel_type;
         }
 

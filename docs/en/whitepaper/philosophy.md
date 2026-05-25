@@ -58,27 +58,13 @@ SpMVKernel select_kernel(const CSRMatrix* csr) {
 }
 ```
 
-### 3. Spec-Driven Development
+### 3. Minimal Governance
 
-Every feature begins with a specification:
+The project now favors a smaller maintenance surface:
 
-```mermaid
-flowchart TB
-    Spec[OpenSpec Specification]
-    Test[Test Cases]
-    Impl[Implementation]
-    Doc[Documentation]
-    
-    Spec --> Test
-    Spec --> Impl
-    Spec --> Doc
-    Test --> Impl
-```
-
-This ensures:
-- **Traceability**: Every design decision is documented
-- **Correctness**: Tests are derived from specifications
-- **Maintainability**: Changes follow a structured process
+- Keep the public API narrow and focused on core SpMV operations.
+- Put validation in tests and examples instead of parallel process frameworks.
+- Avoid shipping showcase-only modules inside the library itself.
 
 ---
 

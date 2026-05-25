@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress'
 import { withMermaid } from 'vitepress-plugin-mermaid'
-import llmstxt from 'vitepress-plugin-llms'
 
 const rawBase = process.env.VITEPRESS_BASE
 const base = rawBase
@@ -91,8 +90,7 @@ export default withMermaid(
                   { text: '执行流水线', link: '/zh/architecture/execution-pipeline' },
                   { text: 'Kernel 选择策略', link: '/zh/architecture/kernel-selection' },
                   { text: '内存布局', link: '/zh/architecture/memory-layout' },
-                  { text: '可靠性约束', link: '/zh/architecture/reliability' },
-                  { text: 'Spec-Driven 开发', link: '/zh/architecture/spec-driven' }
+                  { text: '可靠性约束', link: '/zh/architecture/reliability' }
                 ]
               },
               {
@@ -110,8 +108,7 @@ export default withMermaid(
                 items: [
                   { text: 'SpMV 计算', link: '/zh/api/spmv' },
                   { text: 'CSR 矩阵', link: '/zh/api/csr-matrix' },
-                  { text: 'ELL 矩阵', link: '/zh/api/ell-matrix' },
-                  { text: 'PageRank', link: '/zh/api/pagerank' }
+                  { text: 'ELL 矩阵', link: '/zh/api/ell-matrix' }
                 ]
               },
               {
@@ -120,8 +117,7 @@ export default withMermaid(
                   { text: '学术参考', link: '/zh/references' },
                   { text: '引用格式', link: '/zh/citation' },
                   { text: '常见问题', link: '/zh/faq' },
-                  { text: '贡献指南', link: '/zh/contributing' },
-                  { text: '更新日志', link: '/zh/changelog' }
+                  { text: '贡献指南', link: '/zh/contributing' }
                 ]
               }
             ]
@@ -180,8 +176,7 @@ export default withMermaid(
                   { text: 'Execution Pipeline', link: '/en/architecture/execution-pipeline' },
                   { text: 'Kernel Selection', link: '/en/architecture/kernel-selection' },
                   { text: 'Memory Layout', link: '/en/architecture/memory-layout' },
-                  { text: 'Reliability Constraints', link: '/en/architecture/reliability' },
-                  { text: 'Spec-Driven Dev', link: '/en/architecture/spec-driven' }
+                  { text: 'Reliability Constraints', link: '/en/architecture/reliability' }
                 ]
               },
               {
@@ -199,8 +194,7 @@ export default withMermaid(
                 items: [
                   { text: 'SpMV Computation', link: '/en/api/spmv' },
                   { text: 'CSR Matrix', link: '/en/api/csr-matrix' },
-                  { text: 'ELL Matrix', link: '/en/api/ell-matrix' },
-                  { text: 'PageRank', link: '/en/api/pagerank' }
+                  { text: 'ELL Matrix', link: '/en/api/ell-matrix' }
                 ]
               },
               {
@@ -209,8 +203,7 @@ export default withMermaid(
                   { text: 'References', link: '/en/references' },
                   { text: 'Citation', link: '/en/citation' },
                   { text: 'FAQ', link: '/en/faq' },
-                  { text: 'Contributing', link: '/en/contributing' },
-                  { text: 'Changelog', link: '/en/changelog' }
+                  { text: 'Contributing', link: '/en/contributing' }
                 ]
               }
             ]
@@ -241,8 +234,5 @@ export default withMermaid(
       outline: [2, 3]
     },
 
-    vite: {
-      plugins: [llmstxt()]
-    }
   })
 )

@@ -201,15 +201,14 @@ for (auto& x : inputs) {
 
 ## 基准测试复现
 
-复现这些基准测试：
+复现库构建并采集你自己的计时数据：
 
 ```bash
 # 克隆并构建
 git clone https://github.com/AICL-Lab/gpu-spmv.git
 cd gpu-spmv
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-
-# 运行基准测试
-./build/spmv_benchmark --matrix-size 100000 --nnz 5000000
+cmake --preset release
+cmake --build --preset release
 ```
+
+之后请在你自己的驱动程序或应用里，对目标 `spmv_csr` / `spmv_ell` 调用做计时和 profile。仓库不再内置单独的 benchmark 可执行程序，这样能让核心库的维护面更小。

@@ -38,15 +38,5 @@ Testing/
 .DS_Store
 Thumbs.db
 
-# Claude Code personal preferences
-CLAUDE.local.md
-
-# AI tool local settings
-.claude/settings.local.json
-.claude/skills/
-
-# OMC runtime state (not to be committed)
-.omc/
-
 # Git worktrees
 .worktrees/

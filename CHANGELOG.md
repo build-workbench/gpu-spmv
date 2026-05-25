@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Reduced the repository to the core CSR / ELL SpMV library and removed repository-specific AI governance files.
+- Simplified contributor workflow, GitHub templates, and GitHub Pages content to match the smaller core scope.
+- Added dedicated Linux CUDA presets backed by system GCC/G++ and fail-fast guidance for Conda host compilers.
+
+### Removed
+- OpenSpec specifications, Claude / Copilot repository instruction files, and local skill configuration.
+- Built-in PageRank and benchmark modules, their tests, and their documentation pages.
+- GitHub Pages changelog mirroring; the root `CHANGELOG.md` is now the only changelog.
+
 ## [1.0.0] - 2025-04-16
 
 ### 🎉 First Stable Release

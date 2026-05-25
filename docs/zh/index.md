@@ -43,7 +43,7 @@ import { siteData } from '../.vitepress/data/site'
     </article>
     <article class="spmv-surface-card spmv-section">
       <h3>工程可解释</h3>
-      <p>把执行流水线、数据布局、错误处理与 spec-driven workflow 全部显式化。</p>
+      <p>把执行流水线、数据布局与错误处理直接讲清楚，不再堆叠额外流程框架。</p>
     </article>
     <article class="spmv-surface-card spmv-section">
       <h3>适合面试与开源展示</h3>

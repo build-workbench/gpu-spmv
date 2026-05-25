@@ -43,7 +43,7 @@ import { siteData } from '../.vitepress/data/site'
     </article>
     <article class="spmv-surface-card spmv-section">
       <h3>Engineering clarity</h3>
-      <p>The execution pipeline, memory layout, reliability story, and spec-driven workflow are all visible.</p>
+      <p>The execution pipeline, memory layout, and reliability story are visible without extra process machinery.</p>
     </article>
     <article class="spmv-surface-card spmv-section">
       <h3>Interview-ready narrative</h3>

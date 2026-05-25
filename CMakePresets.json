@@ -26,6 +26,28 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CUDA_ARCHITECTURES": "80"
       }
+    },
+    {
+      "name": "cuda-linux",
+      "displayName": "CUDA (Linux system GCC/G++, Debug)",
+      "binaryDir": "${sourceDir}/build-cuda",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++"
+      }
+    },
+    {
+      "name": "cuda-linux-release",
+      "displayName": "CUDA (Linux system GCC/G++, Release)",
+      "binaryDir": "${sourceDir}/build-cuda-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++"
+      }
     }
   ],
   "buildPresets": [
@@ -40,12 +62,30 @@
     {
       "name": "minimal",
       "configurePreset": "minimal"
+    },
+    {
+      "name": "cuda-linux",
+      "configurePreset": "cuda-linux"
+    },
+    {
+      "name": "cuda-linux-release",
+      "configurePreset": "cuda-linux-release"
     }
   ],
   "testPresets": [
     {
       "name": "default",
       "configurePreset": "default",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "cuda-linux",
+      "configurePreset": "cuda-linux",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "cuda-linux-release",
+      "configurePreset": "cuda-linux-release",
       "output": { "outputOnFailure": true }
     }
   ]

@@ -47,9 +47,11 @@ struct CudaTimer {
 
     cudaError_t init_status() const { return status; }
 
-    cudaError_t record_start() { return (status == cudaSuccess) ? cudaEventRecord(start) : status; }
+    cudaError_t record_start() const {
+        return (status == cudaSuccess) ? cudaEventRecord(start) : status;
+    }
 
-    cudaError_t record_stop() {
+    cudaError_t record_stop() const {
         if (status != cudaSuccess) {
             return status;
         }
@@ -131,33 +133,20 @@ __device__ __forceinline__ float fetch_x(const float* x, cudaTextureObject_t tex
     return use_texture ? tex1Dfetch<float>(tex_x, idx) : x[idx];
 }
 
-// Merge Path 辅助结构
-struct MergeCoordinate {
-    int row;
-    int nz;
-};
+__device__ int merge_path_find_row(const int* row_ptrs, int num_rows, int nz_index) {
+    int low = 0;
+    int high = num_rows - 1;
 
-// Merge Path 搜索
-__device__ MergeCoordinate merge_path_search(int diagonal, const int* row_ptrs, int num_rows,
-                                             int nnz) {
-    int x_min = max(diagonal - nnz, 0);
-    int x_max = min(diagonal, num_rows);
-
-    while (x_min < x_max) {
-        int x_mid = (x_min + x_max) / 2;
-        int y_mid = diagonal - x_mid;
-
-        if (row_ptrs[x_mid] <= y_mid) {
-            x_min = x_mid + 1;
+    while (low < high) {
+        int mid = low + (high - low) / 2;
+        if (row_ptrs[mid + 1] <= nz_index) {
+            low = mid + 1;
         } else {
-            x_max = x_mid;
+            high = mid;
         }
     }
 
-    MergeCoordinate coord;
-    coord.row = x_min;
-    coord.nz = diagonal - x_min;
-    return coord;
+    return low;
 }
 
 // Merge Path Kernel
@@ -166,47 +155,30 @@ __global__ void spmv_csr_merge_path_kernel(int num_rows, int nnz, const int* row
                                            const float* x, cudaTextureObject_t tex_x,
                                            bool use_texture, float* y) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int total_work = num_rows + nnz;
-
-    // 每个线程处理的工作量
-    int work_per_thread = (total_work + gridDim.x * blockDim.x - 1) / (gridDim.x * blockDim.x);
-
-    int diagonal_start = tid * work_per_thread;
-    int diagonal_end = min(diagonal_start + work_per_thread, total_work);
-
-    if (diagonal_start >= total_work)
+    int total_threads = gridDim.x * blockDim.x;
+    if (tid >= total_threads || nnz <= 0)
         return;
 
-    MergeCoordinate start = merge_path_search(diagonal_start, row_ptrs, num_rows, nnz);
-    MergeCoordinate end = merge_path_search(diagonal_end, row_ptrs, num_rows, nnz);
+    int nz_start = static_cast<int>((static_cast<long long>(tid) * nnz) / total_threads);
+    int nz_end = static_cast<int>((static_cast<long long>(tid + 1) * nnz) / total_threads);
 
-    // 处理分配的工作
-    int current_row = start.row;
-    int current_nz = start.nz;
+    if (nz_start >= nz_end)
+        return;
+
+    int current_row = merge_path_find_row(row_ptrs, num_rows, nz_start);
     float sum = 0.0f;
 
-    while (current_row < end.row || (current_row == end.row && current_nz < end.nz)) {
-        if (current_row < num_rows) {
-            int row_end = row_ptrs[current_row + 1];
-
-            while (current_nz < row_end && (current_row < end.row || current_nz < end.nz)) {
-                sum += values[current_nz] * fetch_x(x, tex_x, use_texture, col_indices[current_nz]);
-                current_nz++;
-            }
-
-            if (current_nz == row_end) {
-                atomicAdd(&y[current_row], sum);
-                sum = 0.0f;
-                current_row++;
-                current_nz = (current_row < num_rows) ? row_ptrs[current_row] : nnz;
-            }
-        } else {
-            break;
+    for (int nz = nz_start; nz < nz_end; ++nz) {
+        while (current_row + 1 < num_rows && row_ptrs[current_row + 1] <= nz) {
+            atomicAdd(&y[current_row], sum);
+            sum = 0.0f;
+            current_row++;
         }
+
+        sum += values[nz] * fetch_x(x, tex_x, use_texture, col_indices[nz]);
     }
 
-    // 处理剩余的部分和
-    if (sum != 0.0f && current_row < num_rows) {
+    if (current_row < num_rows) {
         atomicAdd(&y[current_row], sum);
     }
 }

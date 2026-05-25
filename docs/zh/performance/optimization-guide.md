@@ -87,16 +87,19 @@ spmv_set_thresholds(thresholds);
 
 ## 6. 性能分析
 
-### 使用 Benchmark 框架
+### 自建简单计时循环
 
 ```cpp
-#include <spmv/benchmark.h>
+SpMVExecutionContext ctx;
+SpMVConfig config = spmv_auto_config(csr);
 
-BenchmarkResult bench = benchmark_spmv(csr, 100);  // 100 次运行
+for (int i = 0; i < 5; ++i) {
+    spmv_csr(csr, d_x, d_y, &config, csr->num_cols, &ctx);  // 预热
+}
 
-printf("Average: %.3f ms\n", bench.avg_ms);
-printf("Stddev: %.3f ms\n", bench.stddev_ms);
-printf("Bandwidth: %.1f GB/s\n", bench.bandwidth_gb_s);
+SpMVResult result = spmv_csr(csr, d_x, d_y, &config, csr->num_cols, &ctx);
+printf("Elapsed: %.3f ms\n", result.elapsed_ms);
+printf("Bandwidth: %.1f GB/s\n", result.bandwidth_gb_s);
 ```
 
 ### 使用 Nsight
@@ -144,7 +147,6 @@ ncu ./spmv_program
 - [ ] 迭代计算中复用执行上下文
 - [ ] 使用 `CudaBuffer` 管理内存
 - [ ] 验证带宽利用率 > 60%
-- [ ] 使用 benchmark 框架进行性能测试
 
 ## 参考
 

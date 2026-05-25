@@ -6,7 +6,6 @@ on:
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
-      - 'CHANGELOG.md'
   workflow_dispatch:
 
 permissions:
@@ -63,10 +62,6 @@ jobs:
       - name: Install docs dependencies
         working-directory: docs
         run: npm install --no-package-lock
-
-      - name: Sync changelog
-        working-directory: docs
-        run: npm run sync
 
       - name: Verify docs site
         working-directory: docs

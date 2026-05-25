@@ -18,8 +18,8 @@ GPU SpMV 需要以下 CUDA 版本：
 ::: tip 无 GPU 环境
 使用 `-DSPMV_REQUIRE_CUDA=OFF` 可在无 GPU 环境下构建 CPU-only 版本：
 ```bash
-cmake -S . -B build -DSPMV_REQUIRE_CUDA=OFF
-cmake --build build
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+cmake --build build-no-cuda
 ```
 :::
 
@@ -34,8 +34,9 @@ cmake --build build
 运行测试套件：
 
 ```bash
-cd build
-ctest --preset default
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+ctest --preset cuda-linux
 ```
 
 所有测试通过即表示安装成功。

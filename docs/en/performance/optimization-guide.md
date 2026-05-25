@@ -87,16 +87,19 @@ spmv_set_thresholds(thresholds);
 
 ## 6. Performance Profiling
 
-### Using Benchmark Framework
+### Build a Small Measurement Loop
 
 ```cpp
-#include <spmv/benchmark.h>
+SpMVExecutionContext ctx;
+SpMVConfig config = spmv_auto_config(csr);
 
-BenchmarkResult bench = benchmark_spmv(csr, 100);  // 100 runs
+for (int i = 0; i < 5; ++i) {
+    spmv_csr(csr, d_x, d_y, &config, csr->num_cols, &ctx);  // Warmup
+}
 
-printf("Average: %.3f ms\n", bench.avg_ms);
-printf("Stddev: %.3f ms\n", bench.stddev_ms);
-printf("Bandwidth: %.1f GB/s\n", bench.bandwidth_gb_s);
+SpMVResult result = spmv_csr(csr, d_x, d_y, &config, csr->num_cols, &ctx);
+printf("Elapsed: %.3f ms\n", result.elapsed_ms);
+printf("Bandwidth: %.1f GB/s\n", result.bandwidth_gb_s);
 ```
 
 ### Using Nsight
@@ -116,7 +119,6 @@ ncu ./spmv_program
 - [ ] Reuse execution context in iterations
 - [ ] Use `CudaBuffer` for memory management
 - [ ] Verify bandwidth utilization > 60%
-- [ ] Use benchmark framework for testing
 
 ## References
 

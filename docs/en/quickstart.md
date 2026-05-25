@@ -30,30 +30,37 @@ cd gpu-spmv
 
 ### 2. Build
 
-Using CMake Presets (recommended):
+Using CMake Presets (recommended on Linux):
 
 ```bash
+# Debug build for development and tests
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+
 # Release build
-cmake --preset release
-cmake --build --preset release
+cmake --preset cuda-linux-release
+cmake --build --preset cuda-linux-release
 ```
 
 Or using traditional method:
 
 ```bash
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+cmake -S . -B build-cuda-release \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=/usr/bin/gcc \
+  -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+  -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++
+cmake --build build-cuda-release
 ```
 
 ### 3. Run Tests
 
 ```bash
 # Run all tests
-ctest --preset default
+ctest --preset cuda-linux
 
 # Or run test binary directly
-./build-release/spmv_tests
+./build-cuda/spmv_tests
 ```
 
 ## Your First Program
@@ -102,7 +109,7 @@ int main() {
 # Compile
 nvcc -o first_spmv first_spmv.cpp \
     -I./include \
-    -L./build-release -lgpu_spmv \
+    -L./build-cuda-release -lgpu_spmv \
     -lcudart
 
 # Run
@@ -128,10 +135,20 @@ Check if GPU is available:
 nvidia-smi
 ```
 
+If your shell injects Conda compilers, use the Linux CUDA presets instead of the generic presets:
+
+```bash
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+ctest --preset cuda-linux
+```
+
 For CPU-only testing:
 
 ```bash
-cmake --preset minimal
+cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
+cmake --build build-no-cuda
+ctest --test-dir build-no-cuda --output-on-failure
 ```
 
 ## Next Steps

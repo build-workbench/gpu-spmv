@@ -24,6 +24,7 @@ function collectTextFiles(dirPath) {
 
 const files = {
   readme: join(root, '..', 'README.md'),
+  readmeZh: join(root, '..', 'README.zh-CN.md'),
   config: join(root, '.vitepress', 'config.ts'),
   pages: join(root, '..', '.github', 'workflows', 'pages.yml'),
   index: join(root, 'index.md'),
@@ -168,7 +169,7 @@ if (!contents.config.includes("link: '/en/performance/methodology'")) {
 
 const docsCorpus = collectTextFiles(join(root, 'zh'))
   .concat(collectTextFiles(join(root, 'en')))
-  .concat([join(root, '..', 'README.md')])
+  .concat([join(root, '..', 'README.md'), join(root, '..', 'README.zh-CN.md')])
   .map((filePath) => readFileSync(filePath, 'utf8'))
   .join('\n')
 

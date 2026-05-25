@@ -11,20 +11,11 @@
 - [ ] 🔧 Build/CI improvement
 - [ ] ♻️ Refactoring (no functional changes)
 
-## Spec Updates
-
-This project follows **Spec-Driven Development**. If this PR modifies behavior:
-
-- [ ] Updated `openspec/specs/<feature>/spec.md`
-- [ ] Updated `openspec/specs/public-api/spec.md` (if API changed)
-- [ ] Created proposal in `openspec/changes/active/` (for new features)
-
 ## Testing
 
-- [ ] All tests pass: `ctest --preset default`
+- [ ] All relevant tests pass (`ctest --preset cuda-linux` on Linux CUDA, or `ctest --test-dir build-no-cuda --output-on-failure` for CPU-only)
 - [ ] Added new tests for new functionality
-- [ ] Property tests run with ≥ 100 iterations
-- [ ] Code formatted: `find src include tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i`
+- [ ] Code formatted: `find src include tests -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i`
 
 ## Code Quality
 
@@ -37,7 +28,6 @@ This project follows **Spec-Driven Development**. If this PR modifies behavior:
 
 - [ ] Updated README.md and/or README.zh-CN.md (if applicable)
 - [ ] Updated docs/ (if user-facing change)
-- [ ] Updated CHANGELOG.md
 
 ## Additional Notes
 

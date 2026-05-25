@@ -3,14 +3,14 @@ message: "If you use this software, please cite it as below."
 title: "GPU SpMV"
 version: "1.0.0"
 date-released: "2026-04-01"
-url: "https://github.com/LessUp/gpu-spmv"
+url: "https://github.com/AICL-Lab/gpu-spmv"
 license:
   - spdx-id: "MIT"
     expression: "MIT"
 authors:
   - given-names: "LessUp"
     name-particle: ""
-repository-code: "https://github.com/LessUp/gpu-spmv"
+repository-code: "https://github.com/AICL-Lab/gpu-spmv"
 keywords:
   - "cuda"
   - "gpu"

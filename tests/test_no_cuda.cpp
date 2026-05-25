@@ -1,6 +1,4 @@
-#include "spmv/benchmark.h"
 #include "spmv/csr_matrix.h"
-#include "spmv/pagerank.h"
 #include "spmv/spmv.h"
 
 #include <gtest/gtest.h>
@@ -23,20 +21,6 @@ TEST(NoCudaModeTest, SpMVCsrFailsGracefullyWithoutCudaBackend) {
 
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::KERNEL_LAUNCH));
     EXPECT_EQ(result.y, y.data());
-
-    csr_destroy(csr);
-}
-
-TEST(NoCudaModeTest, BenchmarkFailsGracefullyWithoutCudaBackend) {
-    std::vector<float> dense = {0.0f, 1.0f, 1.0f, 0.0f};
-    std::vector<float> x = {1.0f, 1.0f};
-
-    CSRMatrix* csr = csr_create(0, 0, 0);
-    ASSERT_NE(csr, nullptr);
-    ASSERT_EQ(csr_from_dense(csr, dense.data(), 2, 2), static_cast<int>(SpMVError::SUCCESS));
-
-    BenchmarkResult benchmark_result = benchmark_csr(csr, x.data(), nullptr, nullptr);
-    EXPECT_EQ(benchmark_result.error_code, static_cast<int>(SpMVError::KERNEL_LAUNCH));
 
     csr_destroy(csr);
 }

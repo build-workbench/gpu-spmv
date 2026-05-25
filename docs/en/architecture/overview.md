@@ -1,23 +1,15 @@
 # Architecture Overview
 
-The architectural story of GPU SpMV is not just “what modules exist,” but **how matrix statistics, kernel choice, execution context, and validation fit together into an explainable engineering system**.
+GPU SpMV now keeps the architecture deliberately small: sparse storage, kernel execution, and a narrow public API.
 
 ## System Architecture
 
 ```mermaid
 graph TB
-    subgraph Application["Application Layer"]
-        PR[PageRank]
-        IS[Iterative Solver]
-        GNN[Graph Neural Network]
-        SC[Scientific Computing]
-    end
-
     subgraph API["API Layer"]
         spmv_csr[spmv_csr]
         spmv_ell[spmv_ell]
-        benchmark[benchmark]
-        pagerank[pagerank]
+        auto_cfg[spmv_auto_config]
     end
 
     subgraph Kernel["Kernel Layer"]
@@ -32,7 +24,6 @@ graph TB
         ELL_M["ELL Matrix"]
     end
 
-    Application --> API
     API --> Kernel
     Kernel --> Storage
 ```
@@ -41,23 +32,19 @@ graph TB
 
 | Principle | Implementation | Benefit |
 |:----------|:---------------|:--------|
-| Layered Architecture | Storage, compute, application separation | Separation of concerns, easy maintenance |
-| Strategy Pattern | Pluggable kernel selection | Flexible algorithm extension |
-| RAII Management | CudaBuffer auto-release | Prevent memory leaks |
-| Semantic Errors | SpMVError enum | Clear diagnostic information |
+| Layered Architecture | Storage and compute remain separated | Easier maintenance |
+| Strategy Selection | Kernel choice based on matrix statistics | Predictable execution |
+| RAII Management | `CudaBuffer<T>` and execution contexts | Safer resource lifetime |
+| Semantic Errors | `SpMVError` and explicit return values | Clear diagnostics |
 
-## Four Layers
+## Core Layers
 
 ### Storage Layer
 
-Defines memory layout of sparse matrices:
-
-- **CSR Matrix** — General format, memory efficient
-- **ELL Matrix** — Column-major storage, GPU optimized
+- **CSR Matrix** — general-purpose sparse format
+- **ELL Matrix** — column-major layout for regular sparsity
 
 ### Kernel Layer
-
-Implements four optimized SpMV kernels:
 
 | Kernel | Thread Strategy | Best For | Bandwidth |
 |:-------|:----------------|:---------|:---------:|
@@ -68,27 +55,15 @@ Implements four optimized SpMV kernels:
 
 ### API Layer
 
-Provides user-friendly interfaces:
-
-- `spmv_csr()` — CSR format SpMV
-- `spmv_ell()` — ELL format SpMV
-- `spmv_auto_config()` — Automatic kernel selection
-- `pagerank()` — PageRank algorithm
-
-### Application Layer
-
-Applications built on SpMV:
-
-- **PageRank** — Web page ranking
-- **Iterative Solvers** — CG, GMRES, etc.
-- **Graph Neural Networks** — Sparse graph convolution
-- **Scientific Computing** — FEM, CFD
+- `spmv_csr()` — CSR format execution
+- `spmv_ell()` — ELL format execution
+- `spmv_auto_config()` — kernel auto-selection
 
 ## The three most important ideas on this page
 
-1. **How data flows** from sparse input to validated output.
-2. **Why automatic selection is justified** by `avg_nnz_per_row` and skewness rather than opaque tuning.
-3. **Why the system is trustworthy** thanks to resource management, semantic errors, CPU reference paths, and property tests.
+1. **Data flows** from sparse storage to a chosen kernel and then to validated output.
+2. **Kernel selection is explicit**, driven by `avg_nnz_per_row` and skewness.
+3. **Reliability is engineered**, not implied, through RAII, semantic errors, and focused tests.
 
 ## Related Documentation
 
@@ -96,4 +71,3 @@ Applications built on SpMV:
 - [Execution Pipeline](/en/architecture/execution-pipeline)
 - [Memory Layout](/en/architecture/memory-layout)
 - [Reliability Constraints](/en/architecture/reliability)
-- [Spec-Driven Development](/en/architecture/spec-driven)

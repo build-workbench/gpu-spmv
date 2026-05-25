@@ -166,10 +166,8 @@ int main() {
 ## 头文件
 
 ```cpp
-#include <spmv/benchmark.h>    // 性能测试
 #include <spmv/csr_matrix.h>   // CSR 矩阵
 #include <spmv/cuda_buffer.h>  // RAII 内存管理
 #include <spmv/ell_matrix.h>   // ELL 矩阵
-#include <spmv/pagerank.h>     // PageRank
 #include <spmv/spmv.h>         // 主接口 + SpMV 计算
 ```

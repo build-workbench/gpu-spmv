@@ -29,7 +29,7 @@ jobs:
 
       - name: Check formatting
         run: |
-          find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
+          find src include tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
             | xargs clang-format-18 --dry-run --Werror
 
   build-cpu:
@@ -53,5 +53,4 @@ jobs:
       - name: Verify build artifacts
         run: |
           test ! -e build/spmv_tests || echo "Warning: spmv_tests found in no-CUDA build"
-          test ! -e build/spmv_benchmark || echo "Warning: spmv_benchmark found in no-CUDA build"
           echo "CPU-only build completed successfully"

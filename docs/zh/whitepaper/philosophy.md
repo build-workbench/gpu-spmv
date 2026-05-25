@@ -58,27 +58,13 @@ SpMVKernel select_kernel(const CSRMatrix* csr) {
 }
 ```
 
-### 3. Spec-Driven 开发
+### 3. 极简治理
 
-每个功能始于规范：
+项目现在优先控制维护面：
 
-```mermaid
-flowchart TB
-    Spec[OpenSpec 规范]
-    Test[测试用例]
-    Impl[实现]
-    Doc[文档]
-    
-    Spec --> Test
-    Spec --> Impl
-    Spec --> Doc
-    Test --> Impl
-```
-
-这确保：
-- **可追溯性**：每个设计决策都有文档
-- **正确性**：测试从规范推导
-- **可维护性**：变更遵循结构化流程
+- 对外 API 只保留核心 SpMV 能力。
+- 把验证放进测试和示例，而不是并行维护一套流程框架。
+- 不再把展示型模块直接塞进库本体。
 
 ---
 

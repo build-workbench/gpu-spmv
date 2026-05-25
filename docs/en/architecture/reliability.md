@@ -6,7 +6,7 @@ Reliability in this project is not “it seems to run.” It comes from three li
 
 1. **Explicit resource lifetime** through `CudaBuffer<T>` and execution-context abstractions instead of raw `cudaMalloc` / `cudaFree`.
 2. **Explicit error semantics** through `SpMVError` and CUDA checking macros.
-3. **Spec and test closure** through OpenSpec requirements and property-test coverage.
+3. **Tests that stay close to the code** through CPU reference paths and focused regression coverage.
 
 ## Why this matters for a showcase project
 
