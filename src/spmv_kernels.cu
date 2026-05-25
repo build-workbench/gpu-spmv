@@ -1,12 +1,13 @@
-#include "internal/csr_device.h"
-#include "internal/ell_device.h"
-#include "internal/texture_cache.h"
 #include "spmv/bandwidth.h"
 #include "spmv/spmv.h"
 
 #include <cuda_runtime.h>
 
 #include <chrono>
+
+#include "internal/csr_device.h"
+#include "internal/ell_device.h"
+#include "internal/texture_cache.h"
 
 namespace spmv {
 
@@ -400,16 +401,16 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
                 return result;
             }
             spmv_csr_merge_path_kernel<<<num_blocks, block_size>>>(
-                A->num_rows, A->nnz, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A),
-                d_x, tex_x, use_texture, d_y);
+                A->num_rows, A->nnz, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x,
+                tex_x, use_texture, d_y);
             break;
         }
         case SpMVConfig::VECTOR_CSR: {
             int warps_per_block = block_size / 32;
             int num_warps = (A->num_rows + warps_per_block - 1) / warps_per_block;
-            spmv_csr_vector_kernel<<<num_warps, block_size>>>(
-                A->num_rows, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x, tex_x,
-                use_texture, d_y);
+            spmv_csr_vector_kernel<<<num_warps, block_size>>>(A->num_rows, csr_d_row_ptrs(A),
+                                                              csr_d_col_indices(A), csr_d_values(A),
+                                                              d_x, tex_x, use_texture, d_y);
             break;
         }
         case SpMVConfig::SCALAR_CSR:

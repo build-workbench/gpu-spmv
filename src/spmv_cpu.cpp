@@ -1,7 +1,8 @@
-#include "internal/kernel_selector.h"
 #include "spmv/spmv.h"
 
 #include <cstring>
+
+#include "internal/kernel_selector.h"
 
 namespace spmv {
 

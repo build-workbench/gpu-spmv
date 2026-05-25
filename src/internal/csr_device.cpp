@@ -124,7 +124,8 @@ int csr_upload_device_data(CSRMatrix* mat) {
     };
 
     if (mat->nnz > 0) {
-        cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_values), mat->nnz * sizeof(float));
+        cudaError_t err =
+            cudaMalloc(reinterpret_cast<void**>(&new_d_values), mat->nnz * sizeof(float));
         if (err != cudaSuccess) {
             cleanup();
             return static_cast<int>(SpMVError::CUDA_MALLOC);
@@ -137,15 +138,16 @@ int csr_upload_device_data(CSRMatrix* mat) {
         }
     }
 
-    cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&new_d_row_ptrs),
-                                 (mat->num_rows + 1) * sizeof(int));
+    cudaError_t err =
+        cudaMalloc(reinterpret_cast<void**>(&new_d_row_ptrs), (mat->num_rows + 1) * sizeof(int));
     if (err != cudaSuccess) {
         cleanup();
         return static_cast<int>(SpMVError::CUDA_MALLOC);
     }
 
     if (mat->nnz > 0) {
-        err = cudaMemcpy(new_d_values, mat->values, mat->nnz * sizeof(float), cudaMemcpyHostToDevice);
+        err =
+            cudaMemcpy(new_d_values, mat->values, mat->nnz * sizeof(float), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             cleanup();
             return static_cast<int>(SpMVError::CUDA_MEMCPY);

@@ -2,8 +2,7 @@
 
 namespace spmv {
 
-SpMVConfig select_kernel(const CSRStats& stats, int num_cols,
-                         const SpMVThresholds& thresholds) {
+SpMVConfig select_kernel(const CSRStats& stats, int num_cols, const SpMVThresholds& thresholds) {
     SpMVConfig config(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE, false);
 
     config.use_texture = (num_cols > thresholds.texture_cols_threshold);

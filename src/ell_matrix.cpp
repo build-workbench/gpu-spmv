@@ -1,4 +1,3 @@
-#include "internal/ell_device.h"
 #include "spmv/ell_matrix.h"
 
 #include <algorithm>
@@ -6,6 +5,8 @@
 #include <cstring>
 #include <fstream>
 #include <new>
+
+#include "internal/ell_device.h"
 
 namespace spmv {
 
@@ -200,9 +201,13 @@ float ell_get_element(const ELLMatrix* mat, int row, int col) {
     return 0.0f;
 }
 
-int ell_to_gpu(ELLMatrix* mat) { return ell_upload_device_data(mat); }
+int ell_to_gpu(ELLMatrix* mat) {
+    return ell_upload_device_data(mat);
+}
 
-int ell_from_gpu(ELLMatrix* mat) { return ell_download_device_data(mat); }
+int ell_from_gpu(ELLMatrix* mat) {
+    return ell_download_device_data(mat);
+}
 
 int ell_serialize(const ELLMatrix* mat, const char* filename) {
     if (!mat || !filename) {

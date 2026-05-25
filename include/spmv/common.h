@@ -1,12 +1,12 @@
 #ifndef SPMV_COMMON_H
 #define SPMV_COMMON_H
 
-#include "cuda_compat.h"
-
 #include <cstdint>
 #include <cstdio>
 #include <stdexcept>
 #include <string>
+
+#include "cuda_compat.h"
 
 namespace spmv {
 

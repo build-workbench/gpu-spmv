@@ -12,8 +12,7 @@ namespace spmv {
  * immutable inputs (stats, dimensions, thresholds) and returns a deterministic
  * SpMVConfig.  No global state, no matrix internals.
  */
-SpMVConfig select_kernel(const CSRStats& stats, int num_cols,
-                         const SpMVThresholds& thresholds);
+SpMVConfig select_kernel(const CSRStats& stats, int num_cols, const SpMVThresholds& thresholds);
 
 }  // namespace spmv
 

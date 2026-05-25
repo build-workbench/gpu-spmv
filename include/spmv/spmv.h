@@ -130,8 +130,8 @@ class SpMVExecutionContext {
     bool is_texture_bound() const { return tex_x_ != 0; }
 
    private:
-    friend int spmv_prepare_texture(SpMVExecutionContext* context, const float* d_x, size_t x_length,
-                                    bool requested, cudaTextureObject_t* tex_out,
+    friend int spmv_prepare_texture(SpMVExecutionContext* context, const float* d_x,
+                                    size_t x_length, bool requested, cudaTextureObject_t* tex_out,
                                     bool* use_texture_out);
 
     cudaTextureObject_t tex_x_ = 0;

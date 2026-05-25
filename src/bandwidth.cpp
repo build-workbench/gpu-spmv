@@ -1,4 +1,5 @@
 #include "spmv/bandwidth.h"
+
 #include "spmv/cuda_compat.h"
 
 #include <algorithm>

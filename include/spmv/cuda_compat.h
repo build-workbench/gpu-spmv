@@ -121,10 +121,8 @@ inline cudaError_t cudaMemset(void* dst, int value, size_t count) {
     return cudaSuccess;
 }
 
-inline cudaError_t cudaCreateTextureObject(cudaTextureObject_t* tex,
-                                           const cudaResourceDesc*,
-                                           const cudaTextureDesc*,
-                                           const void*) {
+inline cudaError_t cudaCreateTextureObject(cudaTextureObject_t* tex, const cudaResourceDesc*,
+                                           const cudaTextureDesc*, const void*) {
     static cudaTextureObject_t next_texture = 1;
     if (!tex) {
         return cudaErrorInvalidValue;

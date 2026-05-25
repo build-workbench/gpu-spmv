@@ -1,4 +1,3 @@
-#include "internal/csr_device.h"
 #include "spmv/csr_matrix.h"
 
 #include <algorithm>
@@ -7,6 +6,8 @@
 #include <cstring>
 #include <fstream>
 #include <new>
+
+#include "internal/csr_device.h"
 
 namespace spmv {
 
@@ -132,9 +133,13 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
     return 0.0f;
 }
 
-int csr_to_gpu(CSRMatrix* mat) { return csr_upload_device_data(mat); }
+int csr_to_gpu(CSRMatrix* mat) {
+    return csr_upload_device_data(mat);
+}
 
-int csr_from_gpu(CSRMatrix* mat) { return csr_download_device_data(mat); }
+int csr_from_gpu(CSRMatrix* mat) {
+    return csr_download_device_data(mat);
+}
 
 int csr_serialize(const CSRMatrix* mat, const char* filename) {
     if (!mat || !filename) {

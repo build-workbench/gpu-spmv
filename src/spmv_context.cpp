@@ -22,8 +22,8 @@ int spmv_prepare_texture(SpMVExecutionContext* context, const float* d_x, size_t
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    bool needs_rebuild = !context->texture_enabled_ || context->tex_x_ == 0 || context->cached_x_ != d_x ||
-                         context->cached_x_length_ != x_length;
+    bool needs_rebuild = !context->texture_enabled_ || context->tex_x_ == 0 ||
+                         context->cached_x_ != d_x || context->cached_x_length_ != x_length;
     if (needs_rebuild) {
         context->reset();
 

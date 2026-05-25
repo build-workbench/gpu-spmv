@@ -1,13 +1,12 @@
 #ifndef SPMV_CUDA_BUFFER_H
 #define SPMV_CUDA_BUFFER_H
 
-#include "cuda_compat.h"
-
 #include <cstddef>
 #include <utility>
 #include <vector>
 
 #include "common.h"
+#include "cuda_compat.h"
 
 namespace spmv {
 
