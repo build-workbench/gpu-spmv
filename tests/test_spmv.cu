@@ -2,7 +2,7 @@
 #include "spmv/cuda_buffer.h"
 #include "spmv/ell_matrix.h"
 #include "spmv/spmv.h"
-#include "spmv/test_utils.h"
+#include "test_utils.h"
 
 #include <algorithm>
 #include <cmath>
@@ -61,9 +61,9 @@ TEST_F(SpMVPropertyTest, CSRCorrectness) {
         CudaBuffer<float> d_y(rows);
         d_x.copyFromHost(x.data(), cols);
 
-        std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
-                                           SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
-                                           SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)};
+        std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256),
+                                           SpMVConfig(SpMVConfig::VECTOR_CSR, 256),
+                                           SpMVConfig(SpMVConfig::MERGE_PATH, 256)};
 
         for (const auto& config : configs) {
             SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
@@ -238,7 +238,7 @@ TEST(SpMVUnitTest, KernelSelector) {
     csr_destroy(csr);
 }
 
-TEST(SpMVUnitTest, ExecutionContextReusesTexture) {
+TEST(SpMVUnitTest, DiagonalMatrixCorrectness) {
     std::vector<float> dense(100, 0.0f);
     for (int i = 0; i < 10; ++i) {
         dense[i * 10 + i] = 1.0f;
@@ -253,16 +253,9 @@ TEST(SpMVUnitTest, ExecutionContextReusesTexture) {
     CudaBuffer<float> d_y(10);
     d_x.copyFromHost(x.data(), 10);
 
-    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, true);
-    SpMVExecutionContext context;
-
-    SpMVResult first = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
-    ASSERT_EQ(first.error_code, static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_TRUE(context.is_texture_bound());
-
-    SpMVResult second = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10, &context);
-    ASSERT_EQ(second.error_code, static_cast<int>(SpMVError::SUCCESS));
-    EXPECT_TRUE(context.is_texture_bound());
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 10);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
 
     std::vector<float> y_gpu(10);
     d_y.copyToHost(y_gpu.data(), 10);
@@ -285,7 +278,7 @@ TEST(SpMVUnitTest, InvalidBlockSizeRejected) {
     CudaBuffer<float> d_y(3);
     d_x.copyFromHost(x.data(), 3);
 
-    SpMVConfig config(SpMVConfig::VECTOR_CSR, 48, false);
+    SpMVConfig config(SpMVConfig::VECTOR_CSR, 48);
     SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
 
@@ -304,7 +297,7 @@ TEST(SpMVUnitTest, InvalidELLKernelRejected) {
     CudaBuffer<float> d_y(3);
     d_x.copyFromHost(x.data(), 3);
 
-    SpMVConfig config(SpMVConfig::VECTOR_CSR, 256, false);
+    SpMVConfig config(SpMVConfig::VECTOR_CSR, 256);
     SpMVResult result = spmv_ell(ell, d_x.get(), d_y.get(), &config, 3);
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_ARGUMENT));
 
@@ -321,9 +314,9 @@ TEST(SpMVUnitTest, ZeroNnzMatricesProduceZeroOutputForAllCSRKernels) {
     CudaBuffer<float> d_y(4);
     d_x.copyFromHost(x.data(), x.size());
 
-    std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256, false),
-                                       SpMVConfig(SpMVConfig::VECTOR_CSR, 256, false),
-                                       SpMVConfig(SpMVConfig::MERGE_PATH, 256, false)};
+    std::vector<SpMVConfig> configs = {SpMVConfig(SpMVConfig::SCALAR_CSR, 256),
+                                       SpMVConfig(SpMVConfig::VECTOR_CSR, 256),
+                                       SpMVConfig(SpMVConfig::MERGE_PATH, 256)};
 
     for (const auto& config : configs) {
         ASSERT_EQ(cudaMemset(d_y.get(), 0x7f, 4 * sizeof(float)), cudaSuccess);
@@ -369,7 +362,7 @@ TEST(SpMVUnitTest, MergePathHandlesHighlySkewedRows) {
     CudaBuffer<float> d_y(rows);
     d_x.copyFromHost(x.data(), x.size());
 
-    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, false);
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256);
     SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
 
@@ -398,7 +391,7 @@ TEST(SpMVUnitTest, MergePathHandlesInterleavedEmptyRows) {
     CudaBuffer<float> d_y(rows);
     d_x.copyFromHost(x.data(), x.size());
 
-    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, false);
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256);
     SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
 
@@ -448,7 +441,7 @@ TEST(SpMVUnitTest, ZeroLengthVectorProducesZeroOutput) {
     CudaBuffer<float> d_y(3);
     ASSERT_EQ(cudaMemset(d_y.get(), 0x55, 3 * sizeof(float)), cudaSuccess);
 
-    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, false);
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256);
     SpMVResult result = spmv_csr(csr, nullptr, d_y.get(), &config, 0);
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
 
@@ -466,7 +459,6 @@ TEST(SpMVUnitTest, AutoConfigHandlesNullInput) {
 
     EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
     EXPECT_EQ(config.block_size, 256);
-    EXPECT_FALSE(config.use_texture);
 }
 
 TEST(SpMVUnitTest, BenchmarkAutoConfigReturnsSafeDefaultForDegenerateMatrix) {
@@ -477,7 +469,6 @@ TEST(SpMVUnitTest, BenchmarkAutoConfigReturnsSafeDefaultForDegenerateMatrix) {
 
     EXPECT_EQ(config.kernel_type, SpMVConfig::SCALAR_CSR);
     EXPECT_EQ(config.block_size, 256);
-    EXPECT_FALSE(config.use_texture);
 
     csr_destroy(csr);
 }
@@ -603,7 +594,7 @@ TEST(SpMVUnitTest, MissingUploadedELLRejected) {
     ell_destroy(ell);
 }
 
-TEST(SpMVUnitTest, MergePathTexturePathMatchesCpuReference) {
+TEST(SpMVUnitTest, MergePathLargeVectorMatchesCpuReference) {
     const int rows = 5;
     const int cols = 11001;
     std::vector<float> dense(rows * cols, 0.0f);
@@ -626,9 +617,8 @@ TEST(SpMVUnitTest, MergePathTexturePathMatchesCpuReference) {
     CudaBuffer<float> d_y(rows);
     d_x.copyFromHost(x.data(), x.size());
 
-    SpMVConfig config(SpMVConfig::MERGE_PATH, 256, true);
-    SpMVExecutionContext context;
-    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols, &context);
+    SpMVConfig config(SpMVConfig::MERGE_PATH, 256);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
     ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
 
     std::vector<float> y_gpu(rows, 0.0f);

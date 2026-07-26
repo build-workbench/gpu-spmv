@@ -89,56 +89,22 @@ class CudaException : public std::runtime_error {
     cudaError_t error_;
 };
 
-/**
- * @brief Check CUDA memory allocation and return error code on failure.
- * @param call The CUDA call to execute.
- *
- * This macro executes the CUDA call and returns CUDA_MALLOC error
- * if the call fails. Use for cudaMalloc and similar functions.
- */
-#define CUDA_CHECK_MALLOC(call)                                                     \
-    do {                                                                            \
-        cudaError_t err = call;                                                     \
-        if (err != cudaSuccess) {                                                   \
-            fprintf(stderr, "CUDA malloc error at %s:%d: %s\n", __FILE__, __LINE__, \
-                    cudaGetErrorString(err));                                       \
-            return static_cast<int>(spmv::SpMVError::CUDA_MALLOC);                  \
-        }                                                                           \
+#define SPMV_CUDA_CHECK(call, error_code)                                              \
+    do {                                                                               \
+        cudaError_t spmv_err_ = (call);                                                \
+        if (spmv_err_ != cudaSuccess) {                                                \
+            fprintf(stderr, "[gpu-spmv] CUDA error at %s:%d: %s\n", __FILE__, __LINE__, \
+                    cudaGetErrorString(spmv_err_));                                    \
+            return static_cast<int>(error_code);                                       \
+        }                                                                              \
     } while (0)
 
-/**
- * @brief Check CUDA memory copy and return error code on failure.
- * @param call The CUDA call to execute.
- *
- * This macro executes the CUDA call and returns CUDA_MEMCPY error
- * if the call fails. Use for cudaMemcpy and similar functions.
- */
-#define CUDA_CHECK_MEMCPY(call)                                                     \
-    do {                                                                            \
-        cudaError_t err = call;                                                     \
-        if (err != cudaSuccess) {                                                   \
-            fprintf(stderr, "CUDA memcpy error at %s:%d: %s\n", __FILE__, __LINE__, \
-                    cudaGetErrorString(err));                                       \
-            return static_cast<int>(spmv::SpMVError::CUDA_MEMCPY);                  \
-        }                                                                           \
-    } while (0)
-
-/// @brief Backward compatible alias for CUDA_CHECK_MALLOC
-#define CUDA_CHECK(call) CUDA_CHECK_MALLOC(call)
-
-/**
- * @brief Check CUDA call and throw exception on failure.
- * @param call The CUDA call to execute.
- *
- * This macro executes the CUDA call and throws CudaException
- * if the call fails.
- */
-#define CUDA_CHECK_THROW(call)              \
-    do {                                    \
-        cudaError_t err = call;             \
-        if (err != cudaSuccess) {           \
-            throw spmv::CudaException(err); \
-        }                                   \
+#define SPMV_CUDA_CHECK_THROW(call)           \
+    do {                                      \
+        cudaError_t spmv_err_ = (call);       \
+        if (spmv_err_ != cudaSuccess) {       \
+            throw spmv::CudaException(spmv_err_); \
+        }                                     \
     } while (0)
 
 }  // namespace spmv

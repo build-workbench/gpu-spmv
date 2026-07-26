@@ -19,13 +19,10 @@ jobs:
     name: Format Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format-18
+        run: sudo apt-get update && sudo apt-get install -y clang-format-18
 
       - name: Check formatting
         run: |
@@ -33,24 +30,73 @@ jobs:
             | xargs clang-format-18 --dry-run --Werror
 
   build-cpu:
-    name: Build CPU-only
+    name: Build & Test (CPU-only)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: cpu-${{ runner.os }}
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++ ninja-build
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ ninja-build
 
       - name: Configure
-        run: cmake -S . -B build -DSPMV_REQUIRE_CUDA=OFF -DCMAKE_BUILD_TYPE=Debug -G Ninja
+        run: >
+          cmake -S . -B build -G Ninja
+          -DSPMV_REQUIRE_CUDA=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
         run: cmake --build build --parallel
 
-      - name: Verify build artifacts
-        run: |
-          test ! -e build/spmv_tests || echo "Warning: spmv_tests found in no-CUDA build"
-          echo "CPU-only build completed successfully"
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ ninja-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DSPMV_REQUIRE_CUDA=OFF
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+
+  cuda-compile:
+    name: CUDA Compile Check
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:12.6.0-devel-ubuntu24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: apt-get update && apt-get install -y cmake g++ ninja-build
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DSPMV_BUILD_TESTS=ON
+          -DCMAKE_CUDA_ARCHITECTURES=80
+
+      - name: Build
+        run: cmake --build build --parallel

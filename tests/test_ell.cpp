@@ -1,6 +1,6 @@
 #include "spmv/csr_matrix.h"
 #include "spmv/ell_matrix.h"
-#include "spmv/test_utils.h"
+#include "test_utils.h"
 
 #include <cstdio>
 #include <gtest/gtest.h>

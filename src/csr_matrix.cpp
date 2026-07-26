@@ -1,6 +1,7 @@
 #include "spmv/csr_matrix.h"
 
 #include <algorithm>
+#include <cinttypes>
 #include <climits>
 #include <cstdlib>
 #include <cstring>
@@ -63,6 +64,10 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
         }
     }
 
+    float* new_values = (nnz > 0) ? new float[nnz] : nullptr;
+    int* new_col_indices = (nnz > 0) ? new int[nnz] : nullptr;
+    int* new_row_ptrs = new int[rows + 1];
+
     delete[] csr->values;
     delete[] csr->col_indices;
     delete[] csr->row_ptrs;
@@ -70,9 +75,9 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
     csr->num_rows = rows;
     csr->num_cols = cols;
     csr->nnz = nnz;
-    csr->values = (nnz > 0) ? new float[nnz] : nullptr;
-    csr->col_indices = (nnz > 0) ? new int[nnz] : nullptr;
-    csr->row_ptrs = new int[rows + 1];
+    csr->values = new_values;
+    csr->col_indices = new_col_indices;
+    csr->row_ptrs = new_row_ptrs;
 
     int idx = 0;
     for (int i = 0; i < rows; i++) {
@@ -101,7 +106,7 @@ int csr_to_dense(const CSRMatrix* csr, float* dense) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    std::memset(dense, 0, csr->num_rows * csr->num_cols * sizeof(float));
+    std::memset(dense, 0, total_size * sizeof(float));
 
     for (int i = 0; i < csr->num_rows; i++) {
         for (int j = csr->row_ptrs[i]; j < csr->row_ptrs[i + 1]; j++) {
@@ -266,8 +271,8 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     }
 
     if (computed_checksum != stored_checksum) {
-        fprintf(stderr, "CSR file checksum mismatch: expected %lu, got %lu\n", stored_checksum,
-                computed_checksum);
+        fprintf(stderr, "CSR file checksum mismatch: expected %" PRIu64 ", got %" PRIu64 "\n",
+                stored_checksum, computed_checksum);
         return static_cast<int>(SpMVError::FILE_IO);
     }
 

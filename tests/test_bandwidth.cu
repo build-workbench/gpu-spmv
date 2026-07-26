@@ -2,7 +2,7 @@
 #include "spmv/csr_matrix.h"
 #include "spmv/cuda_buffer.h"
 #include "spmv/spmv.h"
-#include "spmv/test_utils.h"
+#include "test_utils.h"
 
 #include <gtest/gtest.h>
 

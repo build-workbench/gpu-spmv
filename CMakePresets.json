@@ -19,6 +19,15 @@
       }
     },
     {
+      "name": "cpu-only",
+      "displayName": "CPU-only (no CUDA)",
+      "binaryDir": "${sourceDir}/build-cpu",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SPMV_REQUIRE_CUDA": "OFF"
+      }
+    },
+    {
       "name": "minimal",
       "displayName": "Minimal (sm_80 only)",
       "binaryDir": "${sourceDir}/build-minimal",
@@ -33,9 +42,9 @@
       "binaryDir": "${sourceDir}/build-cuda",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "/usr/bin/gcc",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CUDA_HOST_COMPILER": "g++"
       }
     },
     {
@@ -44,9 +53,9 @@
       "binaryDir": "${sourceDir}/build-cuda-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_C_COMPILER": "/usr/bin/gcc",
-        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
-        "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_CUDA_HOST_COMPILER": "g++"
       }
     }
   ],
@@ -58,6 +67,10 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "cpu-only",
+      "configurePreset": "cpu-only"
     },
     {
       "name": "minimal",
@@ -76,6 +89,11 @@
     {
       "name": "default",
       "configurePreset": "default",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "cpu-only",
+      "configurePreset": "cpu-only",
       "output": { "outputOnFailure": true }
     },
     {

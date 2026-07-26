@@ -1,6 +1,7 @@
 #include "spmv/ell_matrix.h"
 
 #include <algorithm>
+#include <cinttypes>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -72,21 +73,22 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
         max_nnz = std::max(max_nnz, row_nnz);
     }
 
+    size_t size = static_cast<size_t>(rows) * max_nnz;
+    float* new_values = (size > 0) ? new float[size]() : nullptr;
+    int* new_col_indices = (size > 0) ? new int[size]() : nullptr;
+
     delete[] ell->values;
     delete[] ell->col_indices;
 
     ell->num_rows = rows;
     ell->num_cols = cols;
     ell->max_nnz_per_row = max_nnz;
-
-    size_t size = static_cast<size_t>(rows) * max_nnz;
-    ell->values = (size > 0) ? new float[size]() : nullptr;
-    ell->col_indices = (size > 0) ? new int[size]() : nullptr;
+    ell->values = new_values;
+    ell->col_indices = new_col_indices;
 
     if (ell->col_indices) {
         for (size_t i = 0; i < size; i++) {
             ell->col_indices[i] = -1;
-            ell->values[i] = 0.0f;
         }
     }
 
@@ -168,7 +170,7 @@ int ell_to_dense(const ELLMatrix* ell, float* dense) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    std::memset(dense, 0, ell->num_rows * ell->num_cols * sizeof(float));
+    std::memset(dense, 0, total_size * sizeof(float));
 
     for (int i = 0; i < ell->num_rows; i++) {
         for (int k = 0; k < ell->max_nnz_per_row; k++) {
@@ -324,8 +326,8 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     }
 
     if (computed_checksum != stored_checksum) {
-        fprintf(stderr, "ELL file checksum mismatch: expected %lu, got %lu\n", stored_checksum,
-                computed_checksum);
+        fprintf(stderr, "ELL file checksum mismatch: expected %" PRIu64 ", got %" PRIu64 "\n",
+                stored_checksum, computed_checksum);
         return static_cast<int>(SpMVError::FILE_IO);
     }
 

@@ -1,20 +1,17 @@
 #include "spmv/spmv.h"
 
 #include <gtest/gtest.h>
-#include <type_traits>
 
 using namespace spmv;
 
-namespace {
+TEST(SpMVArchitectureTest, ConfigIsTriviallyCopyable) {
+    EXPECT_TRUE(std::is_trivially_copyable<SpMVConfig>::value);
+}
 
-template <typename T, typename = void>
-struct HasPublicPrepareTexture : std::false_type {};
+TEST(SpMVArchitectureTest, ResultIsTriviallyCopyable) {
+    EXPECT_TRUE(std::is_trivially_copyable<SpMVResult>::value);
+}
 
-template <typename T>
-struct HasPublicPrepareTexture<T, std::void_t<decltype(&T::prepare_texture)>> : std::true_type {};
-
-}  // namespace
-
-TEST(SpMVExecutionContextArchitectureTest, PrepareTextureStaysInternal) {
-    EXPECT_FALSE(HasPublicPrepareTexture<SpMVExecutionContext>::value);
+TEST(SpMVArchitectureTest, ThresholdsIsTriviallyCopyable) {
+    EXPECT_TRUE(std::is_trivially_copyable<SpMVThresholds>::value);
 }

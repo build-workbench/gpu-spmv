@@ -131,7 +131,7 @@ class CudaBuffer {
      */
     void memset(int value = 0) {
         if (ptr_ && size_ > 0) {
-            CUDA_CHECK_THROW(cudaMemset(ptr_, value, size_ * sizeof(T)));
+            SPMV_CUDA_CHECK_THROW(cudaMemset(ptr_, value, size_ * sizeof(T)));
         }
     }
 
@@ -143,7 +143,7 @@ class CudaBuffer {
         if (!ptr_ || size_ == 0)
             return;
         std::vector<T> host_data(size_, value);
-        CUDA_CHECK_THROW(
+        SPMV_CUDA_CHECK_THROW(
             cudaMemcpy(ptr_, host_data.data(), size_ * sizeof(T), cudaMemcpyHostToDevice));
     }
 
@@ -158,7 +158,7 @@ class CudaBuffer {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
         }
-        CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
+        SPMV_CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
     }
 
     /**
@@ -172,7 +172,7 @@ class CudaBuffer {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
         }
-        CUDA_CHECK_THROW(cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
+        SPMV_CUDA_CHECK_THROW(cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
     }
 
     /**
@@ -186,7 +186,7 @@ class CudaBuffer {
             return;
         T* new_ptr = nullptr;
         if (new_count > 0) {
-            CUDA_CHECK_THROW(cudaMalloc(&new_ptr, new_count * sizeof(T)));
+            SPMV_CUDA_CHECK_THROW(cudaMalloc(&new_ptr, new_count * sizeof(T)));
         }
         if (ptr_) {
             cudaFree(ptr_);

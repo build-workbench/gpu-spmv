@@ -1,19 +1,22 @@
 #include "spmv/spmv.h"
 
 #include <cstring>
+#include <mutex>
 
 #include "internal/kernel_selector.h"
 
 namespace spmv {
 
-// Global thresholds for kernel selection (can be tuned per-GPU architecture)
+static std::mutex g_thresholds_mutex;
 static SpMVThresholds g_thresholds;
 
 SpMVThresholds spmv_get_thresholds() {
+    std::lock_guard<std::mutex> lock(g_thresholds_mutex);
     return g_thresholds;
 }
 
 void spmv_set_thresholds(const SpMVThresholds& thresholds) {
+    std::lock_guard<std::mutex> lock(g_thresholds_mutex);
     g_thresholds = thresholds;
 }
 
@@ -49,15 +52,20 @@ void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
 
 SpMVConfig spmv_auto_config(const CSRMatrix* A) {
     if (!A || A->num_rows < 0 || A->num_cols < 0 || A->nnz < 0 || !A->row_ptrs) {
-        return SpMVConfig(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE, false);
+        return SpMVConfig(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE);
     }
 
     if (A->num_rows == 0 || A->num_cols == 0 || A->nnz == 0) {
-        return SpMVConfig(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE, false);
+        return SpMVConfig(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE);
     }
 
     CSRStats stats = csr_compute_stats(A);
-    return select_kernel(stats, A->num_cols, g_thresholds);
+    SpMVThresholds thresholds;
+    {
+        std::lock_guard<std::mutex> lock(g_thresholds_mutex);
+        thresholds = g_thresholds;
+    }
+    return select_kernel(stats, A->num_cols, thresholds);
 }
 
 }  // namespace spmv

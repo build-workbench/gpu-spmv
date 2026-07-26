@@ -148,10 +148,12 @@ int ell_download_device_data(ELLMatrix* mat) {
         if (!mat->values || !mat->col_indices) {
             return static_cast<int>(SpMVError::INVALID_ARGUMENT);
         }
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->values, internal->d_values, size * sizeof(float),
-                                     cudaMemcpyDeviceToHost));
-        CUDA_CHECK_MEMCPY(cudaMemcpy(mat->col_indices, internal->d_col_indices, size * sizeof(int),
-                                     cudaMemcpyDeviceToHost));
+        SPMV_CUDA_CHECK(cudaMemcpy(mat->values, internal->d_values, size * sizeof(float),
+                                    cudaMemcpyDeviceToHost),
+                        spmv::SpMVError::CUDA_MEMCPY);
+        SPMV_CUDA_CHECK(cudaMemcpy(mat->col_indices, internal->d_col_indices, size * sizeof(int),
+                                    cudaMemcpyDeviceToHost),
+                        spmv::SpMVError::CUDA_MEMCPY);
     }
 
     return static_cast<int>(SpMVError::SUCCESS);
