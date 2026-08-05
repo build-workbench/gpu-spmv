@@ -26,7 +26,7 @@
 
 ## Documentation
 
-- [ ] Updated README.md and/or README.zh-CN.md (if applicable)
+- [ ] Updated README.md (if applicable)
 - [ ] Updated docs/ (if user-facing change)
 
 ## Additional Notes
