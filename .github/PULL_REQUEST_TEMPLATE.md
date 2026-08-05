@@ -1,34 +1,34 @@
-## Description
+## 描述
 
-<!-- Brief description of changes -->
+<!-- 简要描述改动 -->
 
-## Type of Change
+## 改动类型
 
-- [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
-- [ ] ✨ New feature (non-breaking change that adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📚 Documentation update
-- [ ] 🔧 Build/CI improvement
-- [ ] ♻️ Refactoring (no functional changes)
+- [ ] 🐛 Bug 修复（不破坏现有功能的修复）
+- [ ] ✨ 新功能（不破坏现有功能的新增）
+- [ ] 💥 破坏性变更（会导致现有功能失效的修复或功能）
+- [ ] 📚 文档更新
+- [ ] 🔧 构建/CI 改进
+- [ ] ♻️ 重构（无功能变化）
 
-## Testing
+## 测试
 
-- [ ] All relevant tests pass (`ctest --preset cuda-linux` on Linux CUDA, or `ctest --test-dir build-no-cuda --output-on-failure` for CPU-only)
-- [ ] Added new tests for new functionality
-- [ ] Code formatted: `find src include tests -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i`
+- [ ] 相关测试全部通过（Linux CUDA 用 `ctest --preset cuda-linux`，CPU-only 用 `ctest --preset cpu-only`）
+- [ ] 为新功能添加了新测试
+- [ ] 代码已格式化：`find src include tests -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.cu" \) | xargs clang-format -i`
 
-## Code Quality
+## 代码质量
 
-- [ ] Code follows style guidelines (4-space indent, 100-char line limit)
-- [ ] No naked `cudaMalloc`/`cudaFree` (use `CudaBuffer<T>`)
-- [ ] Proper error handling with `SpMVError` enum
-- [ ] Include order: `"spmv/"` → `<cuda*>` → `<standard>` → `<third-party>`
+- [ ] 代码遵循风格规范（4 空格缩进，100 字符行宽）
+- [ ] 没有裸 `cudaMalloc`/`cudaFree`（使用 `CudaBuffer<T>`）
+- [ ] 使用 `SpMVError` 枚举正确处理错误
+- [ ] include 顺序：`"spmv/"` → `<cuda*>` → `<标准库>` → `<第三方>`
 
-## Documentation
+## 文档
 
-- [ ] Updated README.md (if applicable)
-- [ ] Updated docs/ (if user-facing change)
+- [ ] 更新了 README.md（如适用）
+- [ ] 更新了 docs/（如有用户可见变化）
 
-## Additional Notes
+## 补充说明
 
-<!-- Any additional information for reviewers -->
+<!-- 给 reviewer 的额外信息 -->

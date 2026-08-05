@@ -1,31 +1,31 @@
-name: Bug Report
-description: Report a bug to help us improve GPU SpMV
+name: Bug 报告
+description: 报告 Bug，帮助改善 GPU SpMV
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report this bug! Please fill out the sections below.
+        感谢你抽出时间报告这个 Bug！请填写以下内容。
 
   - type: textarea
     id: description
     attributes:
-      label: Bug Description
-      description: A clear description of what the bug is
-      placeholder: "When I run spmv_csr with..."
+      label: Bug 描述
+      description: 清楚描述这个 Bug 是什么
+      placeholder: "当我用 spmv_csr 运行..."
     validations:
       required: true
 
   - type: textarea
     id: reproduction
     attributes:
-      label: Steps to Reproduce
-      description: Steps to reproduce the behavior
+      label: 复现步骤
+      description: 描述如何复现这个问题
       placeholder: |
-        1. Create matrix with `csr_create(...)`
-        2. Call `spmv_csr(...)`
-        3. Observe error
+        1. 用 `csr_create(...)` 创建矩阵
+        2. 调用 `spmv_csr(...)`
+        3. 观察到错误
       value: |
         1.
         2.
@@ -36,39 +36,39 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What did you expect to happen?
+      label: 期望行为
+      description: 你期望发生什么？
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: Actual Behavior
-      description: What actually happened?
+      label: 实际行为
+      description: 实际发生了什么？
     validations:
       required: true
 
   - type: textarea
     id: code
     attributes:
-      label: Minimal Reproducible Example
-      description: Please provide a minimal code example that demonstrates the issue
+      label: 最小可复现示例
+      description: 请提供能演示该问题的最小代码示例
       render: cpp
       placeholder: |
 #include <spmv/spmv.h>
         int main() {
-            // Your code here
+            // 你的代码
         }
 
   - type: markdown
     attributes:
-      value: "## Environment"
+      value: "## 环境信息"
 
   - type: input
     id: os
     attributes:
-      label: Operating System
+      label: 操作系统
       placeholder: "Ubuntu 22.04"
     validations:
       required: true
@@ -76,7 +76,7 @@ body:
   - type: input
     id: cuda
     attributes:
-      label: CUDA Version
+      label: CUDA 版本
       placeholder: "12.0"
     validations:
       required: true
@@ -84,7 +84,7 @@ body:
   - type: input
     id: gpu
     attributes:
-      label: GPU Model
+      label: GPU 型号
       placeholder: "NVIDIA RTX 3090"
     validations:
       required: true
@@ -92,22 +92,22 @@ body:
   - type: input
     id: cmake
     attributes:
-      label: CMake Version
+      label: CMake 版本
       placeholder: "3.25"
 
   - type: textarea
     id: logs
     attributes:
-      label: Error Messages / Logs
-      description: Please paste any relevant error messages or logs
+      label: 错误信息 / 日志
+      description: 请粘贴相关错误信息或日志
       render: shell
 
   - type: checkboxes
     id: checklist
     attributes:
-      label: Checklist
+      label: 检查清单
       options:
-        - label: I have checked that this bug has not been reported before
+        - label: 我已确认此 Bug 之前未被报告过
           required: true
-        - label: I have read the documentation at https://aicl-lab.github.io/gpu-spmv/
+        - label: 我已阅读 https://aicl-lab.github.io/gpu-spmv/ 上的文档
           required: false

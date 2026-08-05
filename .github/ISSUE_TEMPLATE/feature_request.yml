@@ -1,67 +1,67 @@
-name: Feature Request
-description: Suggest a new feature or enhancement for GPU SpMV
+name: 功能请求
+description: 为 GPU SpMV 建议新功能或改进
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a new feature. Keep the request focused on the core SpMV library.
+        感谢你提出新功能建议。请确保请求聚焦核心 SpMV 库。
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem Statement
-      description: Is your feature request related to a problem? Please describe.
-      placeholder: "I'm always frustrated when..."
+      label: 问题背景
+      description: 这个功能请求和什么问题相关？请描述。
+      placeholder: "我总是觉得当..."
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: Describe the solution you'd like to see
+      label: 期望方案
+      description: 描述你希望看到的解决方案
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: Have you considered any alternative solutions?
+      label: 已考虑的替代方案
+      description: 你是否考虑过其他替代方案？
     validations:
       required: false
 
   - type: textarea
     id: use-cases
     attributes:
-      label: Use Cases
-      description: Describe specific use cases for this feature
+      label: 使用场景
+      description: 描述该功能的具体使用场景
       placeholder: |
-        1. As a user doing X, I would...
-        2. In my application Y, this would help...
+        1. 作为做 X 的用户，我会...
+        2. 在我的应用 Y 中，这能帮助...
     validations:
       required: true
 
- - type: textarea
-   id: code-example
-   attributes:
-     label: Proposed API (if applicable)
-     description: If this involves a new API, show how it might look.
-     render: cpp
-     placeholder: |
-       // Example of how the new API might be used
-       SpMVResult result = spmv_new_feature(...);
-   validations:
-     required: false
+  - type: textarea
+    id: code-example
+    attributes:
+      label: 提议的 API（如适用）
+      description: 如果涉及新 API，展示它可能的样子。
+      render: cpp
+      placeholder: |
+        // 新 API 的使用示例
+        SpMVResult result = spmv_new_feature(...);
+    validations:
+      required: false
 
- - type: checkboxes
-   id: checklist
-   attributes:
-     label: Checklist
-     options:
-       - label: I have checked that this feature has not been requested before.
-         required: true
-       - label: This request belongs in the core SpMV library rather than in project tooling or documentation site experiments.
-         required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 检查清单
+      options:
+        - label: 我已确认此功能之前未被请求过。
+          required: true
+        - label: 此请求属于核心 SpMV 库，而非项目工具或文档站实验。
+          required: true

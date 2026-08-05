@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: "如果你使用了本软件，请按以下方式引用。"
 title: "GPU SpMV"
 version: "1.0.0"
 date-released: "2026-04-01"
@@ -8,8 +8,7 @@ license:
   - spdx-id: "MIT"
     expression: "MIT"
 authors:
-  - given-names: "LessUp"
-    name-particle: ""
+  - given-names: "AICL-Lab"
 repository-code: "https://github.com/AICL-Lab/gpu-spmv"
 keywords:
   - "cuda"
@@ -19,6 +18,6 @@ keywords:
   - "high-performance"
   - "scientific-computing"
 abstract: |
-  A high-performance CUDA library for sparse matrix-vector multiplication (SpMV).
-  Features 4 optimized kernels with automatic selection, 70%+ bandwidth utilization,
-  CSR and ELL matrix formats, and RAII memory management.
+  基于 CUDA 的高性能稀疏矩阵向量乘法（SpMV）库。
+  包含 4 种自动选择的优化内核、70%+ 带宽利用率、
+  CSR 与 ELL 矩阵格式，以及 RAII 内存管理。
