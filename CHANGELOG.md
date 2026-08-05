@@ -1,183 +1,70 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+本项目所有值得记录的变更都写在这个文件里。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
+版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ## [Unreleased]
 
 ### Added
-- `SpMVConfig::enable_timing`: set to `false` to enqueue kernels without CUDA events or synchronization, so SpMV calls can be pipelined asynchronously (default `true` keeps the blocking, metered behavior).
-- `spmv_result_error()` typed accessor for `SpMVResult::error_code`, and `spmv_auto_config_ell()` for API symmetry.
-- `csr_read_matrix_market()` (`spmv/market_io.h`): Matrix Market coordinate reader (real/integer/pattern, general/symmetric; duplicates summed).
-- Runnable `examples/basic_spmv.cpp` (built by default, works in CPU-only builds) and a synthetic benchmark tool `tools/spmv_bench.cu` behind `SPMV_BUILD_BENCHMARKS=ON`.
-- CI `cuda-test` job that runs the full GPU test suite on a self-hosted runner when the `CUDA_RUNNER_LABEL` repository variable is set.
-- Serialization format version 2: the integrity checksum now also covers the `values` array. Version 1 files remain readable.
+- `SpMVConfig::enable_timing`：设为 `false` 可在不创建 CUDA event、不同步的情况下把 kernel 入队到 stream，便于异步流水线编排（默认 `true` 保留阻塞+计时行为）。
+- `spmv_result_error()` 类型化访问器，以及 `spmv_auto_config_ell()` 提供 API 对称性。
+- `csr_read_matrix_market()`（`spmv/market_io.h`）：Matrix Market 坐标格式读取器（real/integer/pattern、general/symmetric，重复项求和）。
+- 可运行的 `examples/basic_spmv.cpp`（默认构建，CPU-only 构建也可用）和合成基准工具 `tools/spmv_bench.cu`（`SPMV_BUILD_BENCHMARKS=ON`）。
+- CI `cuda-test` job：当仓库变量 `CUDA_RUNNER_LABEL` 被设置时，在 self-hosted runner 上跑完整 GPU 测试套件。
+- 序列化格式版本 2：完整性校验现在也覆盖 `values` 数组。版本 1 文件仍可读取。
 
 ### Fixed
-- `csr_read_matrix_market` no longer crashes (`std::length_error` from `vector::reserve`) on headers claiming more entries than the file can contain; such files are rejected with `FILE_IO`, and entry counts are capped at `INT_MAX / 2` (symmetric expansion bound).
-- Installed package now exports its include directory: `include(GNUInstallDirs)` ran after the target definition, so `gpu_spmv::spmv` lost `INTERFACE_INCLUDE_DIRECTORIES` and `find_package()` consumers could not compile.
-- Creation and conversion functions (`csr_create`, `csr_from_dense`, `ell_create`, `ell_from_dense`, `ell_from_csr`) now use nothrow allocations and return the documented `nullptr` / `OUT_OF_MEMORY` on failure instead of letting `std::bad_alloc` escape a C-style API.
-- `csr_create` / `csr_from_dense` reject `rows == INT_MAX`, where the `rows + 1` allocation would overflow.
-- `ell_from_csr` allocates before releasing the previous arrays, so a failed allocation leaves the matrix intact (matching `ell_from_dense` / `csr_from_dense`).
-- `CudaBuffer::resize` keeps the original buffer intact when the device-to-device copy fails, instead of leaving a null pointer with a stale size.
-- Kernel grid size math (`scalar` / `vector` / `merge path` / `ELL`) uses an overflow-safe ceil division for extreme matrix sizes.
-- README minimal example now compiles (`CudaBuffer` exposes `get()`, not `data()`).
-- `SpMVResult::bandwidth_gb_s` is now derived from the reported `elapsed_ms` instead of a separate host-side timer, so the result fields are mutually consistent.
-- `spmv_csr`/`spmv_ell` zero-work paths (empty matrix / zero-length vector) now synchronize like the kernel paths when timing is enabled, making blocking behavior independent of matrix contents.
-- Merge Path grid is now partitioned by `nnz` instead of `num_rows`, restoring parallelism for the highly skewed matrices this kernel exists for.
-- ELL kernel uses 64-bit index math, so matrices with `num_rows * max_nnz_per_row > INT_MAX` no longer overflow.
-- `csr_deserialize`/`ell_deserialize` reject headers that claim more payload than the file contains (before allocating) and guard the `rows + 1` allocation against integer overflow.
-- `csr_get_element` returns correct values for CSR matrices whose column indices are not sorted within each row.
-- The L2 persisting access-policy hint is restored on exit, so `spmv_csr`/`spmv_ell` no longer leave side effects on the caller's stream.
+- `csr_read_matrix_market` 不再在头部声明条目数超过文件实际内容时崩溃（`std::length_error`）；这类文件以 `FILE_IO` 拒绝，条目数上限为 `INT_MAX / 2`（对称展开上界）。
+- 安装包现在正确导出 include 目录：`include(GNUInstallDirs)` 之前在 target 定义之后执行，导致 `gpu_spmv::spmv` 丢失 `INTERFACE_INCLUDE_DIRECTORIES`，`find_package()` 消费者无法编译。
+- 创建和转换函数（`csr_create`、`csr_from_dense`、`ell_create`、`ell_from_dense`、`ell_from_csr`）改用 nothrow 分配，失败时返回文档所述的 `nullptr` / `OUT_OF_MEMORY`，不再让 `std::bad_alloc` 逃出 C 风格 API。
+- `csr_create` / `csr_from_dense` 拒绝 `rows == INT_MAX`，避免 `rows + 1` 分配溢出。
+- `ell_from_csr` 先分配再释放旧数组，分配失败时矩阵保持完整（与 `ell_from_dense` / `csr_from_dense` 一致）。
+- `CudaBuffer::resize` 在 device-to-device 拷贝失败时保留原 buffer，不再留下 null 指针 + 旧 size。
+- Kernel grid 计算（scalar / vector / merge path / ELL）使用溢出安全的 ceil division，应对极端矩阵规模。
+- README 最小示例现在可编译（`CudaBuffer` 暴露 `get()`，不是 `data()`）。
+- `SpMVResult::bandwidth_gb_s` 改为从 `elapsed_ms` 推导，不再用独立 host 计时器，结果字段相互一致。
+- `spmv_csr`/`spmv_ell` 零工作量路径（空矩阵 / 零长向量）在开启计时时也像 kernel 路径一样同步，阻塞行为不再依赖矩阵内容。
+- Merge Path grid 改为按 `nnz` 而非 `num_rows` 划分，恢复该内核存在意义的不规则矩阵并行度。
+- ELL kernel 使用 64 位索引运算，`num_rows * max_nnz_per_row > INT_MAX` 不再溢出。
+- `csr_deserialize`/`ell_deserialize` 拒绝头部声明负载超过文件实际大小的情形（在分配之前），并保护 `rows + 1` 分配免受整数溢出。
+- `csr_get_element` 对列索引未排序的 CSR 矩阵返回正确值。
+- L2 persisting access-policy hint 在退出时恢复，`spmv_csr`/`spmv_ell` 不再对调用方 stream 留下副作用。
 
 ### Changed
-- Reduced the repository to the core CSR / ELL SpMV library and removed repository-specific AI governance files.
-- Simplified contributor workflow, GitHub templates, and GitHub Pages content to match the smaller core scope.
-- Added dedicated Linux CUDA presets backed by system GCC/G++ and fail-fast guidance for Conda host compilers.
-- `spmv_cpu_csr`/`spmv_cpu_ell` now return an `int` error code instead of silently ignoring invalid input.
-- CI `build-cpu` job now installs the package and builds a `find_package()` consumer as a packaging smoke test.
-- `CudaBuffer::resize` preserves existing elements (like `std::vector::resize`) instead of discarding them.
-- Internal `select_kernel()` no longer takes an unused `num_cols` parameter.
+- 仓库缩减为核心 CSR / ELL SpMV 库，移除仓库专用 AI 治理文件。
+- 贡献流程、GitHub 模板、GitHub Pages 内容简化为匹配更小的核心范围。
+- 新增基于系统 GCC/G++ 的 Linux CUDA preset，Conda host compiler 快速失败指引。
+- `spmv_cpu_csr`/`spmv_cpu_ell` 返回 `int` 错误码，不再静默忽略非法输入。
+- CI `build-cpu` job 现在安装包并构建 `find_package()` 消费者作为打包冒烟测试。
+- `CudaBuffer::resize` 保留已有元素（类似 `std::vector::resize`），不再丢弃。
+- 内部 `select_kernel()` 不再接受未使用的 `num_cols` 参数。
 
 ### Removed
-- OpenSpec specifications, Claude / Copilot repository instruction files, and local skill configuration.
-- Built-in PageRank and benchmark modules, their tests, and their documentation pages.
-- GitHub Pages changelog mirroring; the root `CHANGELOG.md` is now the only changelog.
+- OpenSpec 规范、Claude / Copilot 仓库指令文件、本地 skill 配置。
+- 内置 PageRank 和基准模块及其测试、文档页面。
+- GitHub Pages 镜像 changelog；根目录 `CHANGELOG.md` 是唯一 changelog。
+- 英文 README 和英文文档站（`docs/en/`），项目文档统一为中文。
 
 ## [1.0.0] - 2025-04-16
 
-### 🎉 First Stable Release
+首个稳定版本。
 
-This is the first stable release of GPU SpMV, featuring complete CSR and ELL format support, four optimized CUDA kernels with automatic selection, and production-ready engineering quality.
+### Added
+- CSR / ELL 两种稀疏矩阵格式，完整操作（创建、转换、序列化、校验、统计）。
+- 四种 CUDA 内核：Scalar CSR、Vector CSR、Merge Path、ELL Kernel。
+- 基于矩阵统计（avg_nnz、skewness）的自动内核选择。
+- RAII 资源管理：`CudaBuffer<T>`、显式 `SpMVError` 错误码、CPU 参考路径。
+- CMake Presets、CPU-only 配置选项、Google Test 测试套件、GitHub Actions CI。
 
-### ✨ Added
-
-#### Core Features
-- **CSR (Compressed Sparse Row)** sparse matrix format with full operations
-- **ELL (ELLPACK)** sparse matrix format with column-major GPU-optimized storage
-- **Four CUDA Kernels**: Scalar CSR, Vector CSR, Merge Path, ELL Kernel
-- **Automatic kernel selection** based on matrix statistics (avg_nnz, skewness)
-- **Texture cache support** with `SpMVExecutionContext` for object reuse
-- **RAII resource management**: `CudaBuffer<T>`, `CudaTimer`, `ScopedTexture`
-- **Semantic error codes**: `SpMVError` enum with descriptive error messages
-
-#### Performance & Benchmarking
-- Bandwidth metrics calculation with GPU peak bandwidth detection
-- Comprehensive benchmarking framework with warmup runs and statistical analysis
-- GPU vs CPU performance comparison with speedup metrics
-- JSON export for benchmark results
-
-#### Applications
-- **PageRank algorithm** with GPU-accelerated iterative computation
-- Configurable damping factor and convergence tolerance
-- Top-K node ranking extraction
-
-#### Engineering Quality
-- CMake Presets for easy Debug/Release builds
-- CPU-only configuration option for development environments
-- Cross-platform support (Windows/Linux)
-- Complete Google Test test suite with property-based testing
-- GitHub Actions CI/CD with format checking
-- Doxygen-compatible documentation
-
-#### Documentation
-- Full documentation site at https://aicl-lab.github.io/gpu-spmv/
-- Bilingual README (English and Chinese)
-- API reference, performance guide, and code examples
-- Architecture documentation and design decision records
-
-### 🔒 Security
-- Integer overflow protection in size calculations
-- Memory bounds checking in matrix operations
-
-### 🚀 Performance
-- ELL Column-major storage for fully coalesced memory access
-- Warp-level shuffle reduction avoiding shared memory bank conflicts
-- Merge Path algorithm for perfect load balancing on irregular matrices
-- Automatic texture cache for large input vectors (>10000 elements)
+### Security
+- 尺寸计算的整数溢出保护。
+- 矩阵操作的内存边界检查。
 
 ## [0.1.0] - 2025-03-01
 
-### 🚀 Initial Release
-
-- Basic project structure
-- Initial CSR matrix implementation
-- Simple SpMV GPU kernel
-- CMake build configuration
-
----
-
-## Version History
-
-| Version | Date | Status | Highlights |
-|:-------:|:----:|:------:|:-----------|
-| [1.0.0] | 2025-04-16 | Stable | First stable release with complete feature set |
-| [0.1.0] | 2025-03-01 | Archived | Initial prototype |
-
----
-
-## Migration Guide
-
-### Upgrading to 1.0.0
-
-No breaking changes from pre-release versions. The API is now stable.
-
-#### Recommended Updates
-
-1. **Use named constants** instead of magic numbers:
-   ```cpp
-   // Before
-   config.block_size = 256;
-   config.use_texture = (cols > 10000);
-
-   // After (recommended)
-   config.block_size = spmv::DEFAULT_BLOCK_SIZE;
-   config.use_texture = (cols > spmv::TEXTURE_CACHE_THRESHOLD_COLS);
-   ```
-
-2. **Use `SpMVExecutionContext`** for texture object reuse:
-   ```cpp
-   // Before: Texture created/destroyed each call
-   for (int i = 0; i < iterations; i++) {
-       spmv_csr(csr, d_x, d_y, &config, cols);
-   }
-
-   // After: Reuse texture across calls
-   SpMVExecutionContext context;
-   for (int i = 0; i < iterations; i++) {
-       spmv_csr(csr, d_x, d_y, &config, cols, &context);
-   }
-   ```
-
-3. **Check error codes** consistently:
-   ```cpp
-   SpMVResult result = spmv_csr(csr, d_x, d_y, &config, cols);
-   if (result.error_code != static_cast<int>(SpMVError::SUCCESS)) {
-       std::cerr << "Error: " << spmv_error_string(
-           static_cast<SpMVError>(result.error_code)) << std::endl;
-   }
-   ```
-
----
-
-## Future Roadmap
-
-### Planned for 1.1.0
-
-- [ ] COO (Coordinate) format support
-- [ ] Hybrid CSR/ELL format
-- [ ] Multi-GPU support
-- [ ] Batched SpMV operations
-- [ ] Double precision support
-
-### Under Consideration
-
-- [ ] BFloat16 precision support
-- [ ] Automatic format selection tuning
-- [ ] Integration with cuSPARSE for comparison
-- [ ] Python bindings
+初始原型：基本项目结构、CSR 矩阵实现、简单 SpMV GPU 内核、CMake 构建配置。
 
 ---
 
