@@ -1,37 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
-const props = withDefaults(
-  defineProps<{
-    variant?: 'overview-zh' | 'overview-en'
-  }>(),
-  {
-    variant: 'overview-en'
-  }
-)
-
-const labels = computed(() =>
-  props.variant === 'overview-zh'
-    ? {
-        input: '稀疏矩阵',
-        analysis: '矩阵分析',
-        decision: '内核选择',
-        execution: 'GPU 执行',
-        result: '结果验证'
-      }
-    : {
-        input: 'Sparse Matrix',
-        analysis: 'Matrix Analysis',
-        decision: 'Kernel Choice',
-        execution: 'GPU Execution',
-        result: 'Result Validation'
-      }
-)
+const labels = {
+  input: '稀疏矩阵',
+  analysis: '矩阵分析',
+  decision: '内核选择',
+  execution: 'GPU 执行',
+  result: '结果验证'
+}
 </script>
 
 <template>
   <div class="spmv-architecture-shell spmv-surface-card">
-    <svg viewBox="0 0 820 260" class="spmv-architecture-canvas" role="img" aria-label="SpMV architecture">
+    <svg viewBox="0 0 820 260" class="spmv-architecture-canvas" role="img" aria-label="SpMV 架构">
       <defs>
         <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
           <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />

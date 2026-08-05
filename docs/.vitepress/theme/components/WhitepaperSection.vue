@@ -6,7 +6,7 @@ withDefaults(
     lead?: string
   }>(),
   {
-    eyebrow: 'Section',
+    eyebrow: '章节',
     lead: ''
   }
 )

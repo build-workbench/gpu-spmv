@@ -14,7 +14,7 @@ defineProps<{
     <article v-for="item in items" :key="item.key" class="spmv-citation-card spmv-surface-card">
       <h3>{{ item.title }}</h3>
       <p v-if="item.meta">{{ item.meta }}</p>
-      <a :href="item.url" target="_blank" rel="noreferrer">Open reference</a>
+      <a :href="item.url" target="_blank" rel="noreferrer">打开参考</a>
     </article>
   </div>
 </template>

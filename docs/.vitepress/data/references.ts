@@ -23,25 +23,25 @@ export const references = {
     {
       key: 'cusparse',
       title: 'NVIDIA cuSPARSE',
-      meta: 'Vendor baseline and API reference for sparse GPU primitives',
+      meta: '厂商基线与稀疏 GPU 原语 API 参考',
       url: 'https://developer.nvidia.com/cusparse'
     },
     {
       key: 'ginkgo',
       title: 'Ginkgo',
-      meta: 'Production-quality sparse linear algebra library with strong docs',
+      meta: '生产级稀疏线性代数库，文档完善',
       url: 'https://github.com/ginkgo-project/ginkgo'
     },
     {
       key: 'moderngpu',
       title: 'ModernGPU',
-      meta: 'Useful for understanding scan / merge / partitioning techniques on GPU',
+      meta: '理解 GPU 上 scan / merge / partition 技术的参考',
       url: 'https://github.com/moderngpu/moderngpu'
     },
     {
       key: 'suitesparse',
       title: 'SuiteSparse Matrix Collection',
-      meta: 'Representative real-world sparse matrices for benchmark reasoning',
+      meta: '代表性真实稀疏矩阵集合，用于基准推理',
       url: 'https://github.com/DrTimothyAldenDavis/SuiteSparse'
     }
   ]

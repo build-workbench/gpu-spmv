@@ -16,7 +16,7 @@ withDefaults(
     secondaryLink?: string
   }>(),
   {
-    eyebrow: 'Technical Whitepaper'
+    eyebrow: '技术白皮书'
   }
 )
 </script>
