@@ -11,8 +11,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(GNUInstallDirs)
-
 set(SPMV_WITH_CUDA OFF)
 
 if(SPMV_REQUIRE_CUDA)
@@ -156,40 +154,4 @@ if(SPMV_BUILD_BENCHMARKS)
     endif()
 endif()
 
-# ---------- Installation ----------
-include(CMakePackageConfigHelpers)
 
-install(TARGETS spmv
-    EXPORT gpu_spmvTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/spmv
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.h"
-)
-
-install(EXPORT gpu_spmvTargets
-    FILE gpu_spmvTargets.cmake
-    NAMESPACE gpu_spmv::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/gpu_spmv
-)
-
-configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/gpu_spmvConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/gpu_spmvConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/gpu_spmv
-)
-
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/gpu_spmvConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/gpu_spmvConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/gpu_spmvConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/gpu_spmv
-)

@@ -19,9 +19,6 @@
   <a href="https://github.com/AICL-Lab/gpu-spmv/actions/workflows/ci.yml">
     <img src="https://github.com/AICL-Lab/gpu-spmv/actions/workflows/ci.yml/badge.svg" alt="CI">
   </a>
-  <a href="https://aicl-lab.github.io/gpu-spmv/">
-    <img src="https://img.shields.io/badge/文档-GitHub%20Pages-2EA44F?logo=github" alt="Documentation">
-  </a>
   <a href="https://github.com/AICL-Lab/gpu-spmv/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/许可证-MIT-green" alt="License">
   </a>
@@ -114,24 +111,8 @@ gpu-spmv/
 ├── tests/          # 单元测试与回归测试
 ├── examples/       # 最小可运行示例
 ├── tools/          # 基准测试工具（SPMV_BUILD_BENCHMARKS=ON）
-├── docs/           # GitHub Pages 文档站
-├── CHANGELOG.md    # 唯一更新日志
 └── CMakeLists.txt
 ```
-
-## 文档导航
-
-文档站地址：**https://aicl-lab.github.io/gpu-spmv/**。
-
-| 页面 | 用途 |
-|:-----|:-----|
-| [快速开始](https://aicl-lab.github.io/gpu-spmv/zh/quickstart) | 安装与构建流程 |
-| [API 参考](https://aicl-lab.github.io/gpu-spmv/zh/api/spmv) | 核心公开接口 |
-| [架构概览](https://aicl-lab.github.io/gpu-spmv/zh/architecture/overview) | 数据流与内核选择 |
-| [性能优化](https://aicl-lab.github.io/gpu-spmv/zh/performance/optimization-guide) | 实用调优建议 |
-| [示例代码](https://aicl-lab.github.io/gpu-spmv/zh/examples/basic-spmv) | 端到端用法 |
-
-版本历史只保留在根目录 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 参与贡献
 
@@ -140,9 +121,6 @@ gpu-spmv/
 1. 只做能改善核心库的变更。
 2. 保持 RAII 资源管理，不要引入裸 `cudaMalloc` / `cudaFree`。
 3. 运行现有构建和测试命令。
-4. 行为变化时同步更新相关文档。
-
-详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
 
