@@ -18,15 +18,22 @@ ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
         return nullptr;
     }
 
-    ELLMatrix* mat = new ELLMatrix();
+    ELLMatrix* mat = new (std::nothrow) ELLMatrix();
+    if (!mat) {
+        return nullptr;
+    }
     mat->num_rows = rows;
     mat->num_cols = cols;
     mat->max_nnz_per_row = max_nnz_per_row;
     mat->nnz = 0;
 
     size_t size = static_cast<size_t>(rows) * max_nnz_per_row;
-    mat->values = (size > 0) ? new float[size]() : nullptr;
-    mat->col_indices = (size > 0) ? new int[size]() : nullptr;
+    mat->values = (size > 0) ? new (std::nothrow) float[size]() : nullptr;
+    mat->col_indices = (size > 0) ? new (std::nothrow) int[size]() : nullptr;
+    if (size > 0 && (!mat->values || !mat->col_indices)) {
+        ell_destroy(mat);
+        return nullptr;
+    }
 
     if (mat->col_indices) {
         for (size_t i = 0; i < size; i++) {
@@ -35,6 +42,10 @@ ELLMatrix* ell_create(int rows, int cols, int max_nnz_per_row) {
     }
 
     mat->internal = ell_create_device_state();
+    if (!mat->internal) {
+        ell_destroy(mat);
+        return nullptr;
+    }
 
     return mat;
 }
@@ -74,8 +85,14 @@ int ell_from_dense(ELLMatrix* ell, const float* dense, int rows, int cols) {
     }
 
     size_t size = static_cast<size_t>(rows) * max_nnz;
-    float* new_values = (size > 0) ? new float[size]() : nullptr;
-    int* new_col_indices = (size > 0) ? new int[size]() : nullptr;
+    float* new_values = (size > 0) ? new (std::nothrow) float[size]() : nullptr;
+    int* new_col_indices = (size > 0) ? new (std::nothrow) int[size]() : nullptr;
+
+    if (size > 0 && (!new_values || !new_col_indices)) {
+        delete[] new_values;
+        delete[] new_col_indices;
+        return static_cast<int>(SpMVError::OUT_OF_MEMORY);
+    }
 
     delete[] ell->values;
     delete[] ell->col_indices;
@@ -128,21 +145,28 @@ int ell_from_csr(ELLMatrix* ell, const CSRMatrix* csr) {
         max_nnz = std::max(max_nnz, row_nnz);
     }
 
+    size_t size = static_cast<size_t>(csr->num_rows) * max_nnz;
+    float* new_values = (size > 0) ? new (std::nothrow) float[size]() : nullptr;
+    int* new_col_indices = (size > 0) ? new (std::nothrow) int[size]() : nullptr;
+
+    if (size > 0 && (!new_values || !new_col_indices)) {
+        delete[] new_values;
+        delete[] new_col_indices;
+        return static_cast<int>(SpMVError::OUT_OF_MEMORY);
+    }
+
     delete[] ell->values;
     delete[] ell->col_indices;
 
     ell->num_rows = csr->num_rows;
     ell->num_cols = csr->num_cols;
     ell->max_nnz_per_row = max_nnz;
-
-    size_t size = static_cast<size_t>(csr->num_rows) * max_nnz;
-    ell->values = (size > 0) ? new float[size]() : nullptr;
-    ell->col_indices = (size > 0) ? new int[size]() : nullptr;
+    ell->values = new_values;
+    ell->col_indices = new_col_indices;
 
     if (ell->col_indices) {
         for (size_t i = 0; i < size; i++) {
             ell->col_indices[i] = -1;
-            ell->values[i] = 0.0f;
         }
     }
 

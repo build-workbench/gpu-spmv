@@ -77,6 +77,26 @@ int csr_read_matrix_market(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
+    // Symmetric expansion doubles the entry count; cap it so all downstream
+    // sizes stay within int.
+    if (declared_nnz > INT_MAX / 2) {
+        return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // Reject headers that claim more entries than the file can contain
+    // (every entry needs at least one byte) before allocating anything, so a
+    // corrupt or malicious header cannot trigger huge allocations.
+    {
+        std::streampos data_start = file.tellg();
+        file.seekg(0, std::ios::end);
+        std::streampos file_end = file.tellg();
+        file.seekg(data_start, std::ios::beg);
+        if (!file || file_end < data_start ||
+            static_cast<uint64_t>(file_end - data_start) < static_cast<uint64_t>(declared_nnz)) {
+            return static_cast<int>(SpMVError::FILE_IO);
+        }
+    }
+
     using Entry = std::tuple<int, int, float>;
     std::vector<Entry> entries;
     entries.reserve(static_cast<size_t>(declared_nnz) * (symmetric ? 2 : 1));

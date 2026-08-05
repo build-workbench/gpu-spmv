@@ -79,11 +79,9 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
     return select_kernel(stats, thresholds);
 }
 
-SpMVConfig spmv_auto_config_ell(const ELLMatrix* A) {
-    // ELL has a single kernel; validate input and return the safe default.
-    if (!A || A->num_rows < 0 || A->num_cols < 0 || A->max_nnz_per_row < 0) {
-        return SpMVConfig(SpMVConfig::ELL_KERNEL, DEFAULT_BLOCK_SIZE);
-    }
+SpMVConfig spmv_auto_config_ell(const ELLMatrix*) {
+    // ELL has a single kernel with no tuning knobs; the parameter exists for
+    // API symmetry with spmv_auto_config.
     return SpMVConfig(SpMVConfig::ELL_KERNEL, DEFAULT_BLOCK_SIZE);
 }
 

@@ -173,3 +173,34 @@ TEST(MarketIOTest, RejectsMalformedFiles) {
 
     csr_destroy(csr);
 }
+
+TEST(MarketIOTest, RejectsOversizedHeader) {
+    CSRMatrix* csr = csr_create(0, 0, 0);
+
+    // Regression: a header claiming an absurd entry count used to crash with
+    // an uncaught std::length_error from vector::reserve.
+    std::string huge_path = getTempFilePath("market_huge.mtx");
+    writeFile(huge_path,
+              "%%MatrixMarket matrix coordinate real general\n"
+              "100 100 1152921504606846976\n");
+    EXPECT_EQ(csr_read_matrix_market(csr, huge_path.c_str()), static_cast<int>(SpMVError::FILE_IO));
+    std::remove(huge_path.c_str());
+
+    // Claimed entries exceed the INT_MAX / 2 cap (symmetric expansion bound).
+    std::string cap_path = getTempFilePath("market_cap.mtx");
+    writeFile(cap_path,
+              "%%MatrixMarket matrix coordinate real general\n"
+              "2 2 2000000000\n");
+    EXPECT_EQ(csr_read_matrix_market(csr, cap_path.c_str()), static_cast<int>(SpMVError::FILE_IO));
+    std::remove(cap_path.c_str());
+
+    // More entries claimed than the file physically contains.
+    std::string big_path = getTempFilePath("market_bigclaims.mtx");
+    writeFile(big_path,
+              "%%MatrixMarket matrix coordinate real general\n"
+              "2 2 1000\n");
+    EXPECT_EQ(csr_read_matrix_market(csr, big_path.c_str()), static_cast<int>(SpMVError::FILE_IO));
+    std::remove(big_path.c_str());
+
+    csr_destroy(csr);
+}

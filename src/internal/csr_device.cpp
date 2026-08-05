@@ -1,5 +1,7 @@
 #include "csr_device.h"
 
+#include <new>
+
 namespace spmv {
 
 namespace {
@@ -39,7 +41,7 @@ void free_device(CSRMatrixInternal* internal) {
 }  // namespace
 
 void* csr_create_device_state() {
-    return new CSRMatrixInternal();
+    return new (std::nothrow) CSRMatrixInternal();
 }
 
 void csr_destroy_device_state(CSRMatrix* mat) {

@@ -15,19 +15,32 @@ namespace spmv {
 // Public API -----------------------------------------------------------------
 
 CSRMatrix* csr_create(int rows, int cols, int nnz) {
-    if (rows < 0 || cols < 0 || nnz < 0) {
+    // rows == INT_MAX would overflow the `rows + 1` row_ptrs allocation.
+    if (rows < 0 || cols < 0 || nnz < 0 || rows >= INT_MAX) {
         return nullptr;
     }
 
-    CSRMatrix* mat = new CSRMatrix();
+    CSRMatrix* mat = new (std::nothrow) CSRMatrix();
+    if (!mat) {
+        return nullptr;
+    }
     mat->num_rows = rows;
     mat->num_cols = cols;
     mat->nnz = nnz;
 
-    mat->values = (nnz > 0) ? new float[nnz]() : nullptr;
-    mat->col_indices = (nnz > 0) ? new int[nnz]() : nullptr;
-    mat->row_ptrs = new int[rows + 1]();
+    mat->values = (nnz > 0) ? new (std::nothrow) float[nnz]() : nullptr;
+    mat->col_indices = (nnz > 0) ? new (std::nothrow) int[nnz]() : nullptr;
+    mat->row_ptrs = new (std::nothrow) int[rows + 1]();
+    if ((nnz > 0 && (!mat->values || !mat->col_indices)) || !mat->row_ptrs) {
+        csr_destroy(mat);
+        return nullptr;
+    }
+
     mat->internal = csr_create_device_state();
+    if (!mat->internal) {
+        csr_destroy(mat);
+        return nullptr;
+    }
 
     return mat;
 }
@@ -50,7 +63,7 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
-    if (rows > INT_MAX / cols) {
+    if (rows >= INT_MAX || rows > INT_MAX / cols) {
         return static_cast<int>(SpMVError::INVALID_ARGUMENT);
     }
 
@@ -64,9 +77,16 @@ int csr_from_dense(CSRMatrix* csr, const float* dense, int rows, int cols) {
         }
     }
 
-    float* new_values = (nnz > 0) ? new float[nnz] : nullptr;
-    int* new_col_indices = (nnz > 0) ? new int[nnz] : nullptr;
-    int* new_row_ptrs = new int[rows + 1];
+    float* new_values = (nnz > 0) ? new (std::nothrow) float[nnz] : nullptr;
+    int* new_col_indices = (nnz > 0) ? new (std::nothrow) int[nnz] : nullptr;
+    int* new_row_ptrs = new (std::nothrow) int[rows + 1];
+
+    if ((nnz > 0 && (!new_values || !new_col_indices)) || !new_row_ptrs) {
+        delete[] new_values;
+        delete[] new_col_indices;
+        delete[] new_row_ptrs;
+        return static_cast<int>(SpMVError::OUT_OF_MEMORY);
+    }
 
     delete[] csr->values;
     delete[] csr->col_indices;

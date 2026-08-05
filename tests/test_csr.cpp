@@ -372,3 +372,8 @@ TEST(CSRUnitTest, DeserializeReadsLegacyVersion1Files) {
     csr_destroy(loaded);
     std::remove(path.c_str());
 }
+
+TEST(CSRUnitTest, CreateRejectsOverflowProneSizes) {
+    // rows == INT_MAX would overflow the rows + 1 row_ptrs allocation.
+    EXPECT_EQ(csr_create(INT_MAX, 1, 0), nullptr);
+}

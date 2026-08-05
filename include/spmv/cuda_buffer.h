@@ -199,13 +199,13 @@ class CudaBuffer {
             size_t copy_count = (size_ < new_count) ? size_ : new_count;
             cudaError_t err =
                 cudaMemcpy(new_ptr, ptr_, copy_count * sizeof(T), cudaMemcpyDeviceToDevice);
-            cudaFree(ptr_);
-            ptr_ = nullptr;
             if (err != cudaSuccess) {
+                // Leave the original buffer intact on failure.
                 cudaFree(new_ptr);
                 throw CudaException(err);
             }
         }
+        cudaFree(ptr_);
         ptr_ = new_ptr;
         size_ = new_count;
     }

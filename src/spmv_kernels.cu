@@ -378,8 +378,9 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
             // few rows but very long ones, and a rows-based grid starves the
             // GPU in exactly the case merge path exists for.
             constexpr int kWorkPerThread = 32;
-            int total_threads = (A->nnz + kWorkPerThread - 1) / kWorkPerThread;
-            int merge_blocks = (total_threads + block_size - 1) / block_size;
+            // (n - 1) / d + 1 computes ceil(n / d) without overflowing int.
+            int total_threads = (A->nnz - 1) / kWorkPerThread + 1;
+            int merge_blocks = (total_threads - 1) / block_size + 1;
             spmv_csr_merge_path_kernel<<<merge_blocks, block_size, 0, stream>>>(
                 A->num_rows, A->nnz, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x,
                 d_y);
@@ -387,13 +388,13 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
         }
         case SpMVConfig::VECTOR_CSR: {
             int warps_per_block = block_size / 32;
-            int num_warps = (A->num_rows + warps_per_block - 1) / warps_per_block;
+            int num_warps = (A->num_rows - 1) / warps_per_block + 1;
             spmv_csr_vector_kernel<<<num_warps, block_size, 0, stream>>>(
                 A->num_rows, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x, d_y);
             break;
         }
         case SpMVConfig::SCALAR_CSR: {
-            int num_blocks = (A->num_rows + block_size - 1) / block_size;
+            int num_blocks = (A->num_rows - 1) / block_size + 1;
             spmv_csr_scalar_kernel<<<num_blocks, block_size, 0, stream>>>(
                 A->num_rows, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x, d_y);
             break;
@@ -495,7 +496,7 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMV
     l2_scope.apply(d_x, static_cast<size_t>(x_length));
 
     int block_size = config->block_size;
-    int num_blocks = (A->num_rows + block_size - 1) / block_size;
+    int num_blocks = (A->num_rows - 1) / block_size + 1;
 
     auto host_start = std::chrono::steady_clock::now();
     CudaTimer timer;

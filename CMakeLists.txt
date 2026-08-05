@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(GNUInstallDirs)
+
 set(SPMV_WITH_CUDA OFF)
 
 if(SPMV_REQUIRE_CUDA)
@@ -155,7 +157,6 @@ if(SPMV_BUILD_BENCHMARKS)
 endif()
 
 # ---------- Installation ----------
-include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 install(TARGETS spmv
@@ -167,7 +168,6 @@ install(TARGETS spmv
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/spmv
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.h"
-    PATTERN "test_utils.h" EXCLUDE
 )
 
 install(EXPORT gpu_spmvTargets

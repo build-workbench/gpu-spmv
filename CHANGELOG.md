@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Serialization format version 2: the integrity checksum now also covers the `values` array. Version 1 files remain readable.
 
 ### Fixed
+- `csr_read_matrix_market` no longer crashes (`std::length_error` from `vector::reserve`) on headers claiming more entries than the file can contain; such files are rejected with `FILE_IO`, and entry counts are capped at `INT_MAX / 2` (symmetric expansion bound).
+- Installed package now exports its include directory: `include(GNUInstallDirs)` ran after the target definition, so `gpu_spmv::spmv` lost `INTERFACE_INCLUDE_DIRECTORIES` and `find_package()` consumers could not compile.
+- Creation and conversion functions (`csr_create`, `csr_from_dense`, `ell_create`, `ell_from_dense`, `ell_from_csr`) now use nothrow allocations and return the documented `nullptr` / `OUT_OF_MEMORY` on failure instead of letting `std::bad_alloc` escape a C-style API.
+- `csr_create` / `csr_from_dense` reject `rows == INT_MAX`, where the `rows + 1` allocation would overflow.
+- `ell_from_csr` allocates before releasing the previous arrays, so a failed allocation leaves the matrix intact (matching `ell_from_dense` / `csr_from_dense`).
+- `CudaBuffer::resize` keeps the original buffer intact when the device-to-device copy fails, instead of leaving a null pointer with a stale size.
+- Kernel grid size math (`scalar` / `vector` / `merge path` / `ELL`) uses an overflow-safe ceil division for extreme matrix sizes.
 - README minimal example now compiles (`CudaBuffer` exposes `get()`, not `data()`).
 - `SpMVResult::bandwidth_gb_s` is now derived from the reported `elapsed_ms` instead of a separate host-side timer, so the result fields are mutually consistent.
 - `spmv_csr`/`spmv_ell` zero-work paths (empty matrix / zero-length vector) now synchronize like the kernel paths when timing is enabled, making blocking behavior independent of matrix contents.
@@ -30,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplified contributor workflow, GitHub templates, and GitHub Pages content to match the smaller core scope.
 - Added dedicated Linux CUDA presets backed by system GCC/G++ and fail-fast guidance for Conda host compilers.
 - `spmv_cpu_csr`/`spmv_cpu_ell` now return an `int` error code instead of silently ignoring invalid input.
+- CI `build-cpu` job now installs the package and builds a `find_package()` consumer as a packaging smoke test.
 - `CudaBuffer::resize` preserves existing elements (like `std::vector::resize`) instead of discarding them.
 - Internal `select_kernel()` no longer takes an unused `num_cols` parameter.
 

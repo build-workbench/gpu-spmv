@@ -1,5 +1,7 @@
 #include "ell_device.h"
 
+#include <new>
+
 namespace spmv {
 
 namespace {
@@ -34,7 +36,7 @@ void free_device(ELLMatrixInternal* internal) {
 }  // namespace
 
 void* ell_create_device_state() {
-    return new ELLMatrixInternal();
+    return new (std::nothrow) ELLMatrixInternal();
 }
 
 void ell_destroy_device_state(ELLMatrix* mat) {
