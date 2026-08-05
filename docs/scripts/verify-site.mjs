@@ -56,12 +56,7 @@ if (/useRouter\(|router\.go\('\/zh\//.test(contents.index)) {
 
 const requiredThemeFiles = [
   join(root, '.vitepress', 'theme', 'Layout.vue'),
-  join(root, '.vitepress', 'theme', 'styles', 'tokens.css'),
-  join(root, '.vitepress', 'theme', 'styles', 'base.css'),
-  join(root, '.vitepress', 'theme', 'styles', 'home.css'),
-  join(root, '.vitepress', 'theme', 'styles', 'paper.css'),
-  join(root, '.vitepress', 'theme', 'styles', 'citation.css'),
-  join(root, '.vitepress', 'theme', 'styles', 'diagram.css'),
+  join(root, '.vitepress', 'theme', 'style.css'),
   join(root, '.vitepress', 'theme', 'components', 'HeroEvidence.vue'),
   join(root, '.vitepress', 'theme', 'components', 'MetricStrip.vue'),
   join(root, '.vitepress', 'theme', 'components', 'WhitepaperSection.vue'),

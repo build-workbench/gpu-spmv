@@ -51,27 +51,21 @@ ctest --preset cuda-linux
 无 GPU 环境可使用：
 
 ```bash
-cmake -S . -B build-no-cuda -DSPMV_REQUIRE_CUDA=OFF
-cmake --build build-no-cuda
-ctest --test-dir build-no-cuda --output-on-failure
+cmake --preset cpu-only
+cmake --build --preset cpu-only
+ctest --preset cpu-only
 ```
 
-Linux 下的 CUDA 构建现在提供了正式 preset，会固定系统 GCC/G++ 作为 host compiler，
-避免 Conda 编译器串进 nvcc 链路：
-
-```bash
-cmake --preset cuda-linux
-cmake --build --preset cuda-linux
-ctest --preset cuda-linux
-```
-
-如果需要 Release 构建：
+Release 构建：
 
 ```bash
 cmake --preset cuda-linux-release
 cmake --build --preset cuda-linux-release
 ctest --preset cuda-linux-release
 ```
+
+`cuda-linux` preset 会固定系统 GCC/G++ 作为 host compiler，避免 Conda
+编译器串进 nvcc 链路。
 
 ## 最小示例
 
