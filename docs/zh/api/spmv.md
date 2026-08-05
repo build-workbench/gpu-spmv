@@ -20,10 +20,15 @@ enum KernelType {
 ```cpp
 struct SpMVConfig {
     KernelType kernel_type;
-    int block_size;    // CUDA 块大小（默认 256）
-    bool use_texture;  // 是否使用纹理缓存
+    int block_size;     // CUDA 块大小（默认 256）
+    bool enable_timing; // 默认 true
 };
 ```
+
+`enable_timing = true`（默认）时，`spmv_csr`/`spmv_ell` 会阻塞直到 `d_y`
+完成，并填充 `SpMVResult` 的计时字段。设为 `false` 时只把 kernel 入队到
+stream——不创建 CUDA event、不同步——便于流水线编排；读取 `d_y` 前需自行
+同步 stream。异步模式下计时字段保持为 0，且只报告同步的启动失败。
 
 ### SpMVThresholds
 
@@ -31,30 +36,8 @@ struct SpMVConfig {
 
 ```cpp
 struct SpMVThresholds {
-    float avg_nnz_threshold;     // 默认 4.0
-    float skewness_threshold;    // 默认 10.0
-    int texture_cols_threshold;  // 默认 10000
-};
-```
-
-### SpMVExecutionContext
-
-可选的执行上下文，用于跨迭代复用纹理缓存：
-
-```cpp
-class SpMVExecutionContext {
-   public:
-    SpMVExecutionContext();
-    ~SpMVExecutionContext();
-
-    void reset();              // 重置并释放纹理对象
-    bool is_texture_bound();   // 查询当前是否绑定了纹理
-
-    // 禁用拷贝，允许移动
-    SpMVExecutionContext(const SpMVExecutionContext&) = delete;
-    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
-    SpMVExecutionContext(SpMVExecutionContext&&) noexcept;
-    SpMVExecutionContext& operator=(SpMVExecutionContext&&) noexcept;
+    float avg_nnz_threshold;  // 默认 4.0
+    float skewness_threshold; // 默认 10.0
 };
 ```
 
@@ -65,9 +48,12 @@ struct SpMVResult {
     float* y;              // 输出向量（设备指针）
     float elapsed_ms;      // 执行时间（毫秒）
     float gflops;          // 计算性能 (GFLOPS)
-    float bandwidth_gb_s;  // 内存带宽 (GB/s)
+    float bandwidth_gb_s;  // 内存带宽 (GB/s)，由 elapsed_ms 推导
     int error_code;        // 0 = 成功，负数 = 错误
 };
+
+// error_code 的类型化访问器
+SpMVError spmv_result_error(const SpMVResult& result);
 ```
 
 ## 核心函数
@@ -75,8 +61,11 @@ struct SpMVResult {
 ### 自动配置
 
 ```cpp
-// 自动选择最优 Kernel 配置
+// 根据矩阵统计信息自动选择 CSR Kernel 配置
 SpMVConfig spmv_auto_config(const CSRMatrix* A);
+
+// ELL 矩阵的配置（单一 Kernel）
+SpMVConfig spmv_auto_config_ell(const ELLMatrix* A);
 ```
 
 ### CSR SpMV
@@ -86,7 +75,7 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A);
 SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
                     const SpMVConfig* config = nullptr,
                     int vec_size = -1,  // -1 表示自动检测
-                    SpMVExecutionContext* context = nullptr);
+                    cudaStream_t stream = nullptr);
 ```
 
 ### ELL SpMV
@@ -95,15 +84,16 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
 // GPU ELL 格式 SpMV
 SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
                     const SpMVConfig* config = nullptr, int vec_size = -1,
-                    SpMVExecutionContext* context = nullptr);
+                    cudaStream_t stream = nullptr);
 ```
 
 ### CPU 参考实现
 
 ```cpp
-// CPU 参考实现（用于验证）
-void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
-void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
+// CPU 参考实现（用于验证）。
+// 成功返回 0，输入非法时返回负的错误码。
+int spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
+int spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
 ```
 
 ### 阈值管理
@@ -147,11 +137,11 @@ int main() {
 
     // 3. 自动配置并执行
     SpMVConfig config = spmv_auto_config(csr);
-    SpMVResult result = spmv_csr(csr, d_x.data(), d_y.data(), &config);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config);
 
     // 4. 检查结果
-    if (result.error_code != 0) {
-        fprintf(stderr, "Error: %d\n", result.error_code);
+    if (spmv_result_error(result) != SpMVError::SUCCESS) {
+        fprintf(stderr, "Error: %s\n", spmv_error_string(spmv_result_error(result)));
         return 1;
     }
 
@@ -169,5 +159,6 @@ int main() {
 #include <spmv/csr_matrix.h>   // CSR 矩阵
 #include <spmv/cuda_buffer.h>  // RAII 内存管理
 #include <spmv/ell_matrix.h>   // ELL 矩阵
+#include <spmv/market_io.h>    // Matrix Market 文件读取器
 #include <spmv/spmv.h>         // 主接口 + SpMV 计算
 ```

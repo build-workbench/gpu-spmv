@@ -38,6 +38,33 @@ cmake --build --preset cuda-linux-release
 ctest --preset cuda-linux-release
 ```
 
+## GPU CI
+
+Kernel correctness tests (`tests/test_spmv.cu`, `tests/test_bandwidth.cu`) need a real
+NVIDIA GPU, which GitHub's hosted runners do not provide. CI therefore has two CUDA
+gates:
+
+- `cuda-compile` — always runs; compiles the library and tests in an NVIDIA container.
+- `cuda-test` — runs the full test suite on a self-hosted GPU runner. It is skipped
+  unless the repository variable `CUDA_RUNNER_LABEL` is set (Settings → Secrets and
+  variables → Actions → Variables). Set it to the label of a self-hosted runner that
+  has the CUDA toolkit, CMake, and a C++ compiler on `PATH`.
+
+Before merging kernel changes, run the suite locally on a GPU machine:
+
+```bash
+cmake --preset cuda-linux-release
+cmake --build --preset cuda-linux-release
+ctest --preset cuda-linux-release
+```
+
+## Benchmarks and examples
+
+- `examples/basic_spmv.cpp` builds by default (`SPMV_BUILD_EXAMPLES=ON`) and runs in
+  both CUDA and CPU-only builds.
+- The synthetic benchmark tool builds with `-DSPMV_BUILD_BENCHMARKS=ON` (CUDA only)
+  and can also load Matrix Market files: `./build/spmv_bench matrix.mtx`.
+
 ## What belongs in this repository
 
 Good contributions:

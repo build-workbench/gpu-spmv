@@ -89,22 +89,22 @@ class CudaException : public std::runtime_error {
     cudaError_t error_;
 };
 
-#define SPMV_CUDA_CHECK(call, error_code)                                              \
-    do {                                                                               \
-        cudaError_t spmv_err_ = (call);                                                \
-        if (spmv_err_ != cudaSuccess) {                                                \
+#define SPMV_CUDA_CHECK(call, error_code)                                               \
+    do {                                                                                \
+        cudaError_t spmv_err_ = (call);                                                 \
+        if (spmv_err_ != cudaSuccess) {                                                 \
             fprintf(stderr, "[gpu-spmv] CUDA error at %s:%d: %s\n", __FILE__, __LINE__, \
-                    cudaGetErrorString(spmv_err_));                                    \
-            return static_cast<int>(error_code);                                       \
-        }                                                                              \
+                    cudaGetErrorString(spmv_err_));                                     \
+            return static_cast<int>(error_code);                                        \
+        }                                                                               \
     } while (0)
 
-#define SPMV_CUDA_CHECK_THROW(call)           \
-    do {                                      \
-        cudaError_t spmv_err_ = (call);       \
-        if (spmv_err_ != cudaSuccess) {       \
+#define SPMV_CUDA_CHECK_THROW(call)               \
+    do {                                          \
+        cudaError_t spmv_err_ = (call);           \
+        if (spmv_err_ != cudaSuccess) {           \
             throw spmv::CudaException(spmv_err_); \
-        }                                     \
+        }                                         \
     } while (0)
 
 }  // namespace spmv

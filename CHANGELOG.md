@@ -7,10 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `SpMVConfig::enable_timing`: set to `false` to enqueue kernels without CUDA events or synchronization, so SpMV calls can be pipelined asynchronously (default `true` keeps the blocking, metered behavior).
+- `spmv_result_error()` typed accessor for `SpMVResult::error_code`, and `spmv_auto_config_ell()` for API symmetry.
+- `csr_read_matrix_market()` (`spmv/market_io.h`): Matrix Market coordinate reader (real/integer/pattern, general/symmetric; duplicates summed).
+- Runnable `examples/basic_spmv.cpp` (built by default, works in CPU-only builds) and a synthetic benchmark tool `tools/spmv_bench.cu` behind `SPMV_BUILD_BENCHMARKS=ON`.
+- CI `cuda-test` job that runs the full GPU test suite on a self-hosted runner when the `CUDA_RUNNER_LABEL` repository variable is set.
+- Serialization format version 2: the integrity checksum now also covers the `values` array. Version 1 files remain readable.
+
+### Fixed
+- README minimal example now compiles (`CudaBuffer` exposes `get()`, not `data()`).
+- `SpMVResult::bandwidth_gb_s` is now derived from the reported `elapsed_ms` instead of a separate host-side timer, so the result fields are mutually consistent.
+- `spmv_csr`/`spmv_ell` zero-work paths (empty matrix / zero-length vector) now synchronize like the kernel paths when timing is enabled, making blocking behavior independent of matrix contents.
+- Merge Path grid is now partitioned by `nnz` instead of `num_rows`, restoring parallelism for the highly skewed matrices this kernel exists for.
+- ELL kernel uses 64-bit index math, so matrices with `num_rows * max_nnz_per_row > INT_MAX` no longer overflow.
+- `csr_deserialize`/`ell_deserialize` reject headers that claim more payload than the file contains (before allocating) and guard the `rows + 1` allocation against integer overflow.
+- `csr_get_element` returns correct values for CSR matrices whose column indices are not sorted within each row.
+- The L2 persisting access-policy hint is restored on exit, so `spmv_csr`/`spmv_ell` no longer leave side effects on the caller's stream.
+
 ### Changed
 - Reduced the repository to the core CSR / ELL SpMV library and removed repository-specific AI governance files.
 - Simplified contributor workflow, GitHub templates, and GitHub Pages content to match the smaller core scope.
 - Added dedicated Linux CUDA presets backed by system GCC/G++ and fail-fast guidance for Conda host compilers.
+- `spmv_cpu_csr`/`spmv_cpu_ell` now return an `int` error code instead of silently ignoring invalid input.
+- `CudaBuffer::resize` preserves existing elements (like `std::vector::resize`) instead of discarding them.
+- Internal `select_kernel()` no longer takes an unused `num_cols` parameter.
 
 ### Removed
 - OpenSpec specifications, Claude / Copilot repository instruction files, and local skill configuration.

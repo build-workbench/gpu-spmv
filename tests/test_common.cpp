@@ -90,6 +90,27 @@ TEST(CudaBufferTest, Resize) {
     EXPECT_EQ(buffer.get(), nullptr);
 }
 
+TEST(CudaBufferTest, ResizePreservesExistingData) {
+    CudaBuffer<float> buffer(3);
+    std::vector<float> data = {1.0f, 2.0f, 3.0f};
+    buffer.copyFromHost(data.data(), 3);
+
+    buffer.resize(5);
+    ASSERT_EQ(buffer.size(), 5u);
+    std::vector<float> grown(5, -1.0f);
+    buffer.copyToHost(grown.data(), 5);
+    EXPECT_FLOAT_EQ(grown[0], 1.0f);
+    EXPECT_FLOAT_EQ(grown[1], 2.0f);
+    EXPECT_FLOAT_EQ(grown[2], 3.0f);
+
+    buffer.resize(2);
+    ASSERT_EQ(buffer.size(), 2u);
+    std::vector<float> shrunk(2, -1.0f);
+    buffer.copyToHost(shrunk.data(), 2);
+    EXPECT_FLOAT_EQ(shrunk[0], 1.0f);
+    EXPECT_FLOAT_EQ(shrunk[1], 2.0f);
+}
+
 TEST(CudaBufferTest, Release) {
     CudaBuffer<float> buffer(100);
     EXPECT_NE(buffer.get(), nullptr);

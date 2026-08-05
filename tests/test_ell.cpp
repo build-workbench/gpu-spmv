@@ -1,10 +1,11 @@
 #include "spmv/csr_matrix.h"
 #include "spmv/ell_matrix.h"
-#include "test_utils.h"
 
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <vector>
+
+#include "test_utils.h"
 
 using namespace spmv;
 using namespace spmv::test;
@@ -236,4 +237,31 @@ TEST(ELLUnitTest, ValidateEmptyMatrix) {
     ASSERT_NE(ell, nullptr);
     EXPECT_TRUE(ell_validate(ell));
     ell_destroy(ell);
+}
+
+// Regression: the version 2 checksum must cover the values array.
+TEST(ELLUnitTest, DeserializeDetectsCorruptedValues) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    ELLMatrix* ell = ell_create(0, 0, 0);
+    ASSERT_EQ(ell_from_dense(ell, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+
+    std::string path = getTempFilePath("ell_corrupt.bin");
+    ASSERT_EQ(ell_serialize(ell, path.c_str()), static_cast<int>(SpMVError::SUCCESS));
+
+    // Values payload starts after magic(4) + version(4) + dims(12).
+    FILE* f = std::fopen(path.c_str(), "r+b");
+    ASSERT_NE(f, nullptr);
+    ASSERT_EQ(std::fseek(f, 20, SEEK_SET), 0);
+    int byte = std::fgetc(f);
+    ASSERT_NE(byte, EOF);
+    ASSERT_EQ(std::fseek(f, 20, SEEK_SET), 0);
+    std::fputc(byte ^ 0xFF, f);
+    std::fclose(f);
+
+    ELLMatrix* loaded = ell_create(0, 0, 0);
+    EXPECT_EQ(ell_deserialize(loaded, path.c_str()), static_cast<int>(SpMVError::FILE_IO));
+
+    ell_destroy(ell);
+    ell_destroy(loaded);
+    std::remove(path.c_str());
 }

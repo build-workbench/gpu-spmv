@@ -79,6 +79,9 @@ ctest --preset cuda-linux-release
 
 ## 最小示例
 
+完整可编译版本见 [`examples/basic_spmv.cpp`](examples/basic_spmv.cpp)
+（默认随构建编译；无 CUDA 构建时自动退化为 CPU 路径）：
+
 ```cpp
 #include <spmv/csr_matrix.h>
 #include <spmv/cuda_buffer.h>
@@ -98,15 +101,19 @@ int main() {
     spmv::CudaBuffer<float> d_x(3);
     spmv::CudaBuffer<float> d_y(3);
     const float h_x[] = {1.0f, 1.0f, 1.0f};
-    cudaMemcpy(d_x.data(), h_x, sizeof(h_x), cudaMemcpyHostToDevice);
+    d_x.copyFromHost(h_x, 3);
 
     spmv::SpMVConfig config = spmv::spmv_auto_config(csr);
-    spmv::SpMVResult result = spmv::spmv_csr(csr, d_x.data(), d_y.data(), &config, 3);
+    spmv::SpMVResult result = spmv::spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
     spmv::csr_destroy(csr);
 
     return result.error_code == 0 ? 0 : 1;
 }
 ```
+
+默认情况下 `spmv_csr` 会阻塞直到 `d_y` 完成并报告计时指标。
+设置 `config.enable_timing = false` 可只把 kernel 入队到 stream
+（不创建 event、不同步），便于流水线编排；读取 `d_y` 前需自行同步。
 
 ## 目录结构
 
@@ -115,6 +122,8 @@ gpu-spmv/
 ├── include/spmv/   # 公共头文件
 ├── src/            # 核心库实现
 ├── tests/          # 单元测试与回归测试
+├── examples/       # 最小可运行示例
+├── tools/          # 基准测试工具（SPMV_BUILD_BENCHMARKS=ON）
 ├── docs/           # GitHub Pages 文档站
 ├── CHANGELOG.md    # 唯一更新日志
 └── CMakeLists.txt

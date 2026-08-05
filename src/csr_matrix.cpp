@@ -126,12 +126,10 @@ float csr_get_element(const CSRMatrix* mat, int row, int col) {
     int start = mat->row_ptrs[row];
     int end = mat->row_ptrs[row + 1];
 
+    // Full scan: column indices are not required to be sorted within a row.
     for (int i = start; i < end; i++) {
         if (mat->col_indices[i] == col) {
             return mat->values[i];
-        }
-        if (mat->col_indices[i] > col) {
-            break;
         }
     }
 
@@ -157,7 +155,9 @@ int csr_serialize(const CSRMatrix* mat, const char* filename) {
     }
 
     const uint32_t magic = 0x52534353;  // "SCSR" in little-endian
-    const uint32_t version = 1;
+    // Version 2 extends the version 1 checksum to also cover the values
+    // array; version 1 files remain readable.
+    const uint32_t version = 2;
     file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
     file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
@@ -177,6 +177,9 @@ int csr_serialize(const CSRMatrix* mat, const char* filename) {
     checksum += static_cast<uint64_t>(mat->nnz);
     for (int i = 0; i < mat->nnz; i++) {
         checksum += static_cast<uint64_t>(mat->col_indices[i]);
+        uint32_t value_bits;
+        std::memcpy(&value_bits, &mat->values[i], sizeof(uint32_t));
+        checksum += value_bits;
     }
     for (int i = 0; i <= mat->num_rows; i++) {
         checksum += static_cast<uint64_t>(mat->row_ptrs[i]);
@@ -208,9 +211,9 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    if (version > 1) {
-        fprintf(stderr, "Warning: CSR file version %u is newer than supported version 1\n",
-                version);
+    if (version < 1 || version > 2) {
+        fprintf(stderr, "Unsupported CSR file version %u (supported: 1, 2)\n", version);
+        return static_cast<int>(SpMVError::FILE_IO);
     }
 
     int rows, cols, nnz;
@@ -218,8 +221,25 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     file.read(reinterpret_cast<char*>(&cols), sizeof(int));
     file.read(reinterpret_cast<char*>(&nnz), sizeof(int));
 
-    if (!file || rows < 0 || cols < 0 || nnz < 0) {
+    // rows == INT_MAX would overflow the rows + 1 allocation below.
+    if (!file || rows < 0 || cols < 0 || nnz < 0 || rows >= INT_MAX) {
         return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // Reject headers that claim more payload than the file actually contains
+    // before allocating anything, so a corrupt or malicious header cannot
+    // trigger multi-gigabyte allocations.
+    {
+        std::streampos header_end = file.tellg();
+        file.seekg(0, std::ios::end);
+        std::streampos file_end = file.tellg();
+        file.seekg(header_end, std::ios::beg);
+        uint64_t payload = static_cast<uint64_t>(nnz) * (sizeof(float) + sizeof(int)) +
+                           (static_cast<uint64_t>(rows) + 1) * sizeof(int) + sizeof(uint64_t);
+        if (!file || file_end < header_end ||
+            static_cast<uint64_t>(file_end - header_end) < payload) {
+            return static_cast<int>(SpMVError::FILE_IO);
+        }
     }
 
     // Host-side mutation invalidates device mirror.
@@ -265,6 +285,11 @@ int csr_deserialize(CSRMatrix* mat, const char* filename) {
     computed_checksum += static_cast<uint64_t>(nnz);
     for (int i = 0; i < nnz; i++) {
         computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
+        if (version >= 2) {
+            uint32_t value_bits;
+            std::memcpy(&value_bits, &mat->values[i], sizeof(uint32_t));
+            computed_checksum += value_bits;
+        }
     }
     for (int i = 0; i <= rows; i++) {
         computed_checksum += static_cast<uint64_t>(mat->row_ptrs[i]);

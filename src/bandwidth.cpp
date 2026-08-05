@@ -30,7 +30,8 @@ float get_gpu_peak_bandwidth() {
 
 static BandwidthMetrics make_metrics(size_t total_bytes, float elapsed_ms) {
     BandwidthMetrics metrics;
-    if (elapsed_ms <= 0.0f) return metrics;
+    if (elapsed_ms <= 0.0f)
+        return metrics;
 
     float elapsed_s = elapsed_ms / 1000.0f;
     metrics.achieved_bandwidth_gb_s = (total_bytes / 1e9f) / elapsed_s;
@@ -44,7 +45,8 @@ static BandwidthMetrics make_metrics(size_t total_bytes, float elapsed_ms) {
 }
 
 BandwidthMetrics compute_bandwidth_csr(const CSRMatrix* A, float elapsed_ms) {
-    if (!A || elapsed_ms <= 0.0f) return {};
+    if (!A || elapsed_ms <= 0.0f)
+        return {};
 
     size_t bytes = 0;
     bytes += static_cast<size_t>(A->nnz) * sizeof(float);
@@ -57,7 +59,8 @@ BandwidthMetrics compute_bandwidth_csr(const CSRMatrix* A, float elapsed_ms) {
 }
 
 BandwidthMetrics compute_bandwidth_ell(const ELLMatrix* A, float elapsed_ms) {
-    if (!A || elapsed_ms <= 0.0f) return {};
+    if (!A || elapsed_ms <= 0.0f)
+        return {};
 
     size_t ell_size = static_cast<size_t>(A->num_rows) * A->max_nnz_per_row;
     size_t bytes = 0;

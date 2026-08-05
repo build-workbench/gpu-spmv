@@ -158,7 +158,8 @@ class CudaBuffer {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
         }
-        SPMV_CUDA_CHECK_THROW(cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
+        SPMV_CUDA_CHECK_THROW(
+            cudaMemcpy(ptr_, host_data, count * sizeof(T), cudaMemcpyHostToDevice));
     }
 
     /**
@@ -172,24 +173,38 @@ class CudaBuffer {
         if (count > size_) {
             throw std::runtime_error("Copy size exceeds buffer size");
         }
-        SPMV_CUDA_CHECK_THROW(cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
+        SPMV_CUDA_CHECK_THROW(
+            cudaMemcpy(host_data, ptr_, count * sizeof(T), cudaMemcpyDeviceToHost));
     }
 
     /**
      * @brief Resize buffer (reallocates if necessary).
      *
+     * Like std::vector::resize, the min(old, new) leading elements are
+     * preserved; any additional elements are left uninitialized.
+     *
      * @param new_count New element count.
-     * @throws CudaException if allocation fails.
+     * @throws CudaException if allocation or the device-to-device copy fails.
      */
     void resize(size_t new_count) {
         if (new_count == size_)
             return;
-        T* new_ptr = nullptr;
-        if (new_count > 0) {
-            SPMV_CUDA_CHECK_THROW(cudaMalloc(&new_ptr, new_count * sizeof(T)));
+        if (new_count == 0) {
+            release();
+            return;
         }
-        if (ptr_) {
+        T* new_ptr = nullptr;
+        SPMV_CUDA_CHECK_THROW(cudaMalloc(&new_ptr, new_count * sizeof(T)));
+        if (ptr_ && size_ > 0) {
+            size_t copy_count = (size_ < new_count) ? size_ : new_count;
+            cudaError_t err =
+                cudaMemcpy(new_ptr, ptr_, copy_count * sizeof(T), cudaMemcpyDeviceToDevice);
             cudaFree(ptr_);
+            ptr_ = nullptr;
+            if (err != cudaSuccess) {
+                cudaFree(new_ptr);
+                throw CudaException(err);
+            }
         }
         ptr_ = new_ptr;
         size_ = new_count;

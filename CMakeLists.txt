@@ -4,6 +4,8 @@ project(gpu_spmv VERSION 1.0.0 LANGUAGES CXX)
 include(CheckLanguage)
 option(SPMV_REQUIRE_CUDA "Fail configuration when CUDA is unavailable" ON)
 option(SPMV_BUILD_TESTS "Build unit tests" ON)
+option(SPMV_BUILD_EXAMPLES "Build example programs" ON)
+option(SPMV_BUILD_BENCHMARKS "Build benchmark tools (requires CUDA)" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -62,6 +64,7 @@ set(SPMV_SOURCES
     src/spmv_cpu.cpp
     src/internal/kernel_selector.cpp
     src/bandwidth.cpp
+    src/market_io.cpp
 )
 
 if(SPMV_WITH_CUDA)
@@ -110,6 +113,7 @@ if(SPMV_BUILD_TESTS)
         tests/test_csr.cpp
         tests/test_ell.cpp
         tests/test_kernel_selector.cpp
+        tests/test_market.cpp
         tests/test_no_cuda.cpp
     )
 
@@ -129,6 +133,25 @@ if(SPMV_BUILD_TESTS)
 
     include(GoogleTest)
     gtest_discover_tests(spmv_tests)
+endif()
+
+# ---------- Examples ----------
+if(SPMV_BUILD_EXAMPLES)
+    add_executable(basic_spmv examples/basic_spmv.cpp)
+    target_link_libraries(basic_spmv PRIVATE spmv)
+endif()
+
+# ---------- Benchmarks ----------
+if(SPMV_BUILD_BENCHMARKS)
+    if(SPMV_WITH_CUDA)
+        add_executable(spmv_bench tools/spmv_bench.cu)
+        target_link_libraries(spmv_bench PRIVATE spmv)
+        target_compile_options(spmv_bench PRIVATE
+            $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo>
+        )
+    else()
+        message(STATUS "SPMV_BUILD_BENCHMARKS=ON requires CUDA; skipping spmv_bench.")
+    endif()
 endif()
 
 # ---------- Installation ----------

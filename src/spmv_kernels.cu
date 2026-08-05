@@ -4,7 +4,6 @@
 #include <cuda_runtime.h>
 
 #include <chrono>
-
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 
@@ -35,8 +34,10 @@ struct CudaTimer {
     }
 
     ~CudaTimer() {
-        if (start) cudaEventDestroy(start);
-        if (stop) cudaEventDestroy(stop);
+        if (start)
+            cudaEventDestroy(start);
+        if (stop)
+            cudaEventDestroy(stop);
     }
 
     CudaTimer(const CudaTimer&) = delete;
@@ -49,22 +50,28 @@ struct CudaTimer {
     }
 
     cudaError_t record_stop(cudaStream_t stream) const {
-        if (status != cudaSuccess) return status;
+        if (status != cudaSuccess)
+            return status;
         cudaError_t err = cudaEventRecord(stop, stream);
-        if (err != cudaSuccess) return err;
+        if (err != cudaSuccess)
+            return err;
         return cudaEventSynchronize(stop);
     }
 
     cudaError_t elapsed_ms(float* ms) const {
-        if (!ms) return cudaErrorInvalidValue;
-        if (status != cudaSuccess) return status;
+        if (!ms)
+            return cudaErrorInvalidValue;
+        if (status != cudaSuccess)
+            return status;
         return cudaEventElapsedTime(ms, start, stop);
     }
 };
 
 static int map_cuda_error(cudaError_t err, SpMVError fallback) {
-    if (err == cudaSuccess) return static_cast<int>(SpMVError::SUCCESS);
-    if (err == cudaErrorMemoryAllocation) return static_cast<int>(SpMVError::CUDA_MALLOC);
+    if (err == cudaSuccess)
+        return static_cast<int>(SpMVError::SUCCESS);
+    if (err == cudaErrorMemoryAllocation)
+        return static_cast<int>(SpMVError::CUDA_MALLOC);
     return static_cast<int>(fallback);
 }
 
@@ -131,19 +138,20 @@ __device__ int merge_path_find_row(const int* __restrict__ row_ptrs, int num_row
     return low;
 }
 
-__global__ void spmv_csr_merge_path_kernel(int num_rows, int nnz,
-                                           const int* __restrict__ row_ptrs,
+__global__ void spmv_csr_merge_path_kernel(int num_rows, int nnz, const int* __restrict__ row_ptrs,
                                            const int* __restrict__ col_indices,
                                            const float* __restrict__ values,
                                            const float* __restrict__ x, float* __restrict__ y) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int total_threads = gridDim.x * blockDim.x;
-    if (nnz <= 0) return;
+    if (nnz <= 0)
+        return;
 
     int nz_start = static_cast<int>((static_cast<long long>(tid) * nnz) / total_threads);
     int nz_end = static_cast<int>((static_cast<long long>(tid + 1) * nnz) / total_threads);
 
-    if (nz_start >= nz_end) return;
+    if (nz_start >= nz_end)
+        return;
 
     int current_row = merge_path_find_row(row_ptrs, num_rows, nz_start);
     float sum = 0.0f;
@@ -170,7 +178,9 @@ __global__ void spmv_ell_kernel(int num_rows, int max_nnz_per_row,
     if (row < num_rows) {
         float sum = 0.0f;
         for (int k = 0; k < max_nnz_per_row; k++) {
-            int idx = k * num_rows + row;
+            // 64-bit index math: num_rows * max_nnz_per_row can exceed
+            // INT_MAX for large ELL matrices (host side uses size_t).
+            long long idx = static_cast<long long>(k) * num_rows + row;
             int col = col_indices[idx];
             if (col >= 0) {
                 sum += values[idx] * __ldg(&x[col]);
@@ -217,39 +227,69 @@ static bool validate_spmv_vectors(int num_cols, int num_rows, const float* d_x, 
     return true;
 }
 
-static void set_l2_persisting(const float* d_x, size_t x_length, cudaStream_t stream) {
-    if (!d_x || x_length == 0) return;
+// Applies an L2 persisting access-policy window for d_x while in scope and
+// restores the stream's previous window on destruction, so the hint never
+// leaks into unrelated work the caller later enqueues on the same stream.
+struct L2PersistingScope {
+    cudaStream_t stream = nullptr;
+    cudaStreamAttrValue saved{};
+    bool applied = false;
 
-    cudaStreamAttrValue attr;
-    attr.accessPolicyWindow.base_ptr = const_cast<float*>(d_x);
-    attr.accessPolicyWindow.num_bytes = x_length * sizeof(float);
-    attr.accessPolicyWindow.hitRatio = 1.0f;
-    attr.accessPolicyWindow.hitProp = cudaAccessPropertyPersisting;
-    attr.accessPolicyWindow.missProp = cudaAccessPropertyStreaming;
-    cudaStreamSetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &attr);
-}
+    explicit L2PersistingScope(cudaStream_t s) : stream(s) {}
+
+    ~L2PersistingScope() {
+        if (applied) {
+            cudaStreamSetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &saved);
+        }
+    }
+
+    L2PersistingScope(const L2PersistingScope&) = delete;
+    L2PersistingScope& operator=(const L2PersistingScope&) = delete;
+
+    void apply(const float* d_x, size_t x_length) {
+        if (!d_x || x_length == 0)
+            return;
+
+        // Best effort: if the previous window cannot be read, restore a
+        // zeroed window later (num_bytes == 0 disables the policy).
+        if (cudaStreamGetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &saved) !=
+            cudaSuccess) {
+            saved = cudaStreamAttrValue{};
+        }
+
+        cudaStreamAttrValue attr{};
+        attr.accessPolicyWindow.base_ptr = const_cast<float*>(d_x);
+        attr.accessPolicyWindow.num_bytes = x_length * sizeof(float);
+        attr.accessPolicyWindow.hitRatio = 1.0f;
+        attr.accessPolicyWindow.hitProp = cudaAccessPropertyPersisting;
+        attr.accessPolicyWindow.missProp = cudaAccessPropertyStreaming;
+        if (cudaStreamSetAttribute(stream, cudaStreamAttributeAccessPolicyWindow, &attr) ==
+            cudaSuccess) {
+            applied = true;
+        }
+    }
+};
 
 static int synchronize_and_check(cudaStream_t stream) {
     cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) return static_cast<int>(SpMVError::KERNEL_LAUNCH);
+    if (err != cudaSuccess)
+        return static_cast<int>(SpMVError::KERNEL_LAUNCH);
     err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) return map_cuda_error(err, SpMVError::KERNEL_LAUNCH);
+    if (err != cudaSuccess)
+        return map_cuda_error(err, SpMVError::KERNEL_LAUNCH);
     return static_cast<int>(SpMVError::SUCCESS);
 }
 
-static void finalize_result(SpMVResult& result, const CudaTimer& timer, bool use_cuda_timer,
-                            float fallback_ms, int nnz, float bandwidth_gb_s) {
-    if (use_cuda_timer) {
-        float ms = 0.0f;
-        if (timer.elapsed_ms(&ms) == cudaSuccess) {
-            result.elapsed_ms = ms;
-        } else {
-            result.elapsed_ms = fallback_ms;
-        }
-    } else {
-        result.elapsed_ms = fallback_ms;
-    }
-    result.gflops = (result.elapsed_ms > 0.0f) ? (2.0f * nnz) / (result.elapsed_ms * 1e6f) : 0.0f;
+static float resolve_elapsed_ms(const CudaTimer& timer, bool use_cuda_timer, float fallback_ms) {
+    if (!use_cuda_timer)
+        return fallback_ms;
+    float ms = 0.0f;
+    return (timer.elapsed_ms(&ms) == cudaSuccess) ? ms : fallback_ms;
+}
+
+static void finalize_result(SpMVResult& result, float elapsed_ms, int nnz, float bandwidth_gb_s) {
+    result.elapsed_ms = elapsed_ms;
+    result.gflops = (elapsed_ms > 0.0f) ? (2.0f * nnz) / (elapsed_ms * 1e6f) : 0.0f;
     result.bandwidth_gb_s = bandwidth_gb_s;
     result.error_code = static_cast<int>(SpMVError::SUCCESS);
 }
@@ -276,9 +316,11 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
     }
 
     SpMVConfig default_config;
-    if (!config) config = &default_config;
+    if (!config)
+        config = &default_config;
 
-    if (!is_valid_csr_kernel_type(config->kernel_type) || !is_valid_block_size(config->block_size)) {
+    if (!is_valid_csr_kernel_type(config->kernel_type) ||
+        !is_valid_block_size(config->block_size)) {
         result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
         return result;
     }
@@ -292,21 +334,36 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
 
     if (A->nnz == 0 || x_length == 0) {
         cudaError_t err = cudaMemsetAsync(d_y, 0, A->num_rows * sizeof(float), stream);
-        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
-                                                 : static_cast<int>(SpMVError::CUDA_MEMCPY);
+        if (err != cudaSuccess) {
+            result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
+            return result;
+        }
+        if (config->enable_timing) {
+            // Keep blocking semantics consistent with the kernel path: when
+            // timing is enabled, d_y is complete once the call returns.
+            err = cudaStreamSynchronize(stream);
+            if (err != cudaSuccess) {
+                result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
+                return result;
+            }
+        }
+        result.error_code = static_cast<int>(SpMVError::SUCCESS);
         return result;
     }
 
-    set_l2_persisting(d_x, static_cast<size_t>(x_length), stream);
+    L2PersistingScope l2_scope(stream);
+    l2_scope.apply(d_x, static_cast<size_t>(x_length));
 
     int block_size = config->block_size;
-    int num_blocks = (A->num_rows + block_size - 1) / block_size;
 
     auto host_start = std::chrono::steady_clock::now();
     CudaTimer timer;
-    bool use_cuda_timer = (timer.init_status() == cudaSuccess);
-    if (use_cuda_timer) {
-        if (timer.record_start(stream) != cudaSuccess) use_cuda_timer = false;
+    bool use_cuda_timer = false;
+    if (config->enable_timing) {
+        use_cuda_timer = (timer.init_status() == cudaSuccess);
+        if (use_cuda_timer && timer.record_start(stream) != cudaSuccess) {
+            use_cuda_timer = false;
+        }
     }
 
     switch (config->kernel_type) {
@@ -316,7 +373,14 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
                 result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
                 return result;
             }
-            spmv_csr_merge_path_kernel<<<num_blocks, block_size, 0, stream>>>(
+            // Partition the grid by nnz (merge path's unit of work), not by
+            // num_rows: the skewed matrices routed to this kernel often have
+            // few rows but very long ones, and a rows-based grid starves the
+            // GPU in exactly the case merge path exists for.
+            constexpr int kWorkPerThread = 32;
+            int total_threads = (A->nnz + kWorkPerThread - 1) / kWorkPerThread;
+            int merge_blocks = (total_threads + block_size - 1) / block_size;
+            spmv_csr_merge_path_kernel<<<merge_blocks, block_size, 0, stream>>>(
                 A->num_rows, A->nnz, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x,
                 d_y);
             break;
@@ -328,13 +392,26 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
                 A->num_rows, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x, d_y);
             break;
         }
-        case SpMVConfig::SCALAR_CSR:
+        case SpMVConfig::SCALAR_CSR: {
+            int num_blocks = (A->num_rows + block_size - 1) / block_size;
             spmv_csr_scalar_kernel<<<num_blocks, block_size, 0, stream>>>(
                 A->num_rows, csr_d_row_ptrs(A), csr_d_col_indices(A), csr_d_values(A), d_x, d_y);
             break;
+        }
         default:
             result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
             return result;
+    }
+
+    if (!config->enable_timing) {
+        // Async mode: the kernel stays in flight on `stream`.  Only
+        // synchronous launch failures are reported here; the caller is
+        // responsible for synchronizing before reading d_y and for
+        // observing asynchronous errors.
+        cudaError_t err = cudaGetLastError();
+        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
+                                                 : static_cast<int>(SpMVError::KERNEL_LAUNCH);
+        return result;
     }
 
     int sync_status = synchronize_and_check(stream);
@@ -343,12 +420,16 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y, const SpMV
         return result;
     }
 
-    if (use_cuda_timer) timer.record_stop(stream);
+    if (use_cuda_timer)
+        timer.record_stop(stream);
     float fallback_ms =
         std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - host_start)
             .count();
-    float bw = compute_bandwidth_csr(A, fallback_ms).achieved_bandwidth_gb_s;
-    finalize_result(result, timer, use_cuda_timer, fallback_ms, A->nnz, bw);
+    float elapsed_ms = resolve_elapsed_ms(timer, use_cuda_timer, fallback_ms);
+    // Derive bandwidth from the reported elapsed_ms so the fields of
+    // SpMVResult are mutually consistent.
+    float bw = compute_bandwidth_csr(A, elapsed_ms).achieved_bandwidth_gb_s;
+    finalize_result(result, elapsed_ms, A->nnz, bw);
 
     return result;
 }
@@ -376,7 +457,8 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMV
 
     SpMVConfig default_config;
     default_config.kernel_type = SpMVConfig::ELL_KERNEL;
-    if (!config) config = &default_config;
+    if (!config)
+        config = &default_config;
 
     if (config->kernel_type != SpMVConfig::ELL_KERNEL || !is_valid_block_size(config->block_size)) {
         result.error_code = static_cast<int>(SpMVError::INVALID_ARGUMENT);
@@ -392,25 +474,49 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMV
 
     if (storage_size == 0 || x_length == 0) {
         cudaError_t err = cudaMemsetAsync(d_y, 0, A->num_rows * sizeof(float), stream);
-        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
-                                                 : static_cast<int>(SpMVError::CUDA_MEMCPY);
+        if (err != cudaSuccess) {
+            result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
+            return result;
+        }
+        if (config->enable_timing) {
+            // Keep blocking semantics consistent with the kernel path: when
+            // timing is enabled, d_y is complete once the call returns.
+            err = cudaStreamSynchronize(stream);
+            if (err != cudaSuccess) {
+                result.error_code = map_cuda_error(err, SpMVError::CUDA_MEMCPY);
+                return result;
+            }
+        }
+        result.error_code = static_cast<int>(SpMVError::SUCCESS);
         return result;
     }
 
-    set_l2_persisting(d_x, static_cast<size_t>(x_length), stream);
+    L2PersistingScope l2_scope(stream);
+    l2_scope.apply(d_x, static_cast<size_t>(x_length));
 
     int block_size = config->block_size;
     int num_blocks = (A->num_rows + block_size - 1) / block_size;
 
     auto host_start = std::chrono::steady_clock::now();
     CudaTimer timer;
-    bool use_cuda_timer = (timer.init_status() == cudaSuccess);
-    if (use_cuda_timer) {
-        if (timer.record_start(stream) != cudaSuccess) use_cuda_timer = false;
+    bool use_cuda_timer = false;
+    if (config->enable_timing) {
+        use_cuda_timer = (timer.init_status() == cudaSuccess);
+        if (use_cuda_timer && timer.record_start(stream) != cudaSuccess) {
+            use_cuda_timer = false;
+        }
     }
 
     spmv_ell_kernel<<<num_blocks, block_size, 0, stream>>>(
         A->num_rows, A->max_nnz_per_row, ell_d_col_indices(A), ell_d_values(A), d_x, d_y);
+
+    if (!config->enable_timing) {
+        // Async mode: see spmv_csr for the contract.
+        cudaError_t err = cudaGetLastError();
+        result.error_code = (err == cudaSuccess) ? static_cast<int>(SpMVError::SUCCESS)
+                                                 : static_cast<int>(SpMVError::KERNEL_LAUNCH);
+        return result;
+    }
 
     int sync_status = synchronize_and_check(stream);
     if (sync_status != static_cast<int>(SpMVError::SUCCESS)) {
@@ -418,12 +524,16 @@ SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y, const SpMV
         return result;
     }
 
-    if (use_cuda_timer) timer.record_stop(stream);
+    if (use_cuda_timer)
+        timer.record_stop(stream);
     float fallback_ms =
         std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - host_start)
             .count();
-    float bw = compute_bandwidth_ell(A, fallback_ms).achieved_bandwidth_gb_s;
-    finalize_result(result, timer, use_cuda_timer, fallback_ms, A->nnz, bw);
+    float elapsed_ms = resolve_elapsed_ms(timer, use_cuda_timer, fallback_ms);
+    // Derive bandwidth from the reported elapsed_ms so the fields of
+    // SpMVResult are mutually consistent.
+    float bw = compute_bandwidth_ell(A, elapsed_ms).achieved_bandwidth_gb_s;
+    finalize_result(result, elapsed_ms, A->nnz, bw);
 
     return result;
 }

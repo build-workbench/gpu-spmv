@@ -80,6 +80,8 @@ int csr_to_dense(const CSRMatrix* csr, float* dense);
 /**
  * @brief Get the value at a specific position.
  *
+ * Correct regardless of whether column indices are sorted within each row.
+ *
  * @param mat The CSR matrix.
  * @param row Row index (0-indexed).
  * @param col Column index (0-indexed).
@@ -135,7 +137,9 @@ struct CSRStats {
     float avg_nnz_per_row;  ///< Average non-zeros per row
     int max_nnz_per_row;    ///< Maximum non-zeros in any row
     int min_nnz_per_row;    ///< Minimum non-zeros in any row
-    float skewness;         ///< Ratio: max / (min + 1), measures irregularity
+    /// Irregularity heuristic max / (min + 1).  This is a row-length spread
+    /// ratio used for kernel selection, not statistical skewness.
+    float skewness;
 };
 
 /**

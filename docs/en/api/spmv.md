@@ -20,10 +20,17 @@ enum KernelType {
 ```cpp
 struct SpMVConfig {
     KernelType kernel_type;
-    int block_size;    // CUDA block size (default: 256)
-    bool use_texture;  // Whether to use texture cache
+    int block_size;     // CUDA block size (default: 256)
+    bool enable_timing; // default: true
 };
 ```
+
+With `enable_timing = true` (the default), `spmv_csr`/`spmv_ell` block until
+`d_y` is complete and populate the timing fields of `SpMVResult`. Set it to
+`false` to only enqueue the kernel on the stream — no CUDA events, no
+synchronization — so calls can be pipelined; synchronize the stream yourself
+before reading `d_y`. In async mode the timing fields stay zero and only
+synchronous launch failures are reported.
 
 ### SpMVThresholds
 
@@ -31,30 +38,8 @@ Customizable thresholds for automatic kernel selection:
 
 ```cpp
 struct SpMVThresholds {
-    float avg_nnz_threshold;     // Default: 4.0
-    float skewness_threshold;    // Default: 10.0
-    int texture_cols_threshold;  // Default: 10000
-};
-```
-
-### SpMVExecutionContext
-
-Optional context for texture cache reuse across iterations:
-
-```cpp
-class SpMVExecutionContext {
-   public:
-    SpMVExecutionContext();
-    ~SpMVExecutionContext();
-
-    void reset();              // Reset and release texture object
-    bool is_texture_bound();   // Query whether texture is currently bound
-
-    // Copy disabled, move allowed
-    SpMVExecutionContext(const SpMVExecutionContext&) = delete;
-    SpMVExecutionContext& operator=(const SpMVExecutionContext&) = delete;
-    SpMVExecutionContext(SpMVExecutionContext&&) noexcept;
-    SpMVExecutionContext& operator=(SpMVExecutionContext&&) noexcept;
+    float avg_nnz_threshold;  // Default: 4.0
+    float skewness_threshold; // Default: 10.0
 };
 ```
 
@@ -65,9 +50,12 @@ struct SpMVResult {
     float* y;              // Output vector (device pointer)
     float elapsed_ms;      // Execution time (ms)
     float gflops;          // Performance (GFLOPS)
-    float bandwidth_gb_s;  // Memory bandwidth (GB/s)
+    float bandwidth_gb_s;  // Memory bandwidth (GB/s), derived from elapsed_ms
     int error_code;        // 0 = success, negative = error
 };
+
+// Typed accessor for error_code
+SpMVError spmv_result_error(const SpMVResult& result);
 ```
 
 ## Core Functions
@@ -75,8 +63,11 @@ struct SpMVResult {
 ### Automatic Configuration
 
 ```cpp
-// Auto-select optimal kernel configuration
+// Auto-select a CSR kernel configuration from matrix statistics
 SpMVConfig spmv_auto_config(const CSRMatrix* A);
+
+// Configuration for ELL matrices (single kernel)
+SpMVConfig spmv_auto_config_ell(const ELLMatrix* A);
 ```
 
 ### CSR SpMV
@@ -86,7 +77,7 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A);
 SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
                     const SpMVConfig* config = nullptr,
                     int vec_size = -1,  // -1 for auto-detect
-                    SpMVExecutionContext* context = nullptr);
+                    cudaStream_t stream = nullptr);
 ```
 
 ### ELL SpMV
@@ -95,15 +86,16 @@ SpMVResult spmv_csr(const CSRMatrix* A, const float* d_x, float* d_y,
 // GPU SpMV with ELL format
 SpMVResult spmv_ell(const ELLMatrix* A, const float* d_x, float* d_y,
                     const SpMVConfig* config = nullptr, int vec_size = -1,
-                    SpMVExecutionContext* context = nullptr);
+                    cudaStream_t stream = nullptr);
 ```
 
 ### CPU Reference
 
 ```cpp
-// CPU reference implementations (for validation)
-void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
-void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
+// CPU reference implementations (for validation).
+// Return 0 on success, negative error code on invalid input.
+int spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y);
+int spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y);
 ```
 
 ### Threshold Management
@@ -147,11 +139,11 @@ int main() {
 
     // 3. Auto-configure and execute
     SpMVConfig config = spmv_auto_config(csr);
-    SpMVResult result = spmv_csr(csr, d_x.data(), d_y.data(), &config);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config);
 
     // 4. Check result
-    if (result.error_code != 0) {
-        fprintf(stderr, "Error: %d\n", result.error_code);
+    if (spmv_result_error(result) != SpMVError::SUCCESS) {
+        fprintf(stderr, "Error: %s\n", spmv_error_string(spmv_result_error(result)));
         return 1;
     }
 
@@ -169,5 +161,6 @@ int main() {
 #include <spmv/csr_matrix.h>   // CSR matrix
 #include <spmv/cuda_buffer.h>  // RAII memory management
 #include <spmv/ell_matrix.h>   // ELL matrix
+#include <spmv/market_io.h>    // Matrix Market file reader
 #include <spmv/spmv.h>         // Main interface + SpMV computation
 ```

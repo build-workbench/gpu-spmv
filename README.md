@@ -79,6 +79,9 @@ ctest --preset cuda-linux-release
 
 ## Minimal example
 
+A complete, buildable version lives in [`examples/basic_spmv.cpp`](examples/basic_spmv.cpp)
+(built by default; falls back to the CPU path in no-CUDA builds):
+
 ```cpp
 #include <spmv/csr_matrix.h>
 #include <spmv/cuda_buffer.h>
@@ -98,15 +101,20 @@ int main() {
     spmv::CudaBuffer<float> d_x(3);
     spmv::CudaBuffer<float> d_y(3);
     const float h_x[] = {1.0f, 1.0f, 1.0f};
-    cudaMemcpy(d_x.data(), h_x, sizeof(h_x), cudaMemcpyHostToDevice);
+    d_x.copyFromHost(h_x, 3);
 
     spmv::SpMVConfig config = spmv::spmv_auto_config(csr);
-    spmv::SpMVResult result = spmv::spmv_csr(csr, d_x.data(), d_y.data(), &config, 3);
+    spmv::SpMVResult result = spmv::spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
     spmv::csr_destroy(csr);
 
     return result.error_code == 0 ? 0 : 1;
 }
 ```
+
+By default `spmv_csr` blocks until `d_y` is complete and reports timing
+metrics. Set `config.enable_timing = false` to only enqueue the kernel on the
+stream (no events, no sync) for pipelining; synchronize yourself before
+reading `d_y`.
 
 ## Project layout
 
@@ -115,6 +123,8 @@ gpu-spmv/
 ├── include/spmv/   # Public headers
 ├── src/            # Core library implementation
 ├── tests/          # Unit and regression tests
+├── examples/       # Minimal runnable example
+├── tools/          # Benchmark tool (SPMV_BUILD_BENCHMARKS=ON)
 ├── docs/           # GitHub Pages site
 ├── CHANGELOG.md    # Single project changelog
 └── CMakeLists.txt

@@ -193,14 +193,14 @@ int csr_download_device_data(CSRMatrix* mat) {
             return static_cast<int>(SpMVError::INVALID_ARGUMENT);
         }
         SPMV_CUDA_CHECK(cudaMemcpy(mat->values, internal->d_values, mat->nnz * sizeof(float),
-                                    cudaMemcpyDeviceToHost),
+                                   cudaMemcpyDeviceToHost),
                         spmv::SpMVError::CUDA_MEMCPY);
         SPMV_CUDA_CHECK(cudaMemcpy(mat->col_indices, internal->d_col_indices,
-                                    mat->nnz * sizeof(int), cudaMemcpyDeviceToHost),
+                                   mat->nnz * sizeof(int), cudaMemcpyDeviceToHost),
                         spmv::SpMVError::CUDA_MEMCPY);
     }
     SPMV_CUDA_CHECK(cudaMemcpy(mat->row_ptrs, internal->d_row_ptrs,
-                                (mat->num_rows + 1) * sizeof(int), cudaMemcpyDeviceToHost),
+                               (mat->num_rows + 1) * sizeof(int), cudaMemcpyDeviceToHost),
                     spmv::SpMVError::CUDA_MEMCPY);
 
     return static_cast<int>(SpMVError::SUCCESS);

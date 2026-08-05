@@ -2,8 +2,7 @@
 
 namespace spmv {
 
-SpMVConfig select_kernel(const CSRStats& stats, int num_cols, const SpMVThresholds& thresholds) {
-    (void)num_cols;
+SpMVConfig select_kernel(const CSRStats& stats, const SpMVThresholds& thresholds) {
     SpMVConfig config(SpMVConfig::SCALAR_CSR, DEFAULT_BLOCK_SIZE);
 
     if (stats.avg_nnz_per_row < thresholds.avg_nnz_threshold) {

@@ -2,12 +2,13 @@
 #include "spmv/cuda_buffer.h"
 #include "spmv/ell_matrix.h"
 #include "spmv/spmv.h"
-#include "test_utils.h"
 
 #include <algorithm>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <vector>
+
+#include "test_utils.h"
 
 using namespace spmv;
 using namespace spmv::test;
@@ -592,6 +593,98 @@ TEST(SpMVUnitTest, MissingUploadedELLRejected) {
     EXPECT_EQ(result.error_code, static_cast<int>(SpMVError::INVALID_FORMAT));
 
     ell_destroy(ell);
+}
+
+TEST(SpMVUnitTest, TimingDisabledSkipsMetricsAndStillComputes) {
+    std::vector<float> dense = {1, 0, 2, 0, 3, 4, 0, 0, 5};
+    std::vector<float> x = {1, 2, 3};
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), 3, 3), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> y_cpu(3, 0.0f);
+    spmv_cpu_csr(csr, x.data(), y_cpu.data());
+
+    CudaBuffer<float> d_x(3);
+    CudaBuffer<float> d_y(3);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, /*enable_timing=*/false);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    EXPECT_EQ(result.elapsed_ms, 0.0f);
+    EXPECT_EQ(result.gflops, 0.0f);
+    EXPECT_EQ(result.bandwidth_gb_s, 0.0f);
+
+    // In async mode the caller synchronizes before reading the output.
+    ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
+    std::vector<float> y_gpu(3, 0.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    EXPECT_TRUE(compareResults(y_cpu.data(), y_gpu.data(), 3));
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, TimingDisabledZeroNnzStaysAsync) {
+    CSRMatrix* csr = csr_create(4, 4, 0);
+    ASSERT_NE(csr, nullptr);
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    std::vector<float> x = {1.0f, 2.0f, 3.0f, 4.0f};
+    CudaBuffer<float> d_x(4);
+    CudaBuffer<float> d_y(4);
+    d_x.copyFromHost(x.data(), x.size());
+    ASSERT_EQ(cudaMemset(d_y.get(), 0x7f, 4 * sizeof(float)), cudaSuccess);
+
+    SpMVConfig config(SpMVConfig::SCALAR_CSR, 256, /*enable_timing=*/false);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, 4);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+
+    ASSERT_EQ(cudaDeviceSynchronize(), cudaSuccess);
+    std::vector<float> y_gpu(4, 1.0f);
+    d_y.copyToHost(y_gpu.data(), y_gpu.size());
+    for (float value : y_gpu) {
+        EXPECT_FLOAT_EQ(value, 0.0f);
+    }
+
+    csr_destroy(csr);
+}
+
+TEST(SpMVUnitTest, ReportedBandwidthMatchesElapsedTime) {
+    const int rows = 64;
+    const int cols = 64;
+    auto dense = std::vector<float>(rows * cols, 0.0f);
+    for (int i = 0; i < rows; i++) {
+        dense[i * cols + i] = 1.0f;
+        dense[i * cols + (i + 1) % cols] = 2.0f;
+    }
+    std::vector<float> x(cols, 1.0f);
+
+    CSRMatrix* csr = csr_create(0, 0, 0);
+    ASSERT_EQ(csr_from_dense(csr, dense.data(), rows, cols), static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_EQ(csr_to_gpu(csr), static_cast<int>(SpMVError::SUCCESS));
+
+    CudaBuffer<float> d_x(cols);
+    CudaBuffer<float> d_y(rows);
+    d_x.copyFromHost(x.data(), x.size());
+
+    SpMVConfig config(SpMVConfig::VECTOR_CSR, 256);
+    SpMVResult result = spmv_csr(csr, d_x.get(), d_y.get(), &config, cols);
+    ASSERT_EQ(result.error_code, static_cast<int>(SpMVError::SUCCESS));
+    ASSERT_GT(result.elapsed_ms, 0.0f);
+    ASSERT_GT(result.bandwidth_gb_s, 0.0f);
+
+    // bandwidth_gb_s must be derived from the reported elapsed_ms.
+    size_t bytes = static_cast<size_t>(csr->nnz) * sizeof(float) +
+                   static_cast<size_t>(csr->nnz) * sizeof(int) +
+                   static_cast<size_t>(csr->num_rows + 1) * sizeof(int) +
+                   static_cast<size_t>(csr->num_cols) * sizeof(float) +
+                   static_cast<size_t>(csr->num_rows) * sizeof(float);
+    float expected_bw = (bytes / 1e9f) / (result.elapsed_ms / 1000.0f);
+    EXPECT_NEAR(result.bandwidth_gb_s, expected_bw, expected_bw * 1e-4f);
+
+    csr_destroy(csr);
 }
 
 TEST(SpMVUnitTest, MergePathLargeVectorMatchesCpuReference) {

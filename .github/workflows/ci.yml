@@ -26,7 +26,7 @@ jobs:
 
       - name: Check formatting
         run: |
-          find src include tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
+          find src include tests examples tools -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.cu' \) \
             | xargs clang-format-18 --dry-run --Werror
 
   build-cpu:
@@ -100,3 +100,26 @@ jobs:
 
       - name: Build
         run: cmake --build build --parallel
+
+  # Runs the full GPU test suite on a self-hosted runner with an NVIDIA GPU.
+  # Opt in by setting the repository variable CUDA_RUNNER_LABEL to the
+  # runner label (e.g. "gpu"); without it this job is skipped and PRs are
+  # still gated by the compile check above. See CONTRIBUTING.md.
+  cuda-test:
+    name: CUDA Build & Test (GPU)
+    if: ${{ vars.CUDA_RUNNER_LABEL != '' }}
+    runs-on: ${{ vars.CUDA_RUNNER_LABEL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DSPMV_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure

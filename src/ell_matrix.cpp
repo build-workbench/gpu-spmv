@@ -222,7 +222,9 @@ int ell_serialize(const ELLMatrix* mat, const char* filename) {
     }
 
     const uint32_t magic = 0x4C4C4553;  // "SELL" in little-endian
-    const uint32_t version = 1;
+    // Version 2 extends the version 1 checksum to also cover the values
+    // array; version 1 files remain readable.
+    const uint32_t version = 2;
     file.write(reinterpret_cast<const char*>(&magic), sizeof(uint32_t));
     file.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
@@ -242,6 +244,9 @@ int ell_serialize(const ELLMatrix* mat, const char* filename) {
     checksum += static_cast<uint64_t>(mat->max_nnz_per_row);
     for (size_t i = 0; i < size; i++) {
         checksum += static_cast<uint64_t>(mat->col_indices[i]);
+        uint32_t value_bits;
+        std::memcpy(&value_bits, &mat->values[i], sizeof(uint32_t));
+        checksum += value_bits;
     }
     file.write(reinterpret_cast<const char*>(&checksum), sizeof(uint64_t));
 
@@ -270,9 +275,9 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
         return static_cast<int>(SpMVError::FILE_IO);
     }
 
-    if (version > 1) {
-        fprintf(stderr, "Warning: ELL file version %u is newer than supported version 1\n",
-                version);
+    if (version < 1 || version > 2) {
+        fprintf(stderr, "Unsupported ELL file version %u (supported: 1, 2)\n", version);
+        return static_cast<int>(SpMVError::FILE_IO);
     }
 
     int rows, cols, max_nnz;
@@ -282,6 +287,23 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
 
     if (!file || rows < 0 || cols < 0 || max_nnz < 0) {
         return static_cast<int>(SpMVError::FILE_IO);
+    }
+
+    // Reject headers that claim more payload than the file actually contains
+    // before allocating anything, so a corrupt or malicious header cannot
+    // trigger multi-gigabyte allocations.
+    {
+        size_t size = static_cast<size_t>(rows) * static_cast<size_t>(max_nnz);
+        std::streampos header_end = file.tellg();
+        file.seekg(0, std::ios::end);
+        std::streampos file_end = file.tellg();
+        file.seekg(header_end, std::ios::beg);
+        uint64_t payload =
+            static_cast<uint64_t>(size) * (sizeof(float) + sizeof(int)) + sizeof(uint64_t);
+        if (!file || file_end < header_end ||
+            static_cast<uint64_t>(file_end - header_end) < payload) {
+            return static_cast<int>(SpMVError::FILE_IO);
+        }
     }
 
     ell_free_device_data(mat);
@@ -323,6 +345,11 @@ int ell_deserialize(ELLMatrix* mat, const char* filename) {
     computed_checksum += static_cast<uint64_t>(max_nnz);
     for (size_t i = 0; i < size; i++) {
         computed_checksum += static_cast<uint64_t>(mat->col_indices[i]);
+        if (version >= 2) {
+            uint32_t value_bits;
+            std::memcpy(&value_bits, &mat->values[i], sizeof(uint32_t));
+            computed_checksum += value_bits;
+        }
     }
 
     if (computed_checksum != stored_checksum) {

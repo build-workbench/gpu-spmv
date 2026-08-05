@@ -20,9 +20,13 @@ void spmv_set_thresholds(const SpMVThresholds& thresholds) {
     g_thresholds = thresholds;
 }
 
-void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
-    if (!A || !x || !y)
-        return;
+int spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
+    if (!A || !x || !y) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+    if (!A->row_ptrs || (A->nnz > 0 && (!A->values || !A->col_indices))) {
+        return static_cast<int>(SpMVError::INVALID_FORMAT);
+    }
 
     for (int i = 0; i < A->num_rows; i++) {
         float sum = 0.0f;
@@ -31,11 +35,17 @@ void spmv_cpu_csr(const CSRMatrix* A, const float* x, float* y) {
         }
         y[i] = sum;
     }
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
-void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
-    if (!A || !x || !y)
-        return;
+int spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
+    if (!A || !x || !y) {
+        return static_cast<int>(SpMVError::INVALID_ARGUMENT);
+    }
+    size_t storage = static_cast<size_t>(A->num_rows) * static_cast<size_t>(A->max_nnz_per_row);
+    if (storage > 0 && (!A->values || !A->col_indices)) {
+        return static_cast<int>(SpMVError::INVALID_FORMAT);
+    }
 
     for (int i = 0; i < A->num_rows; i++) {
         float sum = 0.0f;
@@ -48,6 +58,7 @@ void spmv_cpu_ell(const ELLMatrix* A, const float* x, float* y) {
         }
         y[i] = sum;
     }
+    return static_cast<int>(SpMVError::SUCCESS);
 }
 
 SpMVConfig spmv_auto_config(const CSRMatrix* A) {
@@ -65,7 +76,15 @@ SpMVConfig spmv_auto_config(const CSRMatrix* A) {
         std::lock_guard<std::mutex> lock(g_thresholds_mutex);
         thresholds = g_thresholds;
     }
-    return select_kernel(stats, A->num_cols, thresholds);
+    return select_kernel(stats, thresholds);
+}
+
+SpMVConfig spmv_auto_config_ell(const ELLMatrix* A) {
+    // ELL has a single kernel; validate input and return the safe default.
+    if (!A || A->num_rows < 0 || A->num_cols < 0 || A->max_nnz_per_row < 0) {
+        return SpMVConfig(SpMVConfig::ELL_KERNEL, DEFAULT_BLOCK_SIZE);
+    }
+    return SpMVConfig(SpMVConfig::ELL_KERNEL, DEFAULT_BLOCK_SIZE);
 }
 
 }  // namespace spmv

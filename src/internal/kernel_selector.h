@@ -9,10 +9,10 @@ namespace spmv {
  * @brief Pure kernel selection logic.
  *
  * All policy decisions are concentrated here.  The function takes only
- * immutable inputs (stats, dimensions, thresholds) and returns a deterministic
+ * immutable inputs (stats, thresholds) and returns a deterministic
  * SpMVConfig.  No global state, no matrix internals.
  */
-SpMVConfig select_kernel(const CSRStats& stats, int num_cols, const SpMVThresholds& thresholds);
+SpMVConfig select_kernel(const CSRStats& stats, const SpMVThresholds& thresholds);
 
 }  // namespace spmv
 

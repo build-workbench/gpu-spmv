@@ -1,8 +1,9 @@
 #include "spmv/csr_matrix.h"
 #include "spmv/spmv.h"
-#include "test_utils.h"
 
 #include <gtest/gtest.h>
+
+#include "test_utils.h"
 
 using namespace spmv;
 using namespace spmv::test;

@@ -46,7 +46,8 @@ inline const char* cudaGetErrorString(cudaError_t err) {
 }
 
 inline cudaError_t cudaMalloc(void** ptr, size_t size) {
-    if (!ptr) return cudaErrorInvalidValue;
+    if (!ptr)
+        return cudaErrorInvalidValue;
     *ptr = (size == 0) ? nullptr : std::malloc(size);
     return (size == 0 || *ptr != nullptr) ? cudaSuccess : cudaErrorMemoryAllocation;
 }
@@ -62,14 +63,18 @@ inline cudaError_t cudaFree(void* ptr) {
 }
 
 inline cudaError_t cudaMemcpy(void* dst, const void* src, size_t count, cudaMemcpyKind) {
-    if (count > 0 && (!dst || !src)) return cudaErrorInvalidValue;
-    if (count > 0) std::memcpy(dst, src, count);
+    if (count > 0 && (!dst || !src))
+        return cudaErrorInvalidValue;
+    if (count > 0)
+        std::memcpy(dst, src, count);
     return cudaSuccess;
 }
 
 inline cudaError_t cudaMemset(void* dst, int value, size_t count) {
-    if (count > 0 && !dst) return cudaErrorInvalidValue;
-    if (count > 0) std::memset(dst, value, count);
+    if (count > 0 && !dst)
+        return cudaErrorInvalidValue;
+    if (count > 0)
+        std::memset(dst, value, count);
     return cudaSuccess;
 }
 
@@ -78,13 +83,15 @@ inline cudaError_t cudaMemsetAsync(void* dst, int value, size_t count, cudaStrea
 }
 
 inline cudaError_t cudaGetDeviceProperties(cudaDeviceProp* prop, int) {
-    if (!prop) return cudaErrorInvalidValue;
+    if (!prop)
+        return cudaErrorInvalidValue;
     *prop = {};
     return cudaSuccess;
 }
 
 inline cudaError_t cudaGetDevice(int* device) {
-    if (!device) return cudaErrorInvalidValue;
+    if (!device)
+        return cudaErrorInvalidValue;
     *device = 0;
     return cudaSuccess;
 }
