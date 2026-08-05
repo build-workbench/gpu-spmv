@@ -24,15 +24,12 @@ function collectTextFiles(dirPath) {
 
 const files = {
   readme: join(root, '..', 'README.md'),
-  readmeZh: join(root, '..', 'README.zh-CN.md'),
   config: join(root, '.vitepress', 'config.ts'),
   pages: join(root, '..', '.github', 'workflows', 'pages.yml'),
   index: join(root, 'index.md'),
   themeIndex: join(root, '.vitepress', 'theme', 'index.ts'),
   zhHome: join(root, 'zh', 'index.md'),
-  enHome: join(root, 'en', 'index.md'),
-  zhWhitepaper: join(root, 'zh', 'whitepaper', 'index.md'),
-  enWhitepaper: join(root, 'en', 'whitepaper', 'index.md')
+  zhWhitepaper: join(root, 'zh', 'whitepaper', 'index.md')
 }
 
 const contents = Object.fromEntries(
@@ -53,7 +50,7 @@ if (/LessUp\/gpu-spmv|github\.com\/LessUp/.test(Object.values(contents).join('\n
   failures.push('legacy LessUp repo references still present')
 }
 
-if (/useRouter\(|router\.go\('\/(zh|en)\//.test(contents.index)) {
+if (/useRouter\(|router\.go\('\/zh\//.test(contents.index)) {
   failures.push('root docs index still auto-redirects by locale')
 }
 
@@ -86,11 +83,8 @@ const requiredContentFiles = [
   join(root, '.vitepress', 'data', 'references.ts'),
   join(root, '.vitepress', 'data', 'benchmarks.ts'),
   join(root, 'zh', 'architecture', 'execution-pipeline.md'),
-  join(root, 'en', 'architecture', 'execution-pipeline.md'),
   join(root, 'zh', 'architecture', 'reliability.md'),
-  join(root, 'en', 'architecture', 'reliability.md'),
-  join(root, 'zh', 'performance', 'methodology.md'),
-  join(root, 'en', 'performance', 'methodology.md')
+  join(root, 'zh', 'performance', 'methodology.md')
 ]
 
 for (const filePath of [...requiredThemeFiles, ...requiredAssetFiles, ...requiredContentFiles]) {
@@ -119,24 +113,12 @@ if (!contents.zhHome.includes('<HeroEvidence') || !contents.zhHome.includes('<Ar
   failures.push('zh homepage has not been rebuilt with theme components')
 }
 
-if (!contents.enHome.includes('<HeroEvidence') || !contents.enHome.includes('<ArchitectureCanvas')) {
-  failures.push('en homepage has not been rebuilt with theme components')
-}
-
 if (!contents.zhWhitepaper.includes('<CalloutPanel')) {
   failures.push('zh whitepaper landing page missing positioning callout')
 }
 
-if (!contents.enWhitepaper.includes('<CalloutPanel')) {
-  failures.push('en whitepaper landing page missing positioning callout')
-}
-
 if (!contents.config.includes("link: '/zh/references'")) {
   failures.push('zh nav missing references entry')
-}
-
-if (!contents.config.includes("link: '/en/references'")) {
-  failures.push('en nav missing references entry')
 }
 
 if (!contents.config.includes("light: '/images/brand/logo-mark-light.svg'")) {
@@ -155,21 +137,12 @@ if (!contents.config.includes("link: '/zh/architecture/execution-pipeline'")) {
   failures.push('zh sidebar missing execution pipeline entry')
 }
 
-if (!contents.config.includes("link: '/en/architecture/execution-pipeline'")) {
-  failures.push('en sidebar missing execution pipeline entry')
-}
-
 if (!contents.config.includes("link: '/zh/performance/methodology'")) {
   failures.push('zh sidebar missing methodology entry')
 }
 
-if (!contents.config.includes("link: '/en/performance/methodology'")) {
-  failures.push('en sidebar missing methodology entry')
-}
-
 const docsCorpus = collectTextFiles(join(root, 'zh'))
-  .concat(collectTextFiles(join(root, 'en')))
-  .concat([join(root, '..', 'README.md'), join(root, '..', 'README.zh-CN.md')])
+  .concat([join(root, '..', 'README.md')])
   .map((filePath) => readFileSync(filePath, 'utf8'))
   .join('\n')
 

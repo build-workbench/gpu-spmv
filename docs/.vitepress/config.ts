@@ -12,7 +12,7 @@ export default withMermaid(
   defineConfig({
     base,
     title: 'GPU SpMV',
-    description: 'High-Performance CUDA Sparse Matrix-Vector Multiplication',
+    description: '基于 CUDA 的高性能稀疏矩阵向量乘法库',
 
     head: [
       ['meta', { name: 'theme-color', content: '#76B900' }],
@@ -22,13 +22,13 @@ export default withMermaid(
         'meta',
         {
           property: 'og:description',
-          content: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library'
+          content: '基于 CUDA 的高性能稀疏矩阵向量乘法库'
         }
       ],
       ['meta', { property: 'og:image', content: `${base}images/social/og-dark.svg` }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
       ['meta', { name: 'twitter:title', content: 'GPU SpMV' }],
-      ['meta', { name: 'twitter:description', content: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library' }],
+      ['meta', { name: 'twitter:description', content: '基于 CUDA 的高性能稀疏矩阵向量乘法库' }],
       ['meta', { name: 'twitter:image', content: `${base}images/social/og-dark.svg` }],
       ['link', { rel: 'icon', href: `${base}images/favicon.svg`, type: 'image/svg+xml' }],
       ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
@@ -134,85 +134,6 @@ export default withMermaid(
           darkModeSwitchLabel: '主题',
           lightModeSwitchTitle: '切换到浅色模式',
           darkModeSwitchTitle: '切换到深色模式'
-        }
-      },
-      en: {
-        label: 'English',
-        lang: 'en-US',
-        link: '/en/',
-        description: 'High-Performance CUDA Sparse Matrix-Vector Multiplication Library',
-        themeConfig: {
-          nav: [
-            { text: 'Whitepaper', link: '/en/whitepaper/', activeMatch: '/en/whitepaper/' },
-            { text: 'Architecture', link: '/en/architecture/overview', activeMatch: '/en/architecture/' },
-            { text: 'Benchmarks', link: '/en/performance/benchmarks', activeMatch: '/en/performance/' },
-            { text: 'API Reference', link: '/en/api/spmv', activeMatch: '/en/api/' },
-            { text: 'References', link: '/en/references', activeMatch: '/en/(references|citation)/' }
-          ],
-          sidebar: {
-            '/en/': [
-              {
-                text: 'Technical Whitepaper',
-                collapsed: false,
-                items: [
-                  { text: 'Executive Summary', link: '/en/whitepaper/' },
-                  { text: 'Design Philosophy', link: '/en/whitepaper/philosophy' },
-                  { text: 'Performance Analysis', link: '/en/whitepaper/performance' }
-                ]
-              },
-              {
-                text: 'Getting Started',
-                items: [
-                  { text: 'Introduction', link: '/en/' },
-                  { text: 'Quick Start', link: '/en/quickstart' },
-                  { text: 'Examples', link: '/en/examples/basic-spmv' }
-                ]
-              },
-              {
-                text: 'Architecture',
-                collapsed: false,
-                items: [
-                  { text: 'System Overview', link: '/en/architecture/overview' },
-                  { text: 'Execution Pipeline', link: '/en/architecture/execution-pipeline' },
-                  { text: 'Kernel Selection', link: '/en/architecture/kernel-selection' },
-                  { text: 'Memory Layout', link: '/en/architecture/memory-layout' },
-                  { text: 'Reliability Constraints', link: '/en/architecture/reliability' }
-                ]
-              },
-              {
-                text: 'Performance',
-                collapsed: false,
-                items: [
-                  { text: 'Methodology', link: '/en/performance/methodology' },
-                  { text: 'Benchmarks', link: '/en/performance/benchmarks' },
-                  { text: 'Optimization Guide', link: '/en/performance/optimization-guide' }
-                ]
-              },
-              {
-                text: 'API Reference',
-                collapsed: true,
-                items: [
-                  { text: 'SpMV Computation', link: '/en/api/spmv' },
-                  { text: 'CSR Matrix', link: '/en/api/csr-matrix' },
-                  { text: 'ELL Matrix', link: '/en/api/ell-matrix' }
-                ]
-              },
-              {
-                text: 'Academic',
-                items: [
-                  { text: 'References', link: '/en/references' },
-                  { text: 'Citation', link: '/en/citation' },
-                  { text: 'FAQ', link: '/en/faq' },
-                  { text: 'Contributing', link: '/en/contributing' }
-                ]
-              }
-            ]
-          },
-          editLink: {
-            pattern: 'https://github.com/AICL-Lab/gpu-spmv/edit/main/docs/:path',
-            text: 'Edit this page on GitHub'
-          },
-          outline: { label: 'On This Page', level: [2, 3] }
         }
       }
     },

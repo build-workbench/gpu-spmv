@@ -53,7 +53,6 @@ ctest --preset cuda-linux-release
 ## 文档
 
 - 中文文档位于 `docs/zh/`
-- 英文文档位于 `docs/en/`
 - 可使用 Mermaid 绘图
 
 ## 获取帮助
