@@ -36,7 +36,7 @@ GPU SpMV is a C++17 / CUDA sparse matrix-vector multiplication library; the repo
 - **Execution layer**: Scalar CSR, Vector CSR, Merge Path, ELL Kernel
 - **Engineering constraints**: `CudaBuffer<T>` RAII, explicit `SpMVError`, CPU reference path, focused tests
 
-Showcase modules and the AI governance framework have been removed; the goal is to make the codebase smaller, more direct, and easier to maintain.
+Demo modules and the AI governance framework have been removed; the goal is to make the codebase smaller, more direct, and easier to maintain.
 
 ## Quick Start
 
