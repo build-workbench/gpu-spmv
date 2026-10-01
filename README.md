@@ -1,3 +1,7 @@
+**English** | [中文](#chinese)
+
+<a id="top"></a>
+
 <p align="center">
   <img src="https://img.shields.io/badge/CUDA-11.0%2B-76B900?logo=nvidia" alt="CUDA">
   <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B" alt="C++">
@@ -129,6 +133,7 @@ MIT license; see [LICENSE](LICENSE) for details.
 
 ---
 <a id="chinese"></a>
+[English](#top) | **中文**
 
 <p align="center">
   <img src="https://img.shields.io/badge/CUDA-11.0%2B-76B900?logo=nvidia" alt="CUDA">
