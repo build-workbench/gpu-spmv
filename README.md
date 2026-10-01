@@ -2,6 +2,138 @@
   <img src="https://img.shields.io/badge/CUDA-11.0%2B-76B900?logo=nvidia" alt="CUDA">
   <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B" alt="C++">
   <img src="https://img.shields.io/badge/CMake-3.18%2B-064F8C?logo=cmake" alt="CMake">
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-blue" alt="Platform">
+</p>
+
+<h1 align="center">GPU SpMV</h1>
+
+<p align="center">
+  <strong>A CUDA sparse matrix-vector multiplication library focused on core capabilities</strong>
+</p>
+
+<p align="center">
+  <em>CSR + ELL formats · 4 kernels · explicit error handling · smaller maintenance surface</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/build-workbench/gpu-spmv/actions/workflows/ci.yml">
+    <img src="https://github.com/build-workbench/gpu-spmv/actions/workflows/ci.yml/badge.svg" alt="CI">
+  </a>
+  <a href="https://github.com/build-workbench/gpu-spmv/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+  </a>
+</p>
+
+## Project Positioning
+
+GPU SpMV is a C++17 / CUDA sparse matrix-vector multiplication library; the repository now keeps only the core library itself:
+
+- **Storage layer**: two sparse formats, CSR and ELL
+- **Execution layer**: Scalar CSR, Vector CSR, Merge Path, ELL Kernel
+- **Engineering constraints**: `CudaBuffer<T>` RAII, explicit `SpMVError`, CPU reference path, focused tests
+
+Showcase modules and the AI governance framework have been removed; the goal is to make the codebase smaller, more direct, and easier to maintain.
+
+## Quick Start
+
+```bash
+git clone https://github.com/build-workbench/gpu-spmv.git
+cd gpu-spmv
+
+cmake --preset cuda-linux
+cmake --build --preset cuda-linux
+ctest --preset cuda-linux
+```
+
+On machines without a GPU, use:
+
+```bash
+cmake --preset cpu-only
+cmake --build --preset cpu-only
+ctest --preset cpu-only
+```
+
+Release build:
+
+```bash
+cmake --preset cuda-linux-release
+cmake --build --preset cuda-linux-release
+ctest --preset cuda-linux-release
+```
+
+The `cuda-linux` preset pins the system GCC/G++ as the host compiler, preventing Conda
+compilers from leaking into the nvcc toolchain.
+
+## Minimal Example
+
+See [`examples/basic_spmv.cpp`](examples/basic_spmv.cpp) for a complete compilable version
+(compiled with the build by default; automatically falls back to the CPU path when building without CUDA):
+
+```cpp
+#include <spmv/csr_matrix.h>
+#include <spmv/cuda_buffer.h>
+#include <spmv/spmv.h>
+
+int main() {
+    float dense[] = {
+        1.0f, 0.0f, 2.0f,
+        0.0f, 3.0f, 4.0f,
+        0.0f, 0.0f, 5.0f,
+    };
+
+    spmv::CSRMatrix* csr = spmv::csr_create(3, 3, 5);
+    spmv::csr_from_dense(csr, dense, 3, 3);
+    spmv::csr_to_gpu(csr);
+
+    spmv::CudaBuffer<float> d_x(3);
+    spmv::CudaBuffer<float> d_y(3);
+    const float h_x[] = {1.0f, 1.0f, 1.0f};
+    d_x.copyFromHost(h_x, 3);
+
+    spmv::SpMVConfig config = spmv::spmv_auto_config(csr);
+    spmv::SpMVResult result = spmv::spmv_csr(csr, d_x.get(), d_y.get(), &config, 3);
+    spmv::csr_destroy(csr);
+
+    return result.error_code == 0 ? 0 : 1;
+}
+```
+
+By default, `spmv_csr` blocks until `d_y` completes and reports timing metrics.
+Setting `config.enable_timing = false` only enqueues the kernel into the stream
+(no event creation, no synchronization), which is convenient for pipeline orchestration;
+you must synchronize yourself before reading `d_y`.
+
+## Directory Structure
+
+```text
+gpu-spmv/
+├── include/spmv/   # 公共头文件
+├── src/            # 核心库实现
+├── tests/          # 单元测试与回归测试
+├── examples/       # 最小可运行示例
+├── tools/          # 基准测试工具（SPMV_BUILD_BENCHMARKS=ON）
+└── CMakeLists.txt
+```
+
+## Contributing
+
+The contribution process stays simple:
+
+1. Only make changes that improve the core library.
+2. Keep RAII resource management; do not introduce bare `cudaMalloc` / `cudaFree`.
+3. Run the existing build and test commands.
+
+## License
+
+MIT license; see [LICENSE](LICENSE) for details.
+
+---
+<a id="chinese"></a>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/CUDA-11.0%2B-76B900?logo=nvidia" alt="CUDA">
+  <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B" alt="C++">
+  <img src="https://img.shields.io/badge/CMake-3.18%2B-064F8C?logo=cmake" alt="CMake">
   <img src="https://img.shields.io/badge/平台-Linux%20%7C%20Windows-blue" alt="Platform">
 </p>
 
