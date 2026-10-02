@@ -111,11 +111,11 @@ you must synchronize yourself before reading `d_y`.
 
 ```text
 gpu-spmv/
-├── include/spmv/   # 公共头文件
-├── src/            # 核心库实现
-├── tests/          # 单元测试与回归测试
-├── examples/       # 最小可运行示例
-├── tools/          # 基准测试工具（SPMV_BUILD_BENCHMARKS=ON）
+├── include/spmv/   # Public headers
+├── src/            # Core library implementation
+├── tests/          # Unit and regression tests
+├── examples/       # Minimal runnable examples
+├── tools/          # Benchmark tools (SPMV_BUILD_BENCHMARKS=ON)
 └── CMakeLists.txt
 ```
 
